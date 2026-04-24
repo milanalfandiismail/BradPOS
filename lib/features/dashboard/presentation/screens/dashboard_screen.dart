@@ -11,6 +11,7 @@ import '../widgets/quick_action_card.dart';
 
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
+import '../../../karyawan/presentation/screens/karyawan_list_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -37,7 +38,7 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 _buildGreeting(),
                 const SizedBox(height: 24),
-                _buildMainActions(),
+                _buildMainActions(context),
                 const SizedBox(height: 24),
                 BlocBuilder<DashboardBloc, DashboardState>(
                   builder: (context, state) {
@@ -107,7 +108,10 @@ class DashboardScreen extends StatelessWidget {
                       Navigator.pop(context);
                       context.read<AuthBloc>().add(SignOutRequested());
                     },
-                    child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                    child: const Text(
+                      'Logout',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),
@@ -158,25 +162,38 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMainActions() {
-    return Row(
-      children: [
-        QuickActionButton(
-          title: 'Start Cashier',
-          icon: Icons.point_of_sale,
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
-          onTap: () {},
-        ),
-        const SizedBox(width: 12),
-        QuickActionButton(
-          title: 'Inventory',
-          icon: Icons.inventory_2_outlined,
-          backgroundColor: AppColors.secondaryLight,
-          foregroundColor: const Color(0xFF1E40AF),
-          onTap: () {},
-        ),
-      ],
+  Widget _buildMainActions(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final bool isOwner = state is AuthAuthenticated && state.user.isOwner;
+
+        return Row(
+          children: [
+            QuickActionButton(
+              title: 'Start Cashier',
+              icon: Icons.point_of_sale,
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+              onTap: () {},
+            ),
+            if (isOwner) ...[
+              const SizedBox(width: 12),
+              QuickActionButton(
+                title: 'Karyawan',
+                icon: Icons.people_outline,
+                backgroundColor: AppColors.secondaryLight,
+                foregroundColor: const Color(0xFF1E40AF),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const KaryawanListScreen()),
+                  );
+                },
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 

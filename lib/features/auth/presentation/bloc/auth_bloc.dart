@@ -21,17 +21,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.signUpUseCase,
     required this.authRepository,
   }) : super(AuthInitial()) {
-    // Listen to Supabase Auth Changes globally
+    // Listen to Supabase Auth Changes globally (Owner only)
     _authSubscription = supabase_auth.Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
       final session = data.session;
       final user = session?.user;
+
       if (user != null) {
         add(AuthStatusChanged(UserEntity(
           id: user.id,
           email: user.email ?? '',
           name: user.userMetadata?['full_name'] ?? user.userMetadata?['name'],
+          role: 'owner',
         )));
-      } else {
+      } else if (event == supabase_auth.AuthChangeEvent.signedOut) {
+        // Only trigger if it was an explicit sign out from Supabase (Owner)
         add(AuthStatusChanged(null));
       }
     });
@@ -39,7 +43,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthStatusChanged>((event, emit) {
       if (event.user != null) {
         emit(AuthAuthenticated(event.user!));
-      } else {
+      } else if (state is AuthAuthenticated && (state as AuthAuthenticated).user.isOwner) {
+        // Only log out if the current user was an Owner
         emit(AuthUnauthenticated());
       }
     });
@@ -82,11 +87,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final result = await authRepository.signInWithGoogle();
       result.fold(
         (failure) {
-          // Hanya pancarkan error jika bukan pesan loading/redirect
           if (!failure.contains('Membuka') && !failure.contains('halaman')) {
             emit(AuthError(failure));
           }
         },
+        (user) => emit(AuthAuthenticated(user)),
+      );
+    });
+
+    on<SignInAsKaryawanRequested>((event, emit) async {
+      emit(AuthLoading());
+      final result = await authRepository.signInAsKaryawan(
+        event.email,
+        event.password,
+      );
+      result.fold(
+        (failure) => emit(AuthError(failure)),
         (user) => emit(AuthAuthenticated(user)),
       );
     });

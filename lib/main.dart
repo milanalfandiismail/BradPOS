@@ -5,6 +5,7 @@ import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/karyawan/presentation/bloc/karyawan_bloc.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -22,12 +23,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (_) => di.sl<AuthBloc>()..add(CheckAuthStatus()),
-        ),
-        BlocProvider(
-          create: (_) => di.sl<DashboardBloc>(),
-        ),
+        BlocProvider(create: (_) => di.sl<AuthBloc>()..add(CheckAuthStatus())),
+        BlocProvider(create: (_) => di.sl<DashboardBloc>()),
+        BlocProvider(create: (_) => di.sl<KaryawanBloc>()),
       ],
       child: MaterialApp(
         title: 'BradPOS',
@@ -46,9 +44,7 @@ class MyApp extends StatelessWidget {
             }
             // Show loading or splash screen while checking auth status
             return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
+              body: Center(child: CircularProgressIndicator()),
             );
           },
         ),

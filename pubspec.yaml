@@ -48,6 +48,8 @@ dependencies:
   supabase_flutter: ^2.12.4
   google_sign_in: ^7.2.0
   flutter_dotenv: ^6.0.1
+  shared_preferences: ^2.5.2
+  supabase: ^2.10.6
 
 dev_dependencies:
   flutter_test:

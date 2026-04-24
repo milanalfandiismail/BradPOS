@@ -34,6 +34,16 @@ class SignUpRequested extends AuthEvent {
 
 class GoogleSignInRequested extends AuthEvent {}
 
+class SignInAsKaryawanRequested extends AuthEvent {
+  final String email;
+  final String password;
+
+  const SignInAsKaryawanRequested({required this.email, required this.password});
+
+  @override
+  List<Object> get props => [email, password];
+}
+
 class SignOutRequested extends AuthEvent {}
 
 class CheckAuthStatus extends AuthEvent {}
