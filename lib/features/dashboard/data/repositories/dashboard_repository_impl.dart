@@ -1,0 +1,27 @@
+import 'package:dartz/dartz.dart';
+import '../../domain/entities/dashboard_stats.dart';
+import '../../domain/repositories/dashboard_repository.dart';
+import '../models/dashboard_stats_model.dart';
+
+class DashboardRepositoryImpl implements DashboardRepository {
+  @override
+  Future<Either<String, DashboardStats>> getDashboardStats() async {
+    try {
+      // Simulating network/database delay
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      const stats = DashboardStatsModel(
+        totalSales: 4280.50,
+        salesGrowth: 12.0,
+        totalTransactions: 142,
+        transactionsGrowth: 8.0,
+        avgTicketSize: 30.14,
+        ticketSizeGrowth: 0.0,
+      );
+      
+      return Right(stats);
+    } catch (e) {
+      return Left(e.toString());
+    }
+  }
+}
