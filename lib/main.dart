@@ -1,54 +1,23 @@
+import 'package:bradpos/features/main/presentation/pages/main_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'injection_container.dart' as di;
-import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
-import 'features/dashboard/presentation/screens/dashboard_screen.dart';
-import 'features/auth/presentation/bloc/auth_bloc.dart';
-import 'features/auth/presentation/screens/login_screen.dart';
-import 'features/karyawan/presentation/bloc/karyawan_bloc.dart';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
-  await di.init();
-  runApp(const MyApp());
+void main() {
+  runApp(const ErgoPOSApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class ErgoPOSApp extends StatelessWidget {
+  const ErgoPOSApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (_) => di.sl<AuthBloc>()..add(CheckAuthStatus())),
-        BlocProvider(create: (_) => di.sl<DashboardBloc>()),
-        BlocProvider(create: (_) => di.sl<KaryawanBloc>()),
-      ],
-      child: MaterialApp(
-        title: 'BradPOS',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF065F46)),
-          useMaterial3: true,
-          fontFamily: 'Inter',
-        ),
-        home: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            if (state is AuthAuthenticated) {
-              return const DashboardScreen();
-            } else if (state is AuthUnauthenticated || state is AuthError) {
-              return const LoginScreen();
-            }
-            // Show loading or splash screen while checking auth status
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          },
-        ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'BradPOS',
+      theme: ThemeData(
+        useMaterial3: true,
+        primaryColor: const Color(0xFF1A237E),
       ),
+      home: const MainScreen(),
     );
   }
 }
