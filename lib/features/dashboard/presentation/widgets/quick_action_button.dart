@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Tombol aksi cepat di Dashboard (misal: "Start Cashier", "Karyawan").
 class QuickActionButton extends StatelessWidget {
   final String title;
   final IconData icon;

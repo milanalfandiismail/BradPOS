@@ -1,5 +1,7 @@
 import '../../domain/entities/dashboard_stats.dart';
 
+/// Model data untuk statistik Dashboard.
+/// Bertugas mengubah data JSON dari API/database menjadi objek DashboardStats.
 class DashboardStatsModel extends DashboardStats {
   const DashboardStatsModel({
     required super.totalSales,

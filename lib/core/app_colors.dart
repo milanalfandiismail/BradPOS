@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+/// Palet warna utama aplikasi BradPOS.
+/// Semua warna yang digunakan di UI didefinisikan di sini agar konsisten.
 class AppColors {
   static const Color background = Color(0xFFF8FAFC);
   static const Color primary = Color(0xFF065F46); // Start Cashier Green

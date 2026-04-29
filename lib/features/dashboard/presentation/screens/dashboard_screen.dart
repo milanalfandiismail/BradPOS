@@ -11,7 +11,12 @@ import '../widgets/quick_action_card.dart';
 
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
+import '../../../karyawan/presentation/screens/karyawan_list_screen.dart';
+import '../../../inventory/presentation/screens/inventory_screen.dart';
 
+/// Halaman utama (Dashboard) setelah login berhasil.
+/// Menampilkan statistik penjualan, aksi cepat, dan navigasi ke fitur lain.
+/// Menu "Karyawan" hanya ditampilkan jika user adalah Owner (RBAC).
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
@@ -37,7 +42,7 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 _buildGreeting(),
                 const SizedBox(height: 24),
-                _buildMainActions(),
+                _buildMainActions(context),
                 const SizedBox(height: 24),
                 BlocBuilder<DashboardBloc, DashboardState>(
                   builder: (context, state) {
@@ -54,13 +59,13 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 _buildSalesPerformance(),
                 const SizedBox(height: 24),
-                _buildBottomActions(),
+                _buildBottomActions(context),
                 const SizedBox(height: 100), // Space for bottom nav
               ],
             ),
           ),
         ),
-        bottomNavigationBar: _buildBottomNavBar(),
+        bottomNavigationBar: _buildBottomNavBar(context),
       ),
     );
   }
@@ -107,7 +112,10 @@ class DashboardScreen extends StatelessWidget {
                       Navigator.pop(context);
                       context.read<AuthBloc>().add(SignOutRequested());
                     },
-                    child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                    child: const Text(
+                      'Logout',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),
@@ -158,25 +166,38 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMainActions() {
-    return Row(
-      children: [
-        QuickActionButton(
-          title: 'Start Cashier',
-          icon: Icons.point_of_sale,
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
-          onTap: () {},
-        ),
-        const SizedBox(width: 12),
-        QuickActionButton(
-          title: 'Inventory',
-          icon: Icons.inventory_2_outlined,
-          backgroundColor: AppColors.secondaryLight,
-          foregroundColor: const Color(0xFF1E40AF),
-          onTap: () {},
-        ),
-      ],
+  Widget _buildMainActions(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final bool isOwner = state is AuthAuthenticated && state.user.isOwner;
+
+        return Row(
+          children: [
+            QuickActionButton(
+              title: 'Start Cashier',
+              icon: Icons.point_of_sale,
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+              onTap: () {},
+            ),
+            if (isOwner) ...[
+              const SizedBox(width: 12),
+              QuickActionButton(
+                title: 'Karyawan',
+                icon: Icons.people_outline,
+                backgroundColor: AppColors.secondaryLight,
+                foregroundColor: const Color(0xFF1E40AF),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const KaryawanListScreen()),
+                  );
+                },
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -331,7 +352,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomActions() {
+  Widget _buildBottomActions(BuildContext context) {
     return Column(
       children: [
         QuickActionCard(
@@ -347,13 +368,17 @@ class DashboardScreen extends StatelessWidget {
           subtitle: 'Check stock and pricing details',
           icon: Icons.search,
           iconBgColor: AppColors.secondary,
-          onTap: () {},
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const InventoryScreen()),
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildBottomNavBar() {
+  Widget _buildBottomNavBar(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -367,7 +392,12 @@ class DashboardScreen extends StatelessWidget {
             children: [
               _buildNavItem(Icons.grid_view_rounded, 'DASHBOARD', true),
               _buildNavItem(Icons.point_of_sale, 'CASHIER', false),
-              _buildNavItem(Icons.inventory_2_outlined, 'INVENTORY', false),
+              _buildNavItem(Icons.inventory_2_outlined, 'INVENTORY', false,
+                  onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const InventoryScreen()),
+                );
+              }),
               _buildNavItem(Icons.history, 'HISTORY', false),
             ],
           ),
@@ -376,8 +406,11 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive) {
-    return Column(
+  Widget _buildNavItem(IconData icon, String label, bool isActive,
+      {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
@@ -395,6 +428,7 @@ class DashboardScreen extends StatelessWidget {
           ),
         ),
       ],
+    ),
     );
   }
 }

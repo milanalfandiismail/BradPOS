@@ -3,6 +3,8 @@ import '../../domain/entities/dashboard_stats.dart';
 import '../../domain/repositories/dashboard_repository.dart';
 import '../models/dashboard_stats_model.dart';
 
+/// Implementasi Repository Dashboard.
+/// Saat ini menggunakan data dummy. Nanti akan terhubung ke Supabase.
 class DashboardRepositoryImpl implements DashboardRepository {
   @override
   Future<Either<String, DashboardStats>> getDashboardStats() async {

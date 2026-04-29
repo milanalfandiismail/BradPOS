@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/app_colors.dart';
 
+/// Widget kartu statistik di Dashboard (Total Sales, Transactions, Avg Ticket).
+/// Menampilkan nilai, ikon, dan indikator pertumbuhan (naik/turun/stabil).
 class StatCard extends StatelessWidget {
   final String title;
   final String value;

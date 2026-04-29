@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/app_colors.dart';
 
+/// Card aksi di bagian bawah Dashboard (misal: "New Transaction", "Look Up Items").
 class QuickActionCard extends StatelessWidget {
   final String title;
   final String subtitle;

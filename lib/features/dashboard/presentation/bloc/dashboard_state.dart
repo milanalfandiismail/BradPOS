@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/dashboard_stats.dart';
 
+/// Event yang bisa dikirim ke DashboardBloc.
 abstract class DashboardEvent extends Equatable {
   const DashboardEvent();
 

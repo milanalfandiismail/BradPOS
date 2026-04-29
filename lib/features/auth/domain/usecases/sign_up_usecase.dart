@@ -2,6 +2,8 @@ import 'package:dartz/dartz.dart';
 import '../entities/user_entity.dart';
 import '../repositories/auth_repository.dart';
 
+/// Use Case untuk proses Registrasi Owner baru.
+/// Meneruskan permintaan registrasi ke AuthRepository.
 class SignUpUseCase {
   final AuthRepository repository;
 

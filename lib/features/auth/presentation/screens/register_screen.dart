@@ -4,6 +4,8 @@ import '../../../../core/app_colors.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 
+/// Halaman Registrasi akun Owner baru.
+/// Hanya untuk Owner - Karyawan didaftarkan oleh Owner melalui menu Karyawan.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
