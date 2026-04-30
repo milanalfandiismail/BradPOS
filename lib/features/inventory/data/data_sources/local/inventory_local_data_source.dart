@@ -6,7 +6,8 @@ import '../../../domain/entities/category.dart';
 import 'package:sqflite/sqflite.dart';
 
 abstract class InventoryLocalDataSource {
-  Future<List<InventoryItemModel>> getInventory(String userId);
+  Future<List<InventoryItemModel>> getInventory(String userId, {int? limit, int? offset});
+  Future<int> getInventoryCount(String userId);
   Future<InventoryItemModel> addInventoryItem(InventoryItem item);
   Future<InventoryItemModel> updateInventoryItem(InventoryItem item);
   Future<void> deleteInventoryItem(String id, String userId);
@@ -30,7 +31,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
   InventoryLocalDataSourceImpl({required this.dbHelper});
 
   @override
-  Future<List<InventoryItemModel>> getInventory(String userId) async {
+  Future<List<InventoryItemModel>> getInventory(String userId, {int? limit, int? offset}) async {
     final db = await dbHelper.database;
     // Ambil data yang statusnya BUKAN 'deleted'
     final maps = await db.query(
@@ -38,6 +39,8 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       where: 'owner_id = ? AND sync_status != ?',
       whereArgs: [userId, 'deleted'],
       orderBy: 'created_at DESC',
+      limit: limit,
+      offset: offset,
     );
 
     return maps.map((map) {
@@ -46,6 +49,16 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       modMap['is_active'] = modMap['is_active'] == 1;
       return InventoryItemModel.fromMap(modMap);
     }).toList();
+  }
+
+  @override
+  Future<int> getInventoryCount(String userId) async {
+    final db = await dbHelper.database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM produk WHERE owner_id = ? AND sync_status != ?',
+      [userId, 'deleted'],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   @override

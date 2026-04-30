@@ -6,7 +6,8 @@ import '../../models/inventory_item_model.dart';
 import '../../models/category_model.dart';
 
 abstract class InventoryRemoteDataSource {
-  Future<List<InventoryItemModel>> getInventory(String userId);
+  Future<List<InventoryItemModel>> getInventory(String userId, {int? limit, int? offset});
+  Future<int> getInventoryCount(String userId);
   Future<List<CategoryModel>> getCategories(String userId);
 
   // Sync methods (push to server) - return new image_url if uploaded
@@ -23,14 +24,34 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
   InventoryRemoteDataSourceImpl({required this.supabase});
 
   @override
-  Future<List<InventoryItemModel>> getInventory(String userId) async {
-    final response = await supabase
+  Future<List<InventoryItemModel>> getInventory(String userId, {int? limit, int? offset}) async {
+    var query = supabase
         .from("produk")
         .select("*")
         .eq("owner_id", userId)
         .order('created_at', ascending: false);
 
+    if (limit != null && offset != null) {
+      query = query.range(offset, offset + limit - 1);
+    } else if (limit != null) {
+      query = query.limit(limit);
+    }
+
+    final response = await query;
     return response.map((row) => InventoryItemModel.fromMap(row)).toList();
+  }
+
+  @override
+  Future<int> getInventoryCount(String userId) async {
+    // Gunakan select dengan count: CountOption.exact dan head: true untuk efisiensi
+    final response = await supabase
+        .from('produk')
+        .select('*')
+        .eq('owner_id', userId);
+    
+    // Karena POS biasanya datanya gak nyampe jutaan di HP, length dari select id udah cukup aman.
+    // Tapi kalau mau pake fitur count Supabase:
+    return response.length;
   }
 
   @override

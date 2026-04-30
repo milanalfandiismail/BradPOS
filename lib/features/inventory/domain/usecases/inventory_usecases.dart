@@ -8,8 +8,17 @@ class GetInventory {
   final InventoryRepository repository;
   GetInventory(this.repository);
 
-  Future<Either<String, List<InventoryItem>>> call() async {
-    return await repository.getInventory();
+  Future<Either<String, List<InventoryItem>>> call({int? limit, int? offset}) async {
+    return await repository.getInventory(limit: limit, offset: offset);
+  }
+}
+
+class GetInventoryCount {
+  final InventoryRepository repository;
+  GetInventoryCount(this.repository);
+
+  Future<Either<String, int>> call() async {
+    return await repository.getInventoryCount();
   }
 }
 

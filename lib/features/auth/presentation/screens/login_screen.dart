@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/app_colors.dart';
+import '../../../../core/widgets/splash_page.dart';
 import '../bloc/auth_bloc.dart';
 import 'register_screen.dart';
-import '../../../dashboard/presentation/screens/dashboard_screen.dart';
+
 
 /// Halaman Login utama BradPOS.
 /// Terdapat 2 tab: Login sebagai Owner dan Login sebagai Karyawan.
@@ -72,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen>
         listener: (context, state) {
           if (state is AuthAuthenticated) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const DashboardScreen()),
+              MaterialPageRoute(builder: (_) => const SplashPage()),
             );
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(

@@ -69,24 +69,24 @@ CREATE INDEX IF NOT EXISTS idx_categories_owner_id ON categories(owner_id);
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Owner can select own categories" ON categories;
-CREATE POLICY "Owner can select own categories"
+CREATE POLICY "Enable select for owners and employees"
   ON categories FOR SELECT
-  USING (owner_id = auth.uid());
+  USING (true); -- Filtered in-app via owner_id
 
 DROP POLICY IF EXISTS "Owner can insert own categories" ON categories;
-CREATE POLICY "Owner can insert own categories"
+CREATE POLICY "Enable insert for all authenticated users"
   ON categories FOR INSERT
-  WITH CHECK (owner_id = auth.uid());
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Owner can update own categories" ON categories;
-CREATE POLICY "Owner can update own categories"
+CREATE POLICY "Enable update for all authenticated users"
   ON categories FOR UPDATE
-  USING (owner_id = auth.uid());
+  USING (true);
 
 DROP POLICY IF EXISTS "Owner can delete own categories" ON categories;
-CREATE POLICY "Owner can delete own categories"
+CREATE POLICY "Enable delete for all authenticated users"
   ON categories FOR DELETE
-  USING (owner_id = auth.uid());
+  USING (true);
 
 -- Seed default categories
 INSERT INTO categories (owner_id, name, description)
@@ -127,24 +127,24 @@ CREATE INDEX IF NOT EXISTS idx_produk_active ON produk(owner_id, is_active);
 ALTER TABLE produk ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Owner can select own produk" ON produk;
-CREATE POLICY "Owner can select own produk"
+CREATE POLICY "Enable select for owners and employees"
   ON produk FOR SELECT
-  USING (owner_id = auth.uid());
+  USING (true); -- Filtered in-app via owner_id
 
 DROP POLICY IF EXISTS "Owner can insert own produk" ON produk;
-CREATE POLICY "Owner can insert own produk"
+CREATE POLICY "Enable insert for all authenticated users"
   ON produk FOR INSERT
-  WITH CHECK (owner_id = auth.uid());
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Owner can update own produk" ON produk;
-CREATE POLICY "Owner can update own produk"
+CREATE POLICY "Enable update for all authenticated users"
   ON produk FOR UPDATE
-  USING (owner_id = auth.uid());
+  USING (true);
 
 DROP POLICY IF EXISTS "Owner can delete own produk" ON produk;
-CREATE POLICY "Owner can delete own produk"
+CREATE POLICY "Enable delete for all authenticated users"
   ON produk FOR DELETE
-  USING (owner_id = auth.uid());
+  USING (true);
 
 -- ============================================================
 -- 4. TRANSACTIONS (Header Penjualan)

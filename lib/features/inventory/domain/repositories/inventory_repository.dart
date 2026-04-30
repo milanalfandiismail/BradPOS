@@ -3,7 +3,8 @@ import '../entities/inventory_item.dart';
 import '../entities/category.dart';
 
 abstract class InventoryRepository {
-  Future<Either<String, List<InventoryItem>>> getInventory();
+  Future<Either<String, List<InventoryItem>>> getInventory({int? limit, int? offset});
+  Future<Either<String, int>> getInventoryCount();
 
   Future<Either<String, InventoryItem>> addInventoryItem(InventoryItem item);
 

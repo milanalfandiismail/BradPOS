@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -79,6 +80,7 @@ Future<void> init() async {
   sl.registerFactory(
     () => InventoryBloc(
       getInventory: sl(),
+      getInventoryCount: sl(),
       addInventoryItem: sl(),
       updateInventoryItem: sl(),
       deleteInventoryItem: sl(),
@@ -88,6 +90,7 @@ Future<void> init() async {
     ),
   );
   sl.registerLazySingleton(() => GetInventory(sl()));
+  sl.registerLazySingleton(() => GetInventoryCount(sl()));
   sl.registerLazySingleton(() => AddInventoryItem(sl()));
   sl.registerLazySingleton(() => UpdateInventoryItem(sl()));
   sl.registerLazySingleton(() => DeleteInventoryItem(sl()));
@@ -118,6 +121,7 @@ Future<void> init() async {
       supabase: sl(),
       localDataSource: sl(),
       remoteDataSource: sl(),
+      authRepository: sl(),
     ),
   );
 
@@ -127,10 +131,12 @@ Future<void> init() async {
     anonKey: dotenv.get('SUPABASE_ANON_KEY'),
   );
 
-  // Initialize Google Sign In v7.x
+  // Initialize Google Sign In v7.x (singleton pattern, bukan constructor)
+  debugPrint("DI: Initializing GoogleSignIn v7...");
   await GoogleSignIn.instance.initialize(
     serverClientId: dotenv.get('GOOGLE_WEB_CLIENT_ID'),
   );
+  debugPrint("DI: GoogleSignIn initialized successfully");
 
   sl.registerLazySingleton(() => Supabase.instance.client);
 

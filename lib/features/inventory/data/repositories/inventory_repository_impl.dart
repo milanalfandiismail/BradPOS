@@ -43,16 +43,16 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }
 
   @override
-  Future<Either<String, List<InventoryItem>>> getInventory() async {
+  Future<Either<String, List<InventoryItem>>> getInventory({int? limit, int? offset}) async {
     try {
       final userId = await _getUserId();
       if (userId == null) return const Left("Anda harus login terlebih dahulu.");
 
-      // 1. Coba ambil dari lokal terlebih dahulu agar cepat (Offline-First)
-      final localItems = await localDataSource.getInventory(userId);
+      // 1. Ambil dari lokal sesuai limit/offset
+      final localItems = await localDataSource.getInventory(userId, limit: limit, offset: offset);
       
-      // 2. Jika koneksi tersedia, ambil dari server dan perbarui lokal di background (Silent Sync)
-      _syncFromServer(userId);
+      // 2. Silent Sync: Sinkronkan porsi data ini dari server ke lokal
+      _syncFromServer(userId, limit: limit, offset: offset);
 
       return Right(localItems);
     } catch (e) {
@@ -60,17 +60,32 @@ class InventoryRepositoryImpl implements InventoryRepository {
     }
   }
 
-  // Fungsi background untuk mensinkronisasi data dari server ke lokal
-  Future<void> _syncFromServer(String userId) async {
+  @override
+  Future<Either<String, int>> getInventoryCount() async {
+    try {
+      final userId = await _getUserId();
+      if (userId == null) return const Left("User tidak terautentikasi.");
+      final count = await localDataSource.getInventoryCount(userId);
+      return Right(count);
+    } catch (e) {
+      return Left("Gagal menghitung data: $e");
+    }
+  }
+
+  // Fungsi background untuk mensinkronisasi data dari server ke lokal (PAGINATED)
+  Future<void> _syncFromServer(String userId, {int? limit, int? offset}) async {
     if (userId == 'offline_guest') return;
     try {
-      final remoteItems = await remoteDataSource.getInventory(userId);
+      final remoteItems = await remoteDataSource.getInventory(userId, limit: limit, offset: offset);
       await localDataSource.saveInventoryItems(remoteItems);
       
-      final remoteCategories = await remoteDataSource.getCategories(userId);
-      await localDataSource.saveCategories(remoteCategories);
+      // Kategori tetap ambil semua (biasanya sedikit)
+      if (offset == null || offset == 0) {
+        final remoteCategories = await remoteDataSource.getCategories(userId);
+        await localDataSource.saveCategories(remoteCategories);
+      }
     } catch (e) {
-      // Abaikan jika gagal (misal tidak ada internet), data lokal tetap aman
+      // Abaikan jika gagal
     }
   }
 

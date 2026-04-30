@@ -18,12 +18,28 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen> {
   final _searchController = TextEditingController();
   List<InventoryItem> _lastItems = [];
+  int _currentPage = 1;
+  static const int _itemsPerPage = 5;
 
   @override
   void initState() {
     super.initState();
-    context.read<InventoryBloc>().add(LoadInventory());
-    _searchController.addListener(() => setState(() {}));
+    _loadPage();
+    _searchController.addListener(() {
+      final query = _searchController.text.trim();
+      if (query.isNotEmpty) {
+        // If searching, fetch all (or large amount)
+        context.read<InventoryBloc>().add(LoadInventory(limit: 100, searchQuery: query));
+      } else {
+        _currentPage = 1;
+        _loadPage();
+      }
+      setState(() {});
+    });
+  }
+
+  void _loadPage() {
+    context.read<InventoryBloc>().add(LoadInventory(page: _currentPage, limit: _itemsPerPage));
   }
 
   @override
@@ -94,11 +110,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
             },
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _openForm(),
-          backgroundColor: AppColors.primary,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
       ),
     );
   }
@@ -112,24 +123,101 @@ class _InventoryScreenState extends State<InventoryScreen> {
       return Center(child: Text(state.message));
     }
 
-    final items = state is InventoryLoaded ? state.items : _lastItems;
+    final itemsToShow = state is InventoryLoaded ? state.items : _lastItems;
+    final totalItems = state is InventoryLoaded ? state.totalItems : _lastItems.length;
 
-    if (items.isEmpty) {
+    if (itemsToShow.isEmpty && _searchController.text.isEmpty) {
       return _buildEmptyState();
     }
 
-    final displayItems = _filteredItems(items);
+    final displayItems = _filteredItems(itemsToShow);
     if (displayItems.isEmpty) {
       return _buildNoSearchResult();
     }
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        context.read<InventoryBloc>().add(SyncAllEvent());
-        // Tunggu sebentar sampai state berubah atau timeout
-        await Future.delayed(const Duration(seconds: 1));
-      },
-      child: _buildInventoryList(displayItems),
+    // --- LOGIC PAGINATION ---
+    final isSearching = _searchController.text.trim().isNotEmpty;
+    int totalPages = (totalItems / _itemsPerPage).ceil();
+    if (totalPages == 0) totalPages = 1;
+
+    return Column(
+      children: [
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              context.read<InventoryBloc>().add(SyncAllEvent());
+              await Future.delayed(const Duration(seconds: 1));
+            },
+            child: _buildInventoryList(displayItems),
+          ),
+        ),
+        if (!isSearching && totalPages > 1)
+          _buildPaginationControls(totalPages),
+      ],
+    );
+  }
+
+  Widget _buildPaginationControls(int totalPages) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade100)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildPageButton(
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() => _currentPage--);
+                    _loadPage();
+                  }
+                : null,
+            icon: Icons.chevron_left_rounded,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '$_currentPage / $totalPages',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 12),
+          _buildPageButton(
+            onPressed: _currentPage < totalPages
+                ? () {
+                    setState(() => _currentPage++);
+                    _loadPage();
+                  }
+                : null,
+            icon: Icons.chevron_right_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageButton({VoidCallback? onPressed, required IconData icon}) {
+    return Material(
+      color: onPressed == null ? Colors.grey.shade50 : AppColors.primary.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            size: 20,
+            color: onPressed == null ? Colors.grey.shade300 : AppColors.primary,
+          ),
+        ),
+      ),
     );
   }
 

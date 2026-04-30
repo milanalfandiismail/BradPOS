@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/app_colors.dart';
+import '../../../../core/widgets/splash_page.dart';
 import '../bloc/auth_bloc.dart';
-import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 
 /// Halaman Registrasi akun Owner baru.
 /// Hanya untuk Owner - Karyawan didaftarkan oleh Owner melalui menu Karyawan.
@@ -56,7 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         listener: (context, state) {
           if (state is AuthAuthenticated) {
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const DashboardScreen()),
+              MaterialPageRoute(builder: (_) => const SplashPage()),
               (route) => false,
             );
           } else if (state is AuthError) {

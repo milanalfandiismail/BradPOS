@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'injection_container.dart' as di;
 import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -7,10 +8,7 @@ import 'features/karyawan/presentation/bloc/karyawan_bloc.dart';
 import 'features/inventory/presentation/bloc/inventory_bloc.dart';
 import 'core/widgets/splash_page.dart';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 /// Entry point aplikasi BradPOS.
-/// Menginisialisasi environment (.env), dependency injection, lalu menjalankan app.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -18,9 +16,6 @@ void main() async {
   runApp(const MyApp());
 }
 
-/// Root widget aplikasi BradPOS.
-/// Menyediakan semua BlocProvider dan menentukan halaman awal
-/// berdasarkan status autentikasi (Login atau Dashboard).
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

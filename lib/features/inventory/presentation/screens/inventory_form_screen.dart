@@ -233,101 +233,105 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
             // --- SECTION 1: MEDIA ---
             _buildSectionHeader(Icons.image_outlined, 'Foto Produk'),
             const SizedBox(height: 12),
-            Center(
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  width: 140,
-                  height: 140,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+            _buildSectionCard([
+              Center(
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        width: 2,
                       ),
-                    ],
-                    border: Border.all(color: Colors.white, width: 4),
-                  ),
-                  child: Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: SizedBox.expand(
-                          child: _imagePath != null
-                              ? (_imagePath!.startsWith('http')
-                                  ? CachedNetworkImage(
-                                      imageUrl: _imagePath!,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => const Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(Icons.broken_image),
-                                    )
-                                  : Image.file(
-                                      File(_imagePath!),
-                                      fit: BoxFit.cover,
-                                    ))
-                              : Container(
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  color: AppColors.primary.withOpacity(0.05),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.add_a_photo_rounded,
-                                        size: 36,
-                                        color: AppColors.primary.withValues(alpha: 0.5),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Upload Foto',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.primary.withValues(alpha: 0.5),
+                    ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: SizedBox.expand(
+                            child: _imagePath != null
+                                ? (_imagePath!.startsWith('http')
+                                    ? CachedNetworkImage(
+                                        imageUrl: _imagePath!,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) =>
+                                            const Center(
+                                          child: CircularProgressIndicator(),
                                         ),
-                                      ),
-                                    ],
+                                        errorWidget: (context, url, error) =>
+                                            const Icon(Icons.broken_image),
+                                      )
+                                    : Image.file(
+                                        File(_imagePath!),
+                                        fit: BoxFit.cover,
+                                      ))
+                                : Container(
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    color: AppColors.primary.withValues(alpha: 0.05),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_a_photo_rounded,
+                                          size: 32,
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.4),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Klik untuk Foto',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.4),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                        ),
-                      ),
-                      if (_imagePath != null)
-                        Positioned(
-                          right: 8,
-                          bottom: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.edit_rounded,
-                              size: 16,
-                              color: Colors.white,
-                            ),
                           ),
                         ),
-                    ],
+                        if (_imagePath != null)
+                          Positioned(
+                            right: 4,
+                            bottom: 4,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.edit_rounded,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
+            ]),
+            const SizedBox(height: 24),
 
-            // --- SECTION 2: BASIC INFO ---
+            // --- SECTION 2: INFORMASI PRODUK ---
+            _buildSectionHeader(Icons.inventory_2_outlined, 'Informasi Produk'),
+            const SizedBox(height: 12),
             _buildSectionCard([
               _buildModernTextField(
                 controller: _nameController,
                 label: 'Nama Produk',
-                icon: Icons.inventory_2_rounded,
-                hint: 'Contoh: Es Teh Manis',
+                icon: Icons.edit_note_rounded,
+                hint: 'Masukkan nama produk...',
                 validator: (value) => (value == null || value.trim().isEmpty)
                     ? 'Nama produk wajib diisi'
                     : null,
@@ -335,16 +339,17 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
               const SizedBox(height: 20),
               _buildModernDropdown(
                 label: 'Kategori',
-                icon: Icons.category_rounded,
-                value:
-                    (categories.any((c) => c.id == _selectedCategoryId) ||
+                icon: Icons.grid_view_rounded,
+                value: (categories.any((c) => c.id == _selectedCategoryId) ||
                         _selectedCategoryId == 'other')
                     ? _selectedCategoryId
                     : null,
                 items: [
                   ...categories.map(
-                    (cat) =>
-                        DropdownMenuItem(value: cat.id, child: Text(cat.name)),
+                    (cat) => DropdownMenuItem(
+                      value: cat.id,
+                      child: Text(cat.name),
+                    ),
                   ),
                   const DropdownMenuItem(
                     value: 'other',
@@ -376,8 +381,8 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                 _buildModernTextField(
                   controller: _categoryController,
                   label: 'Nama Kategori Baru',
-                  icon: Icons.edit_note_rounded,
-                  hint: 'Masukkan kategori baru...',
+                  icon: Icons.add_box_rounded,
+                  hint: 'Contoh: Minuman Dingin',
                   validator: (value) => (value == null || value.trim().isEmpty)
                       ? 'Kategori baru wajib diisi'
                       : null,
@@ -386,10 +391,10 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
             ]),
 
             const SizedBox(height: 24),
+
+            // --- SECTION 3: HARGA & STOK ---
             _buildSectionHeader(Icons.payments_outlined, 'Harga & Stok'),
             const SizedBox(height: 12),
-
-            // --- SECTION 3: PRICING & STOCK ---
             _buildSectionCard([
               Row(
                 children: [
@@ -397,13 +402,13 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                     child: _buildModernTextField(
                       controller: _purchasePriceController,
                       label: 'Harga Beli',
-                      icon: Icons.arrow_downward_rounded,
+                      icon: Icons.download_rounded,
                       prefix: 'Rp',
                       keyboard: TextInputType.number,
                       validator: (value) =>
                           (value == null || value.trim().isEmpty)
-                          ? 'Wajib diisi'
-                          : null,
+                              ? 'Wajib diisi'
+                              : null,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -411,13 +416,13 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                     child: _buildModernTextField(
                       controller: _sellingPriceController,
                       label: 'Harga Jual',
-                      icon: Icons.arrow_upward_rounded,
+                      icon: Icons.upload_rounded,
                       prefix: 'Rp',
                       keyboard: TextInputType.number,
                       validator: (value) =>
                           (value == null || value.trim().isEmpty)
-                          ? 'Wajib diisi'
-                          : null,
+                              ? 'Wajib diisi'
+                              : null,
                     ),
                   ),
                 ],
@@ -428,12 +433,11 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                   Expanded(
                     child: _buildModernTextField(
                       controller: _stockController,
-                      label: 'Stok Saat Ini',
-                      icon: Icons.layers_rounded,
+                      label: 'Stok',
+                      icon: Icons.inventory_rounded,
                       keyboard: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty)
-                          return 'Wajib';
+                        if (value == null || value.trim().isEmpty) return 'Wajib';
                         if (int.tryParse(value.trim()) == null) return 'Angka!';
                         return null;
                       },
@@ -468,7 +472,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                           if (val != null && val != 'other') {
                             _unitController.text = val;
                           } else if (val == 'other') {
-                            _unitController.text = ''; // Kosongkan agar bisa diisi kustom
+                            _unitController.text = '';
                           }
                         });
                       },
@@ -476,13 +480,14 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                   ),
                 ],
               ),
-              if (!_unitOptions.contains(_unitController.text) || _unitController.text.isEmpty) ...[
+              if (!_unitOptions.contains(_unitController.text) ||
+                  _unitController.text.isEmpty) ...[
                 const SizedBox(height: 20),
                 _buildModernTextField(
                   controller: _unitController,
                   label: 'Nama Satuan Kustom',
                   icon: Icons.edit_road_rounded,
-                  hint: 'Misal: porsi, ikat, renteng...',
+                  hint: 'Misal: porsi, ikat...',
                   validator: (value) => (value == null || value.trim().isEmpty)
                       ? 'Satuan kustom wajib diisi'
                       : null,
@@ -493,46 +498,56 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                 controller: _barcodeController,
                 label: 'Barcode (Opsional)',
                 icon: Icons.qr_code_scanner_rounded,
-                hint: 'Scan atau ketik kode barcode',
+                hint: 'Scan atau ketik barcode',
               ),
             ]),
 
             const SizedBox(height: 40),
 
             // --- SUBMIT BUTTON ---
-            ElevatedButton(
-              onPressed: _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                elevation: 8,
-                shadowColor: AppColors.primary.withOpacity(0.3),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    isEditing
-                        ? Icons.check_circle_rounded
-                        : Icons.add_circle_rounded,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    isEditing ? 'Simpan Perubahan' : 'Tambah Produk Sekarang',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
+            Container(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
+              child: ElevatedButton(
+                onPressed: _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isEditing
+                          ? Icons.save_rounded
+                          : Icons.add_circle_rounded,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      isEditing ? 'SIMPAN PERUBAHAN' : 'TAMBAH PRODUK SEKARANG',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
           ],
         ),
       ),
@@ -540,34 +555,44 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
   }
 
   Widget _buildSectionHeader(IconData icon, String title) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.blueGrey.shade600),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.blueGrey.shade600,
-            letterSpacing: 0.5,
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: AppColors.primary),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF64748B),
+              letterSpacing: 1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildSectionCard(List<Widget> children) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -595,48 +620,50 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           label,
           style: const TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF475569),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         TextFormField(
           controller: controller,
           keyboardType: keyboard,
           validator: validator,
+          style: const TextStyle(fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             prefixText: prefix != null ? '$prefix ' : null,
             prefixStyle: const TextStyle(
               color: Colors.black87,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w900,
             ),
             suffixIcon: suffix,
             prefixIcon: Icon(icon, size: 20, color: AppColors.primary),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
+              horizontal: 20,
+              vertical: 20,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               borderSide: const BorderSide(
                 color: AppColors.primary,
-                width: 1.5,
+                width: 2,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
             ),
           ),
         ),
@@ -658,36 +685,41 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           label,
           style: const TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF475569),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           initialValue: value,
           items: items,
           onChanged: onChanged,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, size: 20, color: AppColors.primary),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
+              horizontal: 20,
+              vertical: 20,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               borderSide: const BorderSide(
                 color: AppColors.primary,
-                width: 1.5,
+                width: 2,
               ),
             ),
           ),

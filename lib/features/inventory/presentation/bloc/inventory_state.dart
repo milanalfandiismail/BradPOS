@@ -16,10 +16,20 @@ class InventoryLoading extends InventoryState {}
 class InventoryLoaded extends InventoryState {
   final List<InventoryItem> items;
   final List<Category> categories;
-  const InventoryLoaded(this.items, {this.categories = const []});
+  final int totalItems;
+  final int currentPage;
+  final String? searchQuery;
+
+  const InventoryLoaded(
+    this.items, {
+    this.categories = const [],
+    this.totalItems = 0,
+    this.currentPage = 1,
+    this.searchQuery,
+  });
 
   @override
-  List<Object?> get props => [items, categories];
+  List<Object?> get props => [items, categories, totalItems, currentPage, searchQuery];
 }
 
 class InventoryError extends InventoryState {
