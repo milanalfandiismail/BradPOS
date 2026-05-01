@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'injection_container.dart' as di;
-import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
-import 'features/auth/presentation/bloc/auth_bloc.dart';
-import 'features/karyawan/presentation/bloc/karyawan_bloc.dart';
-import 'features/inventory/presentation/bloc/inventory_bloc.dart';
-import 'core/widgets/splash_page.dart';
+import 'package:bradpos/presentation/blocs/dashboard_bloc.dart';
+import 'package:bradpos/presentation/blocs/auth_bloc.dart';
+import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
+import 'package:bradpos/presentation/blocs/inventory_bloc.dart';
+import 'package:bradpos/presentation/blocs/cashier_bloc.dart';
+import 'package:bradpos/core/widgets/splash_page.dart';
 
 /// Entry point aplikasi BradPOS.
 void main() async {
@@ -27,6 +28,7 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => di.sl<DashboardBloc>()),
         BlocProvider(create: (_) => di.sl<KaryawanBloc>()),
         BlocProvider(create: (_) => di.sl<InventoryBloc>()),
+        BlocProvider(create: (_) => di.sl<CashierBloc>()),
       ],
       child: MaterialApp(
         title: 'BradPOS',

@@ -1,8 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
-import '../../features/inventory/data/data_sources/local/inventory_local_data_source.dart';
-import '../../features/inventory/data/data_sources/remote/inventory_remote_data_source.dart';
-import '../../features/auth/domain/repositories/auth_repository.dart';
+import 'package:bradpos/data/data_sources/inventory_local_data_source.dart';
+import 'package:bradpos/data/data_sources/inventory_remote_data_source.dart';
+import 'package:bradpos/domain/repositories/auth_repository.dart';
 
 class SyncService {
   final SupabaseClient supabase;
@@ -42,6 +42,9 @@ class SyncService {
     try {
       debugPrint("SyncService: Memulai sinkronisasi untuk user ${user.id} (Role: ${user.role}, Effective ID: $effectiveUserId)");
       
+      // 0. REFRESH: Nama Toko (Sinkronisasi Profil)
+      await authRepository.refreshShopName();
+
       // 1. PUSH: Kirim perubahan lokal ke server
       // Tetap gunakan userId asli (bukan effective) jika ingin mencatat siapa yg ubah,
       // TAPI di Supabase RLS biasanya dicek berdasarkan owner_id.
@@ -78,6 +81,7 @@ class SyncService {
         }
 
         debugPrint("SyncService: Mensinkronkan produk $id ($status) ke server...");
+        
         if (status == 'created') {
           final newImageUrl = await remoteDataSource.pushCreatedItem(itemMap);
           if (newImageUrl != null) {
@@ -91,9 +95,14 @@ class SyncService {
           }
           await localDataSource.updateSyncStatus(id, 'synced');
         } else if (status == 'deleted') {
-          await remoteDataSource.pushDeletedItem(id, userId);
-          // Hapus permanen di lokal jika berhasil
-          await localDataSource.updateSyncStatus(id, 'deleted_synced');
+          debugPrint("SyncService: Proses delete produk $id...");
+          try {
+            await remoteDataSource.pushDeletedItem(id, userId);
+            await localDataSource.updateSyncStatus(id, 'deleted_synced');
+            debugPrint("SyncService: Produk $id dihapus dari lokal setelah sync berhasil");
+          } catch (e) {
+            debugPrint("SyncService: Gagal hapus produk $id di server: $e");
+          }
         }
       } catch (e) {
         debugPrint("Gagal sync item ${itemMap['id']}: $e");

@@ -1,0 +1,176 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
+import 'package:bradpos/domain/entities/transaction.dart';
+import 'package:bradpos/domain/entities/transaction_item.dart';
+import 'package:bradpos/domain/entities/inventory_item.dart';
+import 'package:bradpos/domain/repositories/transaction_repository.dart';
+
+// --- Events ---
+abstract class CashierEvent extends Equatable {
+  const CashierEvent();
+  @override
+  List<Object?> get props => [];
+}
+
+class AddToCart extends CashierEvent {
+  final InventoryItem product;
+  const AddToCart(this.product);
+  @override
+  List<Object?> get props => [product];
+}
+
+class UpdateCartQuantity extends CashierEvent {
+  final String produkId;
+  final int delta;
+  const UpdateCartQuantity(this.produkId, this.delta);
+  @override
+  List<Object?> get props => [produkId, delta];
+}
+
+class RemoveFromCart extends CashierEvent {
+  final String produkId;
+  const RemoveFromCart(this.produkId);
+  @override
+  List<Object?> get props => [produkId];
+}
+
+class ClearCart extends CashierEvent {}
+
+class ProcessPayment extends CashierEvent {
+  final double paymentAmount;
+  final String paymentMethod;
+  const ProcessPayment({required this.paymentAmount, required this.paymentMethod});
+}
+
+// --- States ---
+class CashierState extends Equatable {
+  final List<TransactionItem> cartItems;
+  final double subtotal;
+  final double total;
+  final bool isProcessing;
+  final String? error;
+  final bool isSuccess;
+
+  const CashierState({
+    this.cartItems = const [],
+    this.subtotal = 0,
+    this.total = 0,
+    this.isProcessing = false,
+    this.error,
+    this.isSuccess = false,
+  });
+
+  CashierState copyWith({
+    List<TransactionItem>? cartItems,
+    double? subtotal,
+    double? total,
+    bool? isProcessing,
+    String? error,
+    bool? isSuccess,
+  }) {
+    return CashierState(
+      cartItems: cartItems ?? this.cartItems,
+      subtotal: subtotal ?? this.subtotal,
+      total: total ?? this.total,
+      isProcessing: isProcessing ?? this.isProcessing,
+      error: error,
+      isSuccess: isSuccess ?? false,
+    );
+  }
+
+  @override
+  List<Object?> get props => [cartItems, subtotal, total, isProcessing, error, isSuccess];
+}
+
+// --- Bloc ---
+class CashierBloc extends Bloc<CashierEvent, CashierState> {
+  final TransactionRepository repository;
+
+  CashierBloc({required this.repository}) : super(const CashierState()) {
+    on<AddToCart>(_onAddToCart);
+    on<UpdateCartQuantity>(_onUpdateQuantity);
+    on<RemoveFromCart>(_onRemoveFromCart);
+    on<ClearCart>((event, emit) => emit(const CashierState()));
+    on<ProcessPayment>(_onProcessPayment);
+  }
+
+  void _onAddToCart(AddToCart event, Emitter<CashierState> emit) {
+    final existingIndex = state.cartItems.indexWhere((i) => i.produkId == event.product.id);
+    List<TransactionItem> newItems = List.from(state.cartItems);
+
+    if (existingIndex >= 0) {
+      final existing = newItems[existingIndex];
+      newItems[existingIndex] = existing.copyWith(
+        quantity: existing.quantity + 1,
+        subtotal: (existing.quantity + 1) * existing.unitPrice,
+      );
+    } else {
+      newItems.add(TransactionItem(
+        id: '',
+        transactionId: '',
+        produkId: event.product.id,
+        productName: event.product.name,
+        quantity: 1,
+        unitPrice: event.product.sellingPrice,
+        discount: 0,
+        subtotal: event.product.sellingPrice,
+        createdAt: DateTime.now(),
+      ));
+    }
+    _emitCartUpdate(emit, newItems);
+  }
+
+  void _onUpdateQuantity(UpdateCartQuantity event, Emitter<CashierState> emit) {
+    final index = state.cartItems.indexWhere((i) => i.produkId == event.produkId);
+    if (index < 0) return;
+
+    List<TransactionItem> newItems = List.from(state.cartItems);
+    final item = newItems[index];
+    final newQty = item.quantity + event.delta;
+
+    if (newQty <= 0) {
+      newItems.removeAt(index);
+    } else {
+      newItems[index] = item.copyWith(
+        quantity: newQty,
+        subtotal: newQty * item.unitPrice,
+      );
+    }
+    _emitCartUpdate(emit, newItems);
+  }
+
+  void _onRemoveFromCart(RemoveFromCart event, Emitter<CashierState> emit) {
+    final newItems = state.cartItems.where((i) => i.produkId != event.produkId).toList();
+    _emitCartUpdate(emit, newItems);
+  }
+
+  void _emitCartUpdate(Emitter<CashierState> emit, List<TransactionItem> items) {
+    final subtotal = items.fold(0.0, (sum, i) => sum + i.subtotal);
+    emit(state.copyWith(cartItems: items, subtotal: subtotal, total: subtotal));
+  }
+
+  Future<void> _onProcessPayment(ProcessPayment event, Emitter<CashierState> emit) async {
+    if (state.cartItems.isEmpty) return;
+
+    emit(state.copyWith(isProcessing: true));
+
+    final transaction = Transaction(
+      id: '',
+      ownerId: '', // Filled by Repo
+      transactionNumber: '', // Generated by DB
+      subtotal: state.subtotal,
+      total: state.total,
+      paymentMethod: event.paymentMethod,
+      paymentAmount: event.paymentAmount,
+      changeAmount: event.paymentAmount - state.total,
+      createdAt: DateTime.now(),
+    );
+
+    final result = await repository.createTransaction(transaction, state.cartItems);
+
+    result.fold(
+      (l) => emit(state.copyWith(isProcessing: false, error: l)),
+      (r) => emit(const CashierState(isSuccess: true)),
+    );
+  }
+}

@@ -68,26 +68,6 @@ CREATE INDEX IF NOT EXISTS idx_categories_owner_id ON categories(owner_id);
 
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Owner can select own categories" ON categories;
-CREATE POLICY "Enable select for owners and employees"
-  ON categories FOR SELECT
-  USING (true); -- Filtered in-app via owner_id
-
-DROP POLICY IF EXISTS "Owner can insert own categories" ON categories;
-CREATE POLICY "Enable insert for all authenticated users"
-  ON categories FOR INSERT
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Owner can update own categories" ON categories;
-CREATE POLICY "Enable update for all authenticated users"
-  ON categories FOR UPDATE
-  USING (true);
-
-DROP POLICY IF EXISTS "Owner can delete own categories" ON categories;
-CREATE POLICY "Enable delete for all authenticated users"
-  ON categories FOR DELETE
-  USING (true);
-
 -- Seed default categories
 INSERT INTO categories (owner_id, name, description)
 SELECT id, 'Umum', 'Kategori umum'
@@ -126,26 +106,6 @@ CREATE INDEX IF NOT EXISTS idx_produk_active ON produk(owner_id, is_active);
 
 ALTER TABLE produk ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Owner can select own produk" ON produk;
-CREATE POLICY "Enable select for owners and employees"
-  ON produk FOR SELECT
-  USING (true); -- Filtered in-app via owner_id
-
-DROP POLICY IF EXISTS "Owner can insert own produk" ON produk;
-CREATE POLICY "Enable insert for all authenticated users"
-  ON produk FOR INSERT
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Owner can update own produk" ON produk;
-CREATE POLICY "Enable update for all authenticated users"
-  ON produk FOR UPDATE
-  USING (true);
-
-DROP POLICY IF EXISTS "Owner can delete own produk" ON produk;
-CREATE POLICY "Enable delete for all authenticated users"
-  ON produk FOR DELETE
-  USING (true);
-
 -- ============================================================
 -- 4. TRANSACTIONS (Header Penjualan)
 -- Relasi: transactions.owner_id → auth.users.id
@@ -168,6 +128,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   notes TEXT,
   status TEXT NOT NULL DEFAULT 'completed',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   CONSTRAINT valid_total CHECK (total >= 0),
   CONSTRAINT valid_payment CHECK (payment_amount >= total)
@@ -216,6 +177,7 @@ CREATE TABLE IF NOT EXISTS transaction_items (
   discount DOUBLE PRECISION NOT NULL DEFAULT 0,
   subtotal DOUBLE PRECISION NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   CONSTRAINT quantity_positive CHECK (quantity > 0)
 );
@@ -415,6 +377,18 @@ CREATE TRIGGER trg_update_produk_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS trg_update_transactions_updated_at ON transactions;
+CREATE TRIGGER trg_update_transactions_updated_at
+  BEFORE UPDATE ON transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS trg_update_transaction_items_updated_at ON transaction_items;
+CREATE TRIGGER trg_update_transaction_items_updated_at
+  BEFORE UPDATE ON transaction_items
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- 6a. Auto-set transaction_number sebelum insert
 DROP FUNCTION IF EXISTS set_transaction_number();
 CREATE OR REPLACE FUNCTION set_transaction_number()
@@ -506,34 +480,6 @@ VALUES ('produk_images', 'produk_images', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
--- STORAGE POLICIES (Supabase Storage)
--- ============================================================
-
--- 1. Izinkan siapa saja melihat gambar (karena bucket public)
-CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'produk_images');
-
--- 2. Izinkan user yang login untuk upload gambar
-CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT 
-WITH CHECK (
-  bucket_id = 'produk_images' AND 
-  auth.role() = 'authenticated'
-);
-
--- 3. Izinkan user yang login untuk update gambar mereka sendiri
-CREATE POLICY "Authenticated Update" ON storage.objects FOR UPDATE 
-USING (
-  bucket_id = 'produk_images' AND 
-  auth.role() = 'authenticated'
-);
-
--- 4. Izinkan user yang login untuk hapus gambar mereka sendiri
-CREATE POLICY "Authenticated Delete" ON storage.objects FOR DELETE 
-USING (
-  bucket_id = 'produk_images' AND 
-  auth.role() = 'authenticated'
-);
-
--- ============================================================
 -- ROW LEVEL SECURITY (Tables)
 -- ============================================================
 
@@ -542,39 +488,108 @@ ALTER TABLE produk ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 
 -- Policy untuk Tabel Produk
-CREATE POLICY "Users can manage their own products" ON produk
-FOR ALL USING (auth.uid()::text = owner_id);
+-- SELECT: semua bisa lihat (Owner & Karyawan)
+-- UPDATE: authenticated/anon bisa edit stok (Owner & Karyawan)
+-- INSERT/DELETE: authenticated only (Owner saja)
+DROP POLICY IF EXISTS "Users can select products" ON produk;
+CREATE POLICY "Users can select products" ON produk
+FOR SELECT USING (auth.role() IN ('authenticated', 'anon'));
 
--- Policy untuk Tabel Kategori
-CREATE POLICY "Users can manage their own categories" ON categories
-FOR ALL USING (auth.uid()::text = owner_id);
+DROP POLICY IF EXISTS "Users can update products" ON produk;
+CREATE POLICY "Users can update products" ON produk
+FOR UPDATE USING (auth.role() IN ('authenticated', 'anon'));
+
+DROP POLICY IF EXISTS "Owner can insert products" ON produk;
+CREATE POLICY "Owner can insert products" ON produk
+FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Owner can delete products" ON produk;
+CREATE POLICY "Owner can delete products" ON produk
+FOR DELETE USING (auth.role() = 'authenticated');
+
+-- Policy untuk Tabel Kategori (sama: Owner only insert/delete)
+DROP POLICY IF EXISTS "Users can select categories" ON categories;
+CREATE POLICY "Users can select categories" ON categories
+FOR SELECT USING (auth.role() IN ('authenticated', 'anon'));
+
+DROP POLICY IF EXISTS "Users can update categories" ON categories;
+CREATE POLICY "Users can update categories" ON categories
+FOR UPDATE USING (auth.role() IN ('authenticated', 'anon'));
+
+DROP POLICY IF EXISTS "Owner can insert categories" ON categories;
+CREATE POLICY "Owner can insert categories" ON categories
+FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Owner can delete categories" ON categories;
+CREATE POLICY "Owner can delete categories" ON categories
+FOR DELETE USING (auth.role() = 'authenticated');
 
 -- ============================================================
 -- STORAGE ACCESS (produk_images)
 -- ============================================================
 
--- Berikan akses public untuk melihat gambar
+-- SELECT: semua bisa lihat gambar (Owner & Karyawan)
 DROP POLICY IF EXISTS "Public Access" ON storage.objects;
 CREATE POLICY "Public Access"
   ON storage.objects FOR SELECT
   USING ( bucket_id = 'produk_images' );
 
--- Izinkan user yang terautentikasi untuk upload ke folder mereka sendiri
-DROP POLICY IF EXISTS "Owner can upload" ON storage.objects;
-CREATE POLICY "Owner can upload"
+-- INSERT: authenticated only (Owner saja)
+DROP POLICY IF EXISTS "Owner Upload" ON storage.objects;
+CREATE POLICY "Owner Upload"
   ON storage.objects FOR INSERT
-  WITH CHECK ( 
-    bucket_id = 'produk_images' AND 
-    auth.role() = 'authenticated'
-  );
+  WITH CHECK ( bucket_id = 'produk_images' AND auth.role() = 'authenticated' );
 
--- Izinkan user untuk update & delete file mereka sendiri
-DROP POLICY IF EXISTS "Owner can update" ON storage.objects;
-CREATE POLICY "Owner can update"
+-- UPDATE: authenticated only (Owner saja)
+DROP POLICY IF EXISTS "Owner Update" ON storage.objects;
+CREATE POLICY "Owner Update"
   ON storage.objects FOR UPDATE
   USING ( bucket_id = 'produk_images' AND auth.role() = 'authenticated' );
 
-DROP POLICY IF EXISTS "Owner can delete" ON storage.objects;
-CREATE POLICY "Owner can delete"
+-- DELETE: authenticated only (Owner saja)
+DROP POLICY IF EXISTS "Owner Delete" ON storage.objects;
+CREATE POLICY "Owner Delete"
   ON storage.objects FOR DELETE
   USING ( bucket_id = 'produk_images' AND auth.role() = 'authenticated' );
+
+-- ============================================================
+-- 7. PROFILES (Public Profile for Shop Name)
+-- Relasi: profiles.id -> auth.users.id
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+  shop_name TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::TEXT, NOW())
+);
+
+-- Enable RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Policies for Profiles
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
+CREATE POLICY "Profiles are viewable by everyone" ON public.profiles
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+CREATE POLICY "Users can insert their own profile" ON public.profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+CREATE POLICY "Users can update their own profile" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+-- Trigger untuk bikin profil otomatis saat Owner baru daftar
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, shop_name)
+  VALUES (new.id, COALESCE(new.raw_user_meta_data->>'shop_name', 'BradPOS'));
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Jalankan trigger ini otomatis setiap ada user baru di auth.users
+DROP TRIGGER IF EXISTS trg_on_auth_user_created ON auth.users;
+CREATE TRIGGER trg_on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();

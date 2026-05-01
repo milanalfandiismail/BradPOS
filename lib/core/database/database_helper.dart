@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -30,28 +30,22 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE produk ADD COLUMN image_url TEXT');
     }
     if (oldVersion < 3) {
-      // Create missing tables for version 3
       await _createKaryawanTable(db);
       await _createTransactionsTable(db);
       await _createTransactionItemsTable(db);
     }
+    if (oldVersion < 4) {
+      await _createProfilesTable(db);
+    }
   }
 
   Future _createDB(Database db, int version) async {
-    // Tabel Produk (Inventory)
     await _createProdukTable(db);
-
-    // Tabel Categories
     await _createCategoriesTable(db);
-
-    // Tabel Karyawan
     await _createKaryawanTable(db);
-
-    // Tabel Transaksi
     await _createTransactionsTable(db);
-
-    // Tabel Item Transaksi
     await _createTransactionItemsTable(db);
+    await _createProfilesTable(db);
   }
 
   Future<void> _createProdukTable(Database db) async {
@@ -174,6 +168,20 @@ CREATE TABLE transaction_items (
   created_at $textType,
   sync_status $textType DEFAULT 'created',
   updated_at $textType
+)
+''');
+  }
+
+  Future<void> _createProfilesTable(Database db) async {
+    const idType = 'TEXT PRIMARY KEY';
+    const textType = 'TEXT NOT NULL';
+    const textNullable = 'TEXT';
+
+    await db.execute('''
+CREATE TABLE profiles (
+  id $idType,
+  shop_name $textType,
+  updated_at $textNullable
 )
 ''');
   }

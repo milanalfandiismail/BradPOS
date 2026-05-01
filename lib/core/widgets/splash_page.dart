@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../features/auth/presentation/bloc/auth_bloc.dart';
-import '../../features/auth/presentation/screens/login_screen.dart';
-import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
-import '../../core/sync/sync_service.dart';
+import 'package:bradpos/presentation/blocs/auth_bloc.dart';
+import 'package:bradpos/presentation/screens/login_screen.dart';
+import 'package:bradpos/presentation/screens/dashboard_screen.dart';
+import 'package:bradpos/core/sync/sync_service.dart';
 import '../../injection_container.dart';
 import '../app_colors.dart';
 
