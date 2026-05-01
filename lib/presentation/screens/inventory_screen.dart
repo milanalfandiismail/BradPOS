@@ -88,7 +88,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(child: BlocBuilder<InventoryBloc, InventoryState>(builder: (context, state) => Column(children: [_buildAppBar(), Expanded(child: _buildContent(state))]))),
-        bottomNavigationBar: const MainBottomNavBar(activeLabel: 'INVENTORY'),
+        bottomNavigationBar: const MainBottomNavBar(activeLabel: 'Stok'),
       ),
     );
   }

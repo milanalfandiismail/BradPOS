@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:bradpos/core/app_colors.dart';
+import 'package:bradpos/presentation/blocs/history/history_bloc.dart';
+import 'package:bradpos/presentation/blocs/history/history_event.dart';
+import 'package:bradpos/presentation/blocs/history/history_state.dart';
+import 'package:bradpos/presentation/blocs/auth_bloc.dart';
+import 'package:bradpos/presentation/screens/report/transaction_detail_screen.dart';
 import 'package:bradpos/core/widgets/main_bottom_nav_bar.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -10,374 +17,421 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  Map<String, dynamic>? selectedReceipt;
-
-  final List<Map<String, dynamic>> receipts = [
-    {
-      'id': '#QC-88421',
-      'date': 'Oct 24, 2023',
-      'time': '10:32 PM',
-      'amount': 142.50,
-      'cashier': 'Sarah Miller',
-      'items': [
-        {'name': 'Double Espresso', 'qty': 2, 'price': 4.50, 'total': 9.00},
-        {'name': 'Artisan Pastry Box', 'qty': 1, 'price': 28.00, 'total': 28.00},
-        {'name': 'Custom Celebration Cake', 'qty': 1, 'price': 95.00, 'total': 95.00},
-        {'name': 'Service fee', 'qty': 1, 'price': 5.50, 'total': 5.50, 'isFixed': true},
-      ],
-      'subtotal': 137.50,
-      'tax': 5.00,
-      'payment': 'Visa ending in •••• 4242',
-    },
-    {
-      'id': '#QC-88420',
-      'date': 'Oct 24, 2023',
-      'time': '09:45 PM',
-      'amount': 54.20,
-    },
-    {
-      'id': '#QC-88419',
-      'date': 'Oct 24, 2023',
-      'time': '12:10 PM',
-      'amount': -89.00,
-    },
-    {
-      'id': '#QC-88418',
-      'date': 'Oct 24, 2023',
-      'time': '11:55 AM',
-      'amount': 210.00,
-    },
-    {
-      'id': '#QC-88417',
-      'date': 'Oct 23, 2023',
-      'time': '10:30 PM',
-      'amount': 12.99,
-    },
-  ];
+  final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+  DateTimeRange? _selectedDateRange;
 
   @override
   void initState() {
     super.initState();
-    selectedReceipt = receipts[0]; // Default select first
+    _loadData();
+  }
+
+  void _loadData() {
+    if (_selectedDateRange != null) {
+      final start = DateTime(
+        _selectedDateRange!.start.year,
+        _selectedDateRange!.start.month,
+        _selectedDateRange!.start.day,
+        0, 0, 0
+      );
+      final end = DateTime(
+        _selectedDateRange!.end.year,
+        _selectedDateRange!.end.month,
+        _selectedDateRange!.end.day,
+        23, 59, 59
+      );
+      context.read<HistoryBloc>().add(LoadHistoryByRangeEvent(start, end));
+    } else {
+      context.read<HistoryBloc>().add(LoadHistoryEvent());
+    }
+  }
+
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now(),
+      initialDateRange: _selectedDateRange,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedDateRange) {
+      setState(() {
+        _selectedDateRange = picked;
+      });
+      _loadData();
+    }
+  }
+
+  void _confirmDelete(BuildContext context, String id) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hapus Transaksi?'),
+        content: const Text('Data transaksi ini akan dihapus permanen. Stok tidak akan dikembalikan.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<HistoryBloc>().add(DeleteTransactionEvent(id));
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, DateTimeRange? range) {
+    final isSelected = (_selectedDateRange == null && range == null) ||
+        (_selectedDateRange != null && range != null && 
+         _isSameDay(_selectedDateRange!.start, range.start) && 
+         _isSameDay(_selectedDateRange!.end, range.end));
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.black87)),
+        selected: isSelected,
+        selectedColor: AppColors.primary,
+        backgroundColor: Colors.white,
+        onSelected: (selected) {
+          if (selected) {
+            setState(() {
+              _selectedDateRange = range;
+            });
+            _loadData();
+          }
+        },
+      ),
+    );
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  bool _isQuickRange(DateTimeRange range) {
+    final now = DateTime.now();
+    final today = DateTimeRange(start: now, end: now);
+    final yesterdayDate = now.subtract(const Duration(days: 1));
+    final yesterday = DateTimeRange(start: yesterdayDate, end: yesterdayDate);
+    final last7Days = DateTimeRange(start: now.subtract(const Duration(days: 6)), end: now);
+    
+    return _isSameDay(range.start, today.start) && _isSameDay(range.end, today.end) ||
+           _isSameDay(range.start, yesterday.start) && _isSameDay(range.end, yesterday.end) ||
+           _isSameDay(range.start, last7Days.start) && _isSameDay(range.end, last7Days.end);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildReceiptTable(),
-                    if (selectedReceipt != null) _buildReceiptDetails(),
-                  ],
+      appBar: AppBar(
+        title: const Text('Riwayat Transaksi', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.primary,
+        elevation: 0,
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(50),
+          child: Container(
+            height: 50,
+            padding: const EdgeInsets.only(bottom: 8),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _buildFilterChip('Semua', null),
+                _buildFilterChip('Hari Ini', DateTimeRange(
+                  start: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day), 
+                  end: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)
+                )),
+                _buildFilterChip('Kemarin', DateTimeRange(
+                  start: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day).subtract(const Duration(days: 1)), 
+                  end: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day).subtract(const Duration(days: 1))
+                )),
+                _buildFilterChip('7 Hari', DateTimeRange(
+                  start: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day).subtract(const Duration(days: 6)), 
+                  end: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)
+                )),
+                ActionChip(
+                  avatar: const Icon(Icons.date_range, size: 16, color: Colors.white),
+                  label: Text(
+                    _selectedDateRange != null && !_isQuickRange(_selectedDateRange!)
+                        ? '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM').format(_selectedDateRange!.end)}'
+                        : 'Pilih Tanggal',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  backgroundColor: _selectedDateRange != null && !_isQuickRange(_selectedDateRange!)
+                      ? AppColors.primary
+                      : Colors.grey[400],
+                  onPressed: _selectDateRange,
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-      bottomNavigationBar: const MainBottomNavBar(activeLabel: 'HISTORY'),
-    );
-  }
+      body: BlocBuilder<HistoryBloc, HistoryState>(
+        builder: (context, state) {
+          if (state is HistoryLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: const TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search Receipt ID...',
-                      hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
-                      icon: Icon(Icons.search, size: 20, color: Colors.grey),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.tune, size: 18, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text('Filter', style: TextStyle(fontSize: 14)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
+          if (state is HistoryError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                  SizedBox(width: 8),
-                  Text('Today', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Gagal muat data: ${state.message}', textAlign: TextAlign.center),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _loadData,
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                    child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+                  ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+            );
+          }
 
-  Widget _buildReceiptTable() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        children: [
-          // Header Table
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF1F5FB),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-            child: const Row(
-              children: [
-                Expanded(child: Text('Receipt ID', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey))),
-                Expanded(child: Text('Date & Time', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey))),
-                Text('Amount', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-              ],
-            ),
-          ),
-          // Rows
-          ...receipts.map((r) {
-            final isSelected = selectedReceipt?['id'] == r['id'];
-            return GestureDetector(
-              onTap: () => setState(() => selectedReceipt = r),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFF0F9F4) : Colors.transparent,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade100),
-                    left: BorderSide(color: isSelected ? Colors.green : Colors.transparent, width: 4),
-                  ),
-                ),
-                child: Row(
+          if (state is HistoryLoaded) {
+            if (state.transactions.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(child: Text(r['id'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                    Expanded(
-                      child: Column(
+                    const Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text(
+                      _selectedDateRange == null 
+                          ? 'Belum ada transaksi' 
+                          : 'Tidak ada transaksi di rentang tanggal ini',
+                      style: const TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                    if (_selectedDateRange != null)
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _selectedDateRange = null);
+                          _loadData();
+                        },
+                        child: const Text('Hapus Filter'),
+                      ),
+                  ],
+                ),
+              );
+            }
+
+            return Column(
+              children: [
+                // Summary Card
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(r['date'], style: const TextStyle(fontSize: 12)),
-                          Text(r['time'], style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text(
+                            _selectedDateRange == null ? 'Total Omzet' : 'Omzet Periode Ini',
+                            style: const TextStyle(color: Colors.white70, fontSize: 14),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            currencyFormatter.format(state.totalOmzet),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (_selectedDateRange != null)
+                            Text(
+                              '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM').format(_selectedDateRange!.end)}',
+                              style: const TextStyle(color: Colors.white60, fontSize: 12),
+                            ),
                         ],
                       ),
-                    ),
-                    Text(
-                      '\$${r['amount'].toStringAsFixed(2).replaceAll('-', '')}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: r['amount'] < 0 ? Colors.red : Colors.black,
-                      ),
-                    ),
-                    if (r['amount'] < 0) const Text(' -', style: TextStyle(color: Colors.red)),
-                  ],
+                      const Icon(Icons.account_balance_wallet, color: Colors.white, size: 40),
+                    ],
+                  ),
                 ),
-              ),
+                
+                // List
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: state.transactions.length,
+                    itemBuilder: (context, index) {
+                      final trx = state.transactions[index];
+                      final date = trx.createdAt;
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          leading: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.receipt_long, color: AppColors.primary),
+                          ),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  trx.transactionNumber,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 6),
+                              if (trx.customerName != null && trx.customerName!.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.person, size: 12, color: Colors.blue),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        trx.customerName!,
+                                        style: const TextStyle(
+                                          color: Colors.blue,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              Text(
+                                DateFormat('dd MMM yyyy, HH:mm').format(date),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              Text(
+                                'Kasir: ${trx.cashierName ?? 'System'}',
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              ),
+                              Text(
+                                trx.paymentMethod.toUpperCase(),
+                                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    currencyFormatter.format(trx.total),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const Icon(Icons.chevron_right, color: Colors.grey, size: 16),
+                                ],
+                              ),
+                              const SizedBox(width: 8),
+                              BlocBuilder<AuthBloc, AuthState>(
+                                builder: (context, authState) {
+                                  bool isOwner = false;
+                                  if (authState is AuthAuthenticated) {
+                                    isOwner = authState.user.role == 'owner';
+                                  }
+                                  if (!isOwner) return const SizedBox.shrink();
+                                  
+                                  return IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                    onPressed: () => _confirmDelete(context, trx.id),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TransactionDetailScreen(transaction: trx),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
-          }),
-        ],
-      ),
-    );
-  }
+          }
 
-  Widget _buildReceiptDetails() {
-    final r = selectedReceipt!;
-    if (r['items'] == null) return const SizedBox();
-
-    return Container(
-      margin: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+          return const SizedBox();
+        },
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Receipt Details', style: TextStyle(fontWeight: FontWeight.bold)),
-                IconButton(
-                  onPressed: () => setState(() => selectedReceipt = null),
-                  icon: const Icon(Icons.close, size: 18),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF065F46),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.receipt_long, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(r['id'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text('Cashier: ${r['cashier']}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          // Items List
-          ... (r['items'] as List).map((item) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item['name'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    Text('x${item['qty']} @ \$${item['price'].toStringAsFixed(2)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  ],
-                ),
-                Text('\$${item['total'].toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-          )),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildTotalRow('Subtotal', r['subtotal']),
-                const SizedBox(height: 8),
-                _buildTotalRow('Tax (5.5%)', r['tax']),
-                const SizedBox(height: 12),
-                _buildTotalRow('Total', r['amount'], isTotal: true),
-              ],
-            ),
-          ),
-          // Payment Method
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5FB),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.credit_card, size: 20, color: Color(0xFF065F46)),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Payment Method', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                    Text(r['payment'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // Buttons
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.print_outlined, size: 18),
-                    label: const Text('Re-print'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF065F46),
-                      side: const BorderSide(color: Color(0xFF065F46)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.history_rounded, size: 18),
-                    label: const Text('Refund'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF065F46),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTotalRow(String label, double val, {bool isTotal = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(fontSize: isTotal ? 14 : 13, color: isTotal ? Colors.black : Colors.grey, fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
-        Text('\$${val.toStringAsFixed(2)}', style: TextStyle(fontSize: isTotal ? 16 : 14, fontWeight: FontWeight.bold)),
-      ],
+      bottomNavigationBar: const MainBottomNavBar(activeLabel: 'Riwayat'),
     );
   }
 }

@@ -36,6 +36,7 @@ abstract class InventoryLocalDataSource {
   Future<void> updateSyncStatus(String id, String status, {String tableName = 'produk'});
   Future<void> updateItemImage(String id, String imageUrl);
   Future<void> migrateOfflineData(String newUserId);
+  Future<void> fixInvalidId(String oldId, String newUuid);
 }
 
 class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
@@ -131,8 +132,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     final db = await dbHelper.database;
     final itemModel = InventoryItemModel.fromEntity(item);
 
-    final map = itemModel.toJson();
-    map['is_active'] = (map['is_active'] as bool) ? 1 : 0;
+    final map = itemModel.toMap();
     map['sync_status'] = 'created';
     map['updated_at'] = DateTime.now().toIso8601String();
 
@@ -149,8 +149,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     final db = await dbHelper.database;
     final itemModel = InventoryItemModel.fromEntity(item);
 
-    final map = itemModel.toJson();
-    map['is_active'] = (map['is_active'] as bool) ? 1 : 0;
+    final map = itemModel.toMap();
 
     // Cek status saat ini
     final current = await db.query(
@@ -161,7 +160,6 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     );
     String nextSyncStatus = 'updated';
     if (current.isNotEmpty && current.first['sync_status'] == 'created') {
-      // Jika masih created (belum pernah dikirim ke remote), tetap created
       nextSyncStatus = 'created';
     }
 
@@ -174,7 +172,6 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       where: 'id = ? AND owner_id = ?',
       whereArgs: [item.id, item.ownerId],
     );
-
     return itemModel;
   }
 
@@ -388,6 +385,17 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       {'owner_id': newUserId},
       where: "owner_id = ? OR owner_id = ? OR owner_id IS NULL",
       whereArgs: ['offline_guest', ''],
+    );
+  }
+
+  @override
+  Future<void> fixInvalidId(String oldId, String newUuid) async {
+    final db = await dbHelper.database;
+    await db.update(
+      'produk',
+      {'id': newUuid},
+      where: 'id = ?',
+      whereArgs: [oldId],
     );
   }
 }

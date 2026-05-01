@@ -29,6 +29,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
           searchQuery: event.searchQuery,
           category: event.category,
           stockStatus: event.stockStatus,
+          skipSync: event.skipSync,
         ),
         repository.getCategories(),
         repository.getInventoryCount(

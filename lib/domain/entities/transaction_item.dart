@@ -23,8 +23,25 @@ class TransactionItem extends Equatable {
     required this.createdAt,
   });
 
+  factory TransactionItem.fromMap(Map<String, dynamic> map) {
+    return TransactionItem(
+      id: map['id'] ?? '',
+      transactionId: map['transaction_id'],
+      produkId: map['produk_id'],
+      productName: map['product_name'],
+      quantity: map['quantity'] as int,
+      unitPrice: (map['unit_price'] as num).toDouble(),
+      discount: (map['discount'] as num?)?.toDouble() ?? 0,
+      subtotal: (map['subtotal'] as num).toDouble(),
+      createdAt: map['created_at'] != null 
+          ? DateTime.parse(map['created_at']) 
+          : DateTime.now(),
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'transaction_id': transactionId,
       if (produkId != null) 'produk_id': produkId,
       'product_name': productName,
@@ -32,6 +49,7 @@ class TransactionItem extends Equatable {
       'unit_price': unitPrice,
       'discount': discount,
       'subtotal': subtotal,
+      'created_at': createdAt.toIso8601String(),
     };
   }
 

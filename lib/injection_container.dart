@@ -28,6 +28,8 @@ import 'package:bradpos/presentation/blocs/dashboard_bloc.dart';
 import 'package:bradpos/presentation/blocs/inventory_bloc.dart';
 import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
 import 'package:bradpos/presentation/blocs/cashier_bloc.dart';
+import 'package:bradpos/presentation/blocs/history/history_bloc.dart';
+import 'package:bradpos/presentation/blocs/transaction_detail/transaction_detail_bloc.dart';
 
 import 'package:bradpos/core/database/database_helper.dart';
 import 'package:bradpos/core/sync/sync_service.dart';
@@ -46,13 +48,15 @@ Future<void> init() async {
         syncService: sl(),
       ));
   sl.registerFactory(() => CashierBloc(repository: sl()));
+  sl.registerFactory(() => HistoryBloc(repository: sl()));
+  sl.registerFactory(() => TransactionDetailBloc(repository: sl()));
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(supabase: sl(), prefs: sl()),
   );
   sl.registerLazySingleton<DashboardRepository>(
-    () => DashboardRepositoryImpl(),
+    () => DashboardRepositoryImpl(transactionRepository: sl()),
   );
   sl.registerLazySingleton<KaryawanRepository>(
     () => KaryawanRepositoryImpl(sl(), sl()),
@@ -95,6 +99,8 @@ Future<void> init() async {
       supabase: sl(),
       localDataSource: sl(),
       remoteDataSource: sl(),
+      transactionLocalDataSource: sl(),
+      transactionRemoteDataSource: sl(),
       authRepository: sl(),
     ),
   );

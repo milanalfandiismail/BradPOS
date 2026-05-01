@@ -14,6 +14,7 @@ class LoadInventory extends InventoryEvent {
   final String? searchQuery;
   final String? category;
   final String? stockStatus;
+  final bool skipSync;
 
   const LoadInventory({
     this.page,
@@ -21,10 +22,11 @@ class LoadInventory extends InventoryEvent {
     this.searchQuery,
     this.category,
     this.stockStatus,
+    this.skipSync = false,
   });
 
   @override
-  List<Object?> get props => [page, limit, searchQuery, category, stockStatus];
+  List<Object?> get props => [page, limit, searchQuery, category, stockStatus, skipSync];
 }
 
 

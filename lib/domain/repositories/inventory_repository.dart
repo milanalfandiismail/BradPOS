@@ -9,6 +9,7 @@ abstract class InventoryRepository {
     String? searchQuery,
     String? category,
     String? stockStatus,
+    bool skipSync = false,
   });
   Future<Either<String, int>> getInventoryCount({
     String? searchQuery,

@@ -1,11 +1,13 @@
 import 'package:dartz/dartz.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'dart:math';
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/domain/entities/category.dart';
 import 'package:bradpos/domain/repositories/inventory_repository.dart';
 import 'package:bradpos/data/data_sources/inventory_local_data_source.dart';
 import 'package:bradpos/data/data_sources/inventory_remote_data_source.dart';
+import 'package:bradpos/data/models/inventory_item_model.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
 
 class InventoryRepositoryImpl implements InventoryRepository {
@@ -49,6 +51,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     String? searchQuery,
     String? category,
     String? stockStatus,
+    bool skipSync = false,
   }) async {
     try {
       final userId = await _getUserId();
@@ -56,16 +59,6 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
       // 1. Ambil dari lokal sesuai filter
       final localItems = await localDataSource.getInventory(
-        userId,
-        limit: limit,
-        offset: offset,
-        searchQuery: searchQuery,
-        category: category,
-        stockStatus: stockStatus,
-      );
-      
-      // 2. Silent Sync: Sinkronkan porsi data ini dari server ke lokal
-      _syncFromServer(
         userId,
         limit: limit,
         offset: offset,
@@ -103,36 +96,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }
 
 
-  // Fungsi background untuk mensinkronisasi data dari server ke lokal (PAGINATED)
-  Future<void> _syncFromServer(
-    String userId, {
-    int? limit,
-    int? offset,
-    String? searchQuery,
-    String? category,
-    String? stockStatus,
-  }) async {
-    if (userId == 'offline_guest') return;
-    try {
-      final remoteItems = await remoteDataSource.getInventory(
-        userId,
-        limit: limit,
-        offset: offset,
-        searchQuery: searchQuery,
-        category: category,
-        stockStatus: stockStatus,
-      );
-      await localDataSource.saveInventoryItems(remoteItems);
-      
-      // Kategori tetap ambil semua (biasanya sedikit)
-      if (offset == null || offset == 0) {
-        final remoteCategories = await remoteDataSource.getCategories(userId);
-        await localDataSource.saveCategories(remoteCategories);
-      }
-    } catch (e) {
-      // Abaikan jika gagal
-    }
-  }
+  // Legacy: Tidak digunakan - sync inventory dari server ke lokal sekarang handled by SyncService
 
 
   @override
@@ -161,6 +125,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
       // Simpan ke lokal (SyncService yang akan menangani push ke server)
       final savedLocal = await localDataSource.addInventoryItem(newItem);
+
+      // Push ke Supabase segera
+      await _pushItemToRemote(newItem.copyWith(id: savedLocal.id));
 
       return Right(savedLocal);
     } catch (e) {
@@ -192,6 +159,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
       // Update ke lokal (SyncService yang akan menangani push ke server)
       final updatedLocal = await localDataSource.updateInventoryItem(updatedItem);
+
+      // Push ke Supabase segera
+      await _pushItemToRemote(updatedItem);
 
       return Right(updatedLocal);
     } catch (e) {
@@ -256,6 +226,19 @@ class InventoryRepositoryImpl implements InventoryRepository {
       return const Right(null);
     } catch (e) {
       return Left("Gagal sinkronisasi data offline: $e");
+    }
+  }
+
+  // Push single item to Supabase immediately
+  Future<void> _pushItemToRemote(InventoryItem item) async {
+    try {
+      final itemMap = InventoryItemModel.fromEntity(item).toMap();
+      itemMap.remove('sync_status');
+      itemMap.remove('updated_at');
+      
+      await remoteDataSource.pushCreatedItem(itemMap);
+    } catch (e) {
+      debugPrint('Immediate sync failed: $e');
     }
   }
 }

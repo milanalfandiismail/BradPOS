@@ -13,6 +13,7 @@ import 'package:bradpos/presentation/screens/login_screen.dart';
 import 'package:bradpos/presentation/screens/karyawan_list_screen.dart';
 import 'package:bradpos/presentation/screens/inventory_screen.dart';
 import 'package:bradpos/presentation/screens/cashier_screen.dart';
+import 'package:bradpos/presentation/screens/history_screen.dart';
 import 'package:bradpos/core/widgets/main_bottom_nav_bar.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -63,7 +64,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
         ),
-        bottomNavigationBar: const MainBottomNavBar(activeLabel: 'DASHBOARD'),
+        bottomNavigationBar: const MainBottomNavBar(activeLabel: 'Beranda'),
       ),
     );
   }
@@ -267,9 +268,29 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildBottomActions(BuildContext context) {
     return Column(
       children: [
-        QuickActionCard(title: 'Transaksi Baru', subtitle: 'Proses belanja pelanggan', icon: Icons.add_shopping_cart_rounded, iconBgColor: AppColors.primary, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CashierScreen()))),
+        QuickActionCard(
+          title: 'Transaksi Baru', 
+          subtitle: 'Proses belanja pelanggan', 
+          icon: Icons.add_shopping_cart_rounded, 
+          iconBgColor: AppColors.primary, 
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CashierScreen()))
+        ),
         const SizedBox(height: 12),
-        QuickActionCard(title: 'Stok Barang', subtitle: 'Cek sisa stok & harga', icon: Icons.inventory_2_rounded, iconBgColor: AppColors.secondary, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InventoryScreen()))),
+        QuickActionCard(
+          title: 'Stok Barang', 
+          subtitle: 'Cek sisa stok & harga', 
+          icon: Icons.inventory_2_rounded, 
+          iconBgColor: AppColors.secondary, 
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InventoryScreen()))
+        ),
+        const SizedBox(height: 12),
+        QuickActionCard(
+          title: 'Riwayat Transaksi', 
+          subtitle: 'Daftar nota belanja', 
+          icon: Icons.receipt_long_rounded, 
+          iconBgColor: Colors.purple, 
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HistoryScreen()))
+        ),
       ],
     );
   }

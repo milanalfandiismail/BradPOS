@@ -1,13 +1,18 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import 'package:bradpos/data/data_sources/inventory_local_data_source.dart';
 import 'package:bradpos/data/data_sources/inventory_remote_data_source.dart';
+import 'package:bradpos/data/data_sources/transaction_local_data_source.dart';
+import 'package:bradpos/data/data_sources/transaction_remote_data_source.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
 
 class SyncService {
   final SupabaseClient supabase;
   final InventoryLocalDataSource localDataSource;
   final InventoryRemoteDataSource remoteDataSource;
+  final TransactionLocalDataSource transactionLocalDataSource;
+  final TransactionRemoteDataSource transactionRemoteDataSource;
   final AuthRepository authRepository;
   bool _isSyncing = false;
 
@@ -15,6 +20,8 @@ class SyncService {
     required this.supabase,
     required this.localDataSource,
     required this.remoteDataSource,
+    required this.transactionLocalDataSource,
+    required this.transactionRemoteDataSource,
     required this.authRepository,
   });
 
@@ -23,37 +30,38 @@ class SyncService {
       return;
     }
 
-    // Ambil data user lengkap (Owner vs Karyawan)
     final userResult = await authRepository.getCurrentUser();
     final user = userResult.getOrElse(() => null);
 
     if (user == null) {
-      debugPrint("SyncService: Skip sync karena user belum login atau sesi hilang");
+      debugPrint(
+        "SyncService: Skip sync karena user belum login atau sesi hilang",
+      );
       return;
     }
 
-    // Jika karyawan, gunakan ownerId untuk menarik/mengirim data
-    // Jika owner, gunakan id milik sendiri
-    final String effectiveUserId = (user.isKaryawan && user.ownerId != null) 
-        ? user.ownerId! 
+    final String effectiveUserId = (user.isKaryawan && user.ownerId != null)
+        ? user.ownerId!
         : user.id;
 
     _isSyncing = true;
     try {
-      debugPrint("SyncService: Memulai sinkronisasi untuk user ${user.id} (Role: ${user.role}, Effective ID: $effectiveUserId)");
-      
-      // 0. REFRESH: Nama Toko (Sinkronisasi Profil)
+      debugPrint(
+        "SyncService: Memulai sinkronisasi untuk user ${user.id} (Role: ${user.role}, Effective ID: $effectiveUserId)",
+      );
+
       await authRepository.refreshShopName();
 
-      // 1. PUSH: Kirim perubahan lokal ke server
-      // Tetap gunakan userId asli (bukan effective) jika ingin mencatat siapa yg ubah,
-      // TAPI di Supabase RLS biasanya dicek berdasarkan owner_id.
-      // Jadi kita gunakan effectiveUserId agar data masuk ke bucket owner yg benar.
       await _pushUnsyncedCategories(effectiveUserId);
       await _pushUnsyncedLocalData(effectiveUserId);
+      await _pushUnsyncedTransactions(effectiveUserId);
 
-      // 2. PULL: Ambil data terbaru dari server (Gunakan ID Owner agar data sinkron)
-      await _pullLatestRemoteData(effectiveUserId, limit: limit, offset: offset);
+      await _pullLatestRemoteData(
+        effectiveUserId,
+        limit: limit,
+        offset: offset,
+      );
+      await _pullLatestTransactions(effectiveUserId);
 
       debugPrint("SyncService: Sinkronisasi selesai");
     } catch (e) {
@@ -64,24 +72,38 @@ class SyncService {
   }
 
   Future<void> _pushUnsyncedLocalData(String userId) async {
-    // Ambil data dari SQLite yang sync_status != 'synced'
     final unsyncedItems = await localDataSource.getUnsyncedItems();
-    debugPrint("SyncService: Menemukan ${unsyncedItems.length} produk yang perlu disinkronkan (push)");
+    debugPrint(
+      "SyncService: Menemukan ${unsyncedItems.length} produk yang perlu disinkronkan (push)",
+    );
 
     for (var itemMap in unsyncedItems) {
       try {
         final status = itemMap['sync_status'] as String;
-        final id = itemMap['id'] as String;
+        String id = itemMap['id'] as String;
         final ownerId = itemMap['owner_id'] as String?;
 
-        // JANGAN sinkronisasi data yang masih berstatus 'offline_guest'
-        if (ownerId == 'offline_guest' || ownerId == null || ownerId.isEmpty) {
-          debugPrint("SyncService: Melewati produk $id karena owner_id adalah '$ownerId'");
+        if (id.isEmpty) {
           continue;
         }
 
-        debugPrint("SyncService: Mensinkronkan produk $id ($status) ke server...");
-        
+        // FIX: Supabase butuh UUID. Jika ID lokal abang (1777...) bukan UUID, ganti sekarang.
+        if (id.length != 36 || !id.contains('-')) {
+          final oldId = id;
+          final newUuid = const Uuid().v4();
+          debugPrint("SyncService: Ganti ID non-UUID $oldId -> $newUuid");
+          await localDataSource.fixInvalidId(oldId, newUuid);
+          
+          // Update data buat dikirim ke remote
+          itemMap = Map<String, dynamic>.from(itemMap);
+          itemMap['id'] = newUuid;
+          id = newUuid;
+        }
+
+        if (ownerId == 'offline_guest' || ownerId == null || ownerId.isEmpty) {
+          continue;
+        }
+
         if (status == 'created') {
           final newImageUrl = await remoteDataSource.pushCreatedItem(itemMap);
           if (newImageUrl != null) {
@@ -95,18 +117,15 @@ class SyncService {
           }
           await localDataSource.updateSyncStatus(id, 'synced');
         } else if (status == 'deleted') {
-          debugPrint("SyncService: Proses delete produk $id...");
           try {
             await remoteDataSource.pushDeletedItem(id, userId);
             await localDataSource.updateSyncStatus(id, 'deleted_synced');
-            debugPrint("SyncService: Produk $id dihapus dari lokal setelah sync berhasil");
           } catch (e) {
             debugPrint("SyncService: Gagal hapus produk $id di server: $e");
           }
         }
       } catch (e) {
         debugPrint("Gagal sync item ${itemMap['id']}: $e");
-        // Jika gagal, biarkan saja. Nanti dicoba lagi pada sync berikutnya.
       }
     }
   }
@@ -114,20 +133,19 @@ class SyncService {
   Future<void> _pushUnsyncedCategories(String userId) async {
     try {
       final unsyncedCategories = await localDataSource.getUnsyncedCategories();
-      debugPrint("SyncService: Menemukan ${unsyncedCategories.length} kategori yang perlu disinkronkan (push)");
-
       for (var catMap in unsyncedCategories) {
         try {
           final ownerId = catMap['owner_id'] as String?;
           if (ownerId == 'offline_guest' || ownerId == null || ownerId.isEmpty) {
-            debugPrint("SyncService: Melewati kategori ${catMap['id']} karena owner_id adalah '$ownerId'");
             continue;
           }
-          
-          debugPrint("SyncService: Mensinkronkan kategori ${catMap['id']} ke server...");
+
           await remoteDataSource.pushCreatedCategory(catMap);
-          // Update status di lokal jika berhasil
-          await localDataSource.updateSyncStatus(catMap['id'], 'synced', tableName: 'categories');
+          await localDataSource.updateSyncStatus(
+            catMap['id'],
+            'synced',
+            tableName: 'categories',
+          );
         } catch (e) {
           debugPrint("Gagal sync category ${catMap['id']}: $e");
         }
@@ -137,18 +155,83 @@ class SyncService {
     }
   }
 
-  Future<void> _pullLatestRemoteData(String userId, {int? limit, int? offset}) async {
-    debugPrint("SyncService: Menarik data terbaru dari server (limit: $limit, offset: $offset)...");
-    // Tarik data inventory dari Supabase
-    final remoteItems = await remoteDataSource.getInventory(userId, limit: limit, offset: offset);
-    debugPrint("SyncService: Berhasil menarik ${remoteItems.length} produk dari server");
-    await localDataSource.saveInventoryItems(remoteItems);
+  Future<void> _pushUnsyncedTransactions(String userId) async {
+    try {
+      final unsyncedTrxs = await transactionLocalDataSource
+          .getUnsyncedTransactions();
+      debugPrint(
+        "SyncService: Menemukan ${unsyncedTrxs.length} transaksi yang perlu disinkronkan (push)",
+      );
 
-    // Tarik data category dari Supabase (Selalu semua karena biasanya sedikit)
+      for (var trxMap in unsyncedTrxs) {
+        try {
+          String id = trxMap['id'] as String;
+
+          if (id.isEmpty) {
+            continue;
+          }
+
+          // FIX: Supabase butuh UUID. Jika ID lokal bukan UUID, ganti sekarang.
+          if (id.length != 36 || !id.contains('-')) {
+            final oldId = id;
+            final newUuid = const Uuid().v4();
+            debugPrint("SyncService: Ganti ID Transaksi non-UUID $oldId -> $newUuid");
+            await transactionLocalDataSource.fixInvalidTransactionId(oldId, newUuid);
+            
+            trxMap = Map<String, dynamic>.from(trxMap);
+            trxMap['id'] = newUuid;
+            id = newUuid;
+          }
+
+          debugPrint("SyncService: Mensinkronkan transaksi $id ke server...");
+
+          final cleanTrx = Map<String, dynamic>.from(trxMap);
+          cleanTrx.remove('sync_status');
+          cleanTrx.remove('updated_at');
+
+          await transactionRemoteDataSource.pushUnsyncedTransaction(
+            cleanTrx,
+            [],
+          );
+          await transactionLocalDataSource.updateSyncStatus(id, 'synced');
+        } catch (e) {
+          debugPrint("Gagal sync transaksi ${trxMap['id']}: $e");
+        }
+      }
+    } catch (e) {
+      debugPrint("Gagal get unsynced transactions: $e");
+    }
+  }
+
+  Future<void> _pullLatestRemoteData(
+    String userId, {
+    int? limit,
+    int? offset,
+  }) async {
+    debugPrint(
+      "SyncService: Skip pull inventory - local SQLite adalah master untuk stok",
+    );
+
+    // Sync categories only (inventory stock dikelola lokal)
     if (offset == null || offset == 0) {
       final remoteCategories = await remoteDataSource.getCategories(userId);
-      debugPrint("SyncService: Berhasil menarik ${remoteCategories.length} kategori dari server");
       await localDataSource.saveCategories(remoteCategories);
+    }
+  }
+
+  Future<void> _pullLatestTransactions(String userId) async {
+    debugPrint("SyncService: Menarik data transaksi terbaru dari server...");
+    try {
+      final remoteTrxs = await transactionRemoteDataSource.getTransactions(
+        userId,
+      );
+      final activeRemoteTrxs = remoteTrxs
+          .where((t) => t.status != 'deleted')
+          .toList();
+      await transactionLocalDataSource.saveTransactions(activeRemoteTrxs);
+      // Items are already included in TransactionModel via JSON column
+    } catch (e) {
+      debugPrint("SyncService: Gagal tarik transaksi: $e");
     }
   }
 }

@@ -1,13 +1,18 @@
+import 'dart:convert';
 import 'package:bradpos/domain/entities/transaction.dart';
+import 'package:bradpos/domain/entities/transaction_item.dart';
 
 class TransactionModel extends Transaction {
   const TransactionModel({
     required super.id,
     required super.ownerId,
     super.karyawanId,
+    super.cashierName,
     required super.transactionNumber,
     super.customerName,
     super.customerPhone,
+    super.shopName,
+    required super.items,
     required super.subtotal,
     super.discount = 0,
     super.tax = 0,
@@ -25,9 +30,12 @@ class TransactionModel extends Transaction {
       id: entity.id,
       ownerId: entity.ownerId,
       karyawanId: entity.karyawanId,
+      cashierName: entity.cashierName,
       transactionNumber: entity.transactionNumber,
       customerName: entity.customerName,
       customerPhone: entity.customerPhone,
+      shopName: entity.shopName,
+      items: entity.items,
       subtotal: entity.subtotal,
       discount: entity.discount,
       tax: entity.tax,
@@ -46,9 +54,16 @@ class TransactionModel extends Transaction {
       id: map['id'],
       ownerId: map['owner_id'],
       karyawanId: map['karyawan_id'],
+      cashierName: map['cashier_name'],
       transactionNumber: map['transaction_number'],
       customerName: map['customer_name'],
       customerPhone: map['customer_phone'],
+      shopName: map['shop_name'],
+      items: (map['items'] is String 
+          ? (jsonDecode(map['items'] as String) as List)
+          : (map['items'] as List))
+          .map((item) => TransactionItem.fromMap(Map<String, dynamic>.from(item)))
+          .toList(),
       subtotal: (map['subtotal'] as num).toDouble(),
       discount: (map['discount'] as num).toDouble(),
       tax: (map['tax'] as num).toDouble(),
@@ -68,9 +83,12 @@ class TransactionModel extends Transaction {
       'id': id,
       'owner_id': ownerId,
       'karyawan_id': karyawanId,
+      'cashier_name': cashierName,
       'transaction_number': transactionNumber,
       'customer_name': customerName,
       'customer_phone': customerPhone,
+      'shop_name': shopName,
+      'items': jsonEncode(items.map((e) => e.toMap()).toList()),
       'subtotal': subtotal,
       'discount': discount,
       'tax': tax,
@@ -82,5 +100,29 @@ class TransactionModel extends Transaction {
       'status': status,
       'created_at': createdAt.toIso8601String(),
     };
+  }
+
+  Transaction toEntity() {
+    return Transaction(
+      id: id,
+      ownerId: ownerId,
+      karyawanId: karyawanId,
+      cashierName: cashierName,
+      transactionNumber: transactionNumber,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      shopName: shopName,
+      items: items,
+      subtotal: subtotal,
+      discount: discount,
+      tax: tax,
+      total: total,
+      paymentMethod: paymentMethod,
+      paymentAmount: paymentAmount,
+      changeAmount: changeAmount,
+      notes: notes,
+      status: status,
+      createdAt: createdAt,
+    );
   }
 }

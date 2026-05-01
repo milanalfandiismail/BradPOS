@@ -255,9 +255,22 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
     payload.remove('sync_status');
     payload.remove('updated_at');
+    payload.remove('price'); // Legacy SQLite column
     payload['is_active'] = payload['is_active'] == 1;
 
-    await supabase.from("produk").upsert(payload);
+    // Proteksi: Pastikan category_id valid UUID atau null (jangan String kosong)
+    if (payload['category_id'] != null && (payload['category_id'] as String).isEmpty) {
+      payload['category_id'] = null;
+    }
+
+    try {
+      debugPrint("RemoteDataSource: Upserting produk ${payload['id']} to Supabase...");
+      await supabase.from("produk").upsert(payload);
+      debugPrint("RemoteDataSource: Upsert produk success!");
+    } catch (e) {
+      debugPrint("RemoteDataSource ERROR (upsert produk): $e");
+      rethrow;
+    }
     return finalRemoteUrl;
   }
 
@@ -284,8 +297,8 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
         !imageUrl.startsWith('http')) {
       
       // 1. Ambil data lama untuk menghapus fotonya dari storage
-      final oldData = await supabase.from('produk').select('image_url').eq('id', id).single();
-      final oldImageUrl = oldData['image_url'] as String?;
+      final oldData = await supabase.from('produk').select('image_url').eq('id', id).maybeSingle();
+      final oldImageUrl = oldData?['image_url'] as String?;
       
       // 2. Hapus file lama jika ada
       await _deleteOldImageByUrl(oldImageUrl);
@@ -307,15 +320,22 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
     payload.remove('sync_status');
     payload.remove('updated_at');
+    payload.remove('price'); // Legacy SQLite column
     payload['is_active'] = payload['is_active'] == 1;
 
-    final ownerId = payload['owner_id'];
+    // Proteksi: Pastikan category_id valid UUID atau null
+    if (payload['category_id'] != null && (payload['category_id'] as String).isEmpty) {
+      payload['category_id'] = null;
+    }
 
-    await supabase
-        .from("produk")
-        .update(payload)
-        .eq("id", id)
-        .eq("owner_id", ownerId);
+    try {
+      debugPrint("RemoteDataSource: Updating (upsert) produk $id to Supabase...");
+      await supabase.from("produk").upsert(payload);
+      debugPrint("RemoteDataSource: Update produk success!");
+    } catch (e) {
+      debugPrint("RemoteDataSource ERROR (update produk): $e");
+      rethrow;
+    }
 
     return finalRemoteUrl;
   }
@@ -324,8 +344,8 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
   Future<void> pushDeletedItem(String id, String userId) async {
     try {
       // 1. Ambil data lama untuk hapus gambarnya
-      final oldData = await supabase.from('produk').select('image_url').eq('id', id).single();
-      final oldImageUrl = oldData['image_url'] as String?;
+      final oldData = await supabase.from('produk').select('image_url').eq('id', id).maybeSingle();
+      final oldImageUrl = oldData?['image_url'] as String?;
       
       // 2. Hapus gambar dari storage
       await _deleteOldImageByUrl(oldImageUrl);

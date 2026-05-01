@@ -15,6 +15,7 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
+  final TextEditingController _customerController = TextEditingController();
   String _amountReceivedStr = '0';
   String _selectedMethod = 'Cash';
   final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
@@ -252,6 +253,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ],
           ),
           const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
+            child: TextField(
+              controller: _customerController,
+              decoration: const InputDecoration(
+                hintText: 'Customer Name (Optional)',
+                hintStyle: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                border: InputBorder.none,
+                icon: Icon(Icons.person_outline_rounded, size: 18, color: Color(0xFF64748B)),
+              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 16),
           ...widget.cashierState.cartItems.take(3).map((item) => Padding(
             padding: const EdgeInsets.only(bottom: 12.0),
             child: Row(
@@ -315,9 +331,55 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _processPayment() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 28),
+            SizedBox(width: 8),
+            Text('Konfirmasi', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Total: ${currencyFormatter.format(_balanceDue)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text('Bayar: ${currencyFormatter.format(_amountReceived)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            if (_change > 0) ...[
+              const SizedBox(height: 4),
+              Text('Kembalian: ${currencyFormatter.format(_change)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF059669))),
+            ],
+            const SizedBox(height: 12),
+            const Text('Yakin ingin memproses pembayaran ini?', style: TextStyle(color: Color(0xFF64748B))),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx); // Close dialog
+              _executePayment();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            child: const Text('Ya, Proses', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _executePayment() {
     context.read<CashierBloc>().add(ProcessPayment(
       paymentAmount: _amountReceived,
       paymentMethod: _selectedMethod.toLowerCase(),
+      customerName: _customerController.text.trim().isEmpty ? 'Pelanggan Umum' : _customerController.text.trim(),
     ));
     Navigator.pop(context); // Close PaymentScreen
     _showSuccessDialog();

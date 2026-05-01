@@ -51,7 +51,8 @@ class _CashierScreenState extends State<CashierScreen> {
         child: BlocListener<CashierBloc, CashierState>(
           listener: (context, state) {
             if (state.isSuccess) {
-              _loadInitialData(); // Refresh stok barang
+              context.read<InventoryBloc>().add(const LoadInventory(page: 1, limit: 5, skipSync: true));
+              context.read<InventoryBloc>().add(LoadCategoriesEvent());
             }
             if (state.error != null) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!), backgroundColor: Colors.redAccent));
@@ -67,7 +68,7 @@ class _CashierScreenState extends State<CashierScreen> {
         ),
       ),
       floatingActionButton: _buildFAB(),
-      bottomNavigationBar: const MainBottomNavBar(activeLabel: 'CASHIER'),
+      bottomNavigationBar: const MainBottomNavBar(activeLabel: 'Kasir'),
     );
   }
 

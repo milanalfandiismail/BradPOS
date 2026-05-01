@@ -7,11 +7,14 @@ import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
 import 'package:bradpos/presentation/blocs/inventory_bloc.dart';
 import 'package:bradpos/presentation/blocs/cashier_bloc.dart';
+import 'package:bradpos/presentation/blocs/history/history_bloc.dart';
 import 'package:bradpos/core/widgets/splash_page.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 /// Entry point aplikasi BradPOS.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID', null);
   await dotenv.load(fileName: ".env");
   await di.init();
   runApp(const MyApp());
@@ -29,6 +32,7 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => di.sl<KaryawanBloc>()),
         BlocProvider(create: (_) => di.sl<InventoryBloc>()),
         BlocProvider(create: (_) => di.sl<CashierBloc>()),
+        BlocProvider(create: (_) => di.sl<HistoryBloc>()),
       ],
       child: MaterialApp(
         title: 'BradPOS',
