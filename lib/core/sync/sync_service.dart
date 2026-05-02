@@ -208,9 +208,15 @@ class SyncService {
     int? limit,
     int? offset,
   }) async {
-    debugPrint(
-      "SyncService: Skip pull inventory - local SQLite adalah master untuk stok",
+    debugPrint("SyncService: Menarik data produk terbaru dari server...");
+
+    // Pull inventory products
+    final remoteItems = await remoteDataSource.getInventory(
+      userId,
+      limit: limit,
+      offset: offset,
     );
+    await localDataSource.saveInventoryItems(remoteItems);
 
     // Sync categories only (inventory stock dikelola lokal)
     if (offset == null || offset == 0) {
