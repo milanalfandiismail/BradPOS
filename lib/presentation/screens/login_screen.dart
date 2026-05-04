@@ -5,7 +5,6 @@ import 'package:bradpos/core/widgets/splash_page.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'register_screen.dart';
 
-
 /// Halaman Login utama BradPOS.
 /// Terdapat 2 tab: Login sebagai Owner dan Login sebagai Karyawan.
 class LoginScreen extends StatefulWidget {
@@ -358,6 +357,11 @@ class _LoginScreenState extends State<LoginScreen>
               'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
               width: 24,
               height: 24,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.account_circle_outlined,
+                size: 24,
+                color: AppColors.primary,
+              ),
             ),
             label: const Text(
               'Continue with Google',

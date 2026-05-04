@@ -5,6 +5,7 @@ import 'package:bradpos/domain/entities/transaction.dart';
 import 'package:bradpos/domain/entities/transaction_item.dart';
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/domain/repositories/transaction_repository.dart';
+import 'package:bradpos/core/sync/sync_service.dart';
 
 // --- Events ---
 abstract class CashierEvent extends Equatable {
@@ -109,8 +110,9 @@ class CashierState extends Equatable {
 // --- Bloc ---
 class CashierBloc extends Bloc<CashierEvent, CashierState> {
   final TransactionRepository repository;
+  final SyncService syncService;
 
-  CashierBloc({required this.repository}) : super(const CashierState()) {
+  CashierBloc({required this.repository, required this.syncService}) : super(const CashierState()) {
     on<AddToCart>(_onAddToCart);
     on<UpdateCartQuantity>(_onUpdateQuantity);
     on<RemoveFromCart>(_onRemoveFromCart);
@@ -217,7 +219,10 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
 
     result.fold(
       (l) => emit(state.copyWith(isProcessing: false, error: l)),
-      (r) => emit(const CashierState(isSuccess: true)),
+      (r) {
+        emit(const CashierState(isSuccess: true));
+        syncService.syncAll(); // Instant Sync
+      },
     );
   }
 }

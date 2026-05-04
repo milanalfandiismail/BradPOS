@@ -26,6 +26,7 @@ abstract class TransactionLocalDataSource {
   Future<void> saveTransactionItems(List<Map<String, dynamic>> items);
   Future<void> deleteTransaction(String id);
   Future<void> fixInvalidTransactionId(String oldId, String newUuid);
+  Future<String?> getLastSyncTime(String userId);
 }
 
 class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
@@ -48,23 +49,24 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
       final yearStr = DateFormat('yyyy').format(transaction.createdAt);
       final monthStr = DateFormat('M').format(transaction.createdAt);
       final dayStr = DateFormat('d').format(transaction.createdAt);
-      
+
       // Ambil Nama Toko (dari profile yang dipassing Repo)
-      final shopBase = (transaction.shopName ?? transaction.cashierName ?? 'TRX')
-          .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
-          .toUpperCase();
-      
-      final prefix = shopBase.length >= 3 
-          ? shopBase.substring(0, 3) 
+      final shopBase =
+          (transaction.shopName ?? transaction.cashierName ?? 'TRX')
+              .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+              .toUpperCase();
+
+      final prefix = shopBase.length >= 3
+          ? shopBase.substring(0, 3)
           : shopBase.padRight(3, 'X');
-      
+
       final randomStr = transactionId.substring(0, 4).toUpperCase();
       trxNumber = '$prefix-$yearStr-$monthStr-$dayStr-$randomStr';
     }
 
     final trxModel = TransactionModel.fromEntity(
       transaction.copyWith(
-        id: transactionId, 
+        id: transactionId,
         transactionNumber: trxNumber,
         items: items,
       ),
@@ -74,23 +76,43 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
 
     try {
       // CEK APAKAH SUDAH ADA (Cegah double stock deduction)
-      final existing = await db.query('transactions', where: 'id = ?', whereArgs: [transactionId]);
+      final existing = await db.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: [transactionId],
+      );
       final isNew = existing.isEmpty;
 
       // 1. Simpan Transaction (Header + Items dalam JSON)
-      await db.insert('transactions', trxModel.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert(
+        'transactions',
+        trxModel.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
 
       // 2. Potong Stok (Hanya jika transaksi baru)
       if (isNew) {
         for (var item in items) {
-          debugPrint('DEBUG: Deduct stock for ${item.produkId}, qty: ${item.quantity}');
-          final before = await db.query('produk', columns: ['stock'], where: 'id = ?', whereArgs: [item.produkId]);
+          debugPrint(
+            'DEBUG: Deduct stock for ${item.produkId}, qty: ${item.quantity}',
+          );
+          final before = await db.query(
+            'produk',
+            columns: ['stock'],
+            where: 'id = ?',
+            whereArgs: [item.produkId],
+          );
           debugPrint('DEBUG stock before: ${before.first}');
           await db.execute(
             'UPDATE produk SET stock = CASE WHEN stock = -1 OR stock IS NULL THEN -1 ELSE stock - ? END WHERE id = ?',
             [item.quantity, item.produkId],
           );
-          final after = await db.query('produk', columns: ['stock'], where: 'id = ?', whereArgs: [item.produkId]);
+          final after = await db.query(
+            'produk',
+            columns: ['stock'],
+            where: 'id = ?',
+            whereArgs: [item.produkId],
+          );
           debugPrint('DEBUG stock after: ${after.first}');
         }
       }
@@ -149,7 +171,9 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getTransactionItems(String transactionId) async {
+  Future<List<Map<String, dynamic>>> getTransactionItems(
+    String transactionId,
+  ) async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'transactions',
@@ -159,7 +183,7 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
     );
 
     if (maps.isEmpty) return [];
-    
+
     final String itemsJson = maps.first['items'] as String;
     final List<dynamic> decoded = jsonDecode(itemsJson);
     return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
@@ -215,4 +239,17 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
   }
 
   String _generateId() => const Uuid().v4();
+
+  @override
+  Future<String?> getLastSyncTime(String userId) async {
+    final db = await dbHelper.database;
+    final result = await db.rawQuery(
+      'SELECT MAX(created_at) as last_sync FROM transactions WHERE owner_id = ?',
+      [userId],
+    );
+    if (result.isNotEmpty && result.first['last_sync'] != null) {
+      return result.first['last_sync'] as String;
+    }
+    return null;
+  }
 }

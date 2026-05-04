@@ -19,6 +19,11 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   shop_name TEXT,
+  full_name TEXT,
+  address TEXT,
+  phone TEXT,
+  remote_image TEXT,
+  local_image TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -175,15 +180,72 @@ CREATE POLICY "Transactions owner" ON transactions FOR ALL USING (owner_id = aut
 -- ============================================================
 -- STORAGE
 -- ============================================================
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('produk_images', 'produk_images', true)
-ON CONFLICT (id) DO NOTHING;
+-- 2. STORAGE BUCKETS
+INSERT INTO storage.buckets (id, name, public) VALUES ('produk_images', 'produk_images', true) ON CONFLICT DO NOTHING;
+INSERT INTO storage.buckets (id, name, public) VALUES ('profile_images', 'profile_images', true) ON CONFLICT DO NOTHING;
 
 DROP POLICY IF EXISTS "Public Read Access" ON storage.objects;
-CREATE POLICY "Public Read Access" ON storage.objects FOR SELECT USING (bucket_id = 'produk_images');
+CREATE POLICY "Public Read Access" ON storage.objects FOR SELECT TO public USING (bucket_id IN ('produk_images', 'profile_images'));
+
+-- 11. INCREMENTAL UPDATE (Run this on existing projects)
+DO $$ 
+BEGIN
+    -- Add columns to profiles if they don't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='full_name') THEN
+        ALTER TABLE public.profiles ADD COLUMN full_name TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='remote_image') THEN
+        ALTER TABLE public.profiles ADD COLUMN remote_image TEXT;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='local_image') THEN
+        ALTER TABLE public.profiles ADD COLUMN local_image TEXT;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='address') THEN
+        ALTER TABLE public.profiles ADD COLUMN address TEXT;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='phone') THEN
+        ALTER TABLE public.profiles ADD COLUMN phone TEXT;
+    END IF;
+END $$;
+
+-- Re-apply trigger function to ensure it's the latest version
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.profiles (id, shop_name, full_name, address, phone)
+    VALUES (
+        new.id, 
+        COALESCE(new.raw_user_meta_data->>'shop_name', 'BradPOS'),
+        new.raw_user_meta_data->>'full_name',
+        new.raw_user_meta_data->>'address',
+        new.raw_user_meta_data->>'phone'
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        shop_name = EXCLUDED.shop_name,
+        full_name = EXCLUDED.full_name,
+        address = EXCLUDED.address,
+        phone = EXCLUDED.phone;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP POLICY IF EXISTS "Owner Insert Access" ON storage.objects;
-CREATE POLICY "Owner Insert Access" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'produk_images');
+CREATE POLICY "Owner Insert Access" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id IN ('produk_images', 'profile_images'));
 
 DROP POLICY IF EXISTS "Owner Update Access" ON storage.objects;
-CREATE POLICY "Owner Update Access" ON storage.objects FOR UPDATE USING (bucket_id = 'produk_images');
+CREATE POLICY "Owner Update Access" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id IN ('produk_images', 'profile_images'));
+
+DROP POLICY IF EXISTS "Owner Delete Access" ON storage.objects;
+CREATE POLICY "Owner Delete Access" ON storage.objects FOR DELETE TO authenticated USING (bucket_id IN ('produk_images', 'profile_images'));
+
+-- ============================================================
+-- 12. AUTH TRIGGER (Auto Create Profile)
+-- ============================================================
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

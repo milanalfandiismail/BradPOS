@@ -4,15 +4,18 @@ import 'package:bradpos/core/sync/sync_service.dart';
 import 'package:bradpos/domain/entities/category.dart';
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/domain/repositories/inventory_repository.dart';
+import 'package:bradpos/domain/repositories/category_repository.dart';
 import 'inventory_event.dart';
 import 'inventory_state.dart';
 
 class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
   final InventoryRepository repository;
+  final CategoryRepository categoryRepository;
   final SyncService syncService;
 
   InventoryBloc({
     required this.repository,
+    required this.categoryRepository,
     required this.syncService,
   }) : super(InventoryInitial()) {
     on<LoadInventory>((event, emit) async {
@@ -31,7 +34,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
           stockStatus: event.stockStatus,
           skipSync: event.skipSync,
         ),
-        repository.getCategories(),
+        categoryRepository.getCategories(),
         repository.getInventoryCount(
           searchQuery: event.searchQuery,
           category: event.category,
@@ -57,35 +60,51 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     });
 
     on<LoadCategoriesEvent>((event, emit) async {
-      final result = await repository.getCategories();
-      result.fold((_) {}, (categories) {
+      final result = await categoryRepository.getCategories();
+      result.fold((failure) {
+      }, (categories) {
         final currentState = state;
         if (currentState is InventoryLoaded) {
-          emit(InventoryLoaded(
-            currentState.items,
-            categories: categories,
-            totalItems: currentState.totalItems,
-            currentPage: currentState.currentPage,
-            searchQuery: currentState.searchQuery,
-          ));
+          emit(
+            InventoryLoaded(
+              currentState.items,
+              categories: categories,
+              totalItems: currentState.totalItems,
+              currentPage: currentState.currentPage,
+              searchQuery: currentState.searchQuery,
+            ),
+          );
+        } else {
+          // If not in Loaded state, emit Loaded with empty inventory but filled categories
+          emit(
+            InventoryLoaded(
+              const [],
+              categories: categories,
+              totalItems: 0,
+              currentPage: 1,
+            ),
+          );
         }
       });
     });
 
     on<AddInventoryItemEvent>((event, emit) async {
       final result = await repository.addInventoryItem(event.item);
-      await result.fold((failure) async => emit(InventoryError(failure)),
-          (_) async {
+      await result.fold((failure) async => emit(InventoryError(failure)), (
+        _,
+      ) async {
         final loadResult = await repository.getInventory(limit: 5, offset: 0);
-        final categoriesResult = await repository.getCategories();
+        final categoriesResult = await categoryRepository.getCategories();
 
         loadResult.fold((failure) => emit(InventoryError(failure)), (items) {
-          emit(InventoryLoaded(
-            items,
-            categories: categoriesResult.getOrElse(() => []),
-            totalItems: items.length,
-            currentPage: 1,
-          ));
+          emit(
+            InventoryLoaded(
+              items,
+              categories: categoriesResult.getOrElse(() => []),
+              totalItems: items.length,
+              currentPage: 1,
+            ),
+          );
         });
 
         syncService.syncAll(limit: 5, offset: 0);
@@ -94,23 +113,28 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
 
     on<UpdateInventoryItemEvent>((event, emit) async {
       final result = await repository.updateInventoryItem(event.item);
-      await result.fold((failure) async => emit(InventoryError(failure)),
-          (_) async {
+      await result.fold((failure) async => emit(InventoryError(failure)), (
+        _,
+      ) async {
         final currentState = state;
         int page = 1;
         if (currentState is InventoryLoaded) page = currentState.currentPage;
 
-        final loadResult =
-            await repository.getInventory(limit: 5, offset: (page - 1) * 5);
-        final categoriesResult = await repository.getCategories();
+        final loadResult = await repository.getInventory(
+          limit: 5,
+          offset: (page - 1) * 5,
+        );
+        final categoriesResult = await categoryRepository.getCategories();
 
         loadResult.fold((failure) => emit(InventoryError(failure)), (items) {
-          emit(InventoryLoaded(
-            items,
-            categories: categoriesResult.getOrElse(() => []),
-            totalItems: items.length,
-            currentPage: page,
-          ));
+          emit(
+            InventoryLoaded(
+              items,
+              categories: categoriesResult.getOrElse(() => []),
+              totalItems: items.length,
+              currentPage: page,
+            ),
+          );
         });
 
         syncService.syncAll(limit: 5, offset: 0);
@@ -119,18 +143,21 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
 
     on<DeleteInventoryItemEvent>((event, emit) async {
       final result = await repository.deleteInventoryItem(event.id);
-      await result.fold((failure) async => emit(InventoryError(failure)),
-          (_) async {
+      await result.fold((failure) async => emit(InventoryError(failure)), (
+        _,
+      ) async {
         final loadResult = await repository.getInventory(limit: 5, offset: 0);
-        final categoriesResult = await repository.getCategories();
+        final categoriesResult = await categoryRepository.getCategories();
 
         loadResult.fold((failure) => emit(InventoryError(failure)), (items) {
-          emit(InventoryLoaded(
-            items,
-            categories: categoriesResult.getOrElse(() => []),
-            totalItems: items.length,
-            currentPage: 1,
-          ));
+          emit(
+            InventoryLoaded(
+              items,
+              categories: categoriesResult.getOrElse(() => []),
+              totalItems: items.length,
+              currentPage: 1,
+            ),
+          );
         });
 
         syncService.syncAll(limit: 5, offset: 0);
@@ -155,7 +182,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
 
       final results = await Future.wait([
         repository.getInventory(limit: limit, offset: offset),
-        repository.getCategories(),
+        categoryRepository.getCategories(),
         repository.getInventoryCount(),
       ]);
       final inventoryResult = results[0] as Either<String, List<InventoryItem>>;
@@ -196,4 +223,3 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     });
   }
 }
-

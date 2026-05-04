@@ -24,10 +24,10 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
   Future<Either<String, List<Karyawan>>> getKaryawans() async {
     try {
       final userId = supabase.auth.currentUser?.id;
-      
+
       // Jika yang login adalah Karyawan, mereka tidak boleh melihat daftar karyawan lain.
       if (_isKaryawanSession()) {
-        return const Right([]); 
+        return const Right([]);
       }
 
       if (userId == null) return const Left("Anda harus login sebagai Owner.");
@@ -52,7 +52,9 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
   Future<Either<String, Karyawan>> addKaryawan(Karyawan karyawan) async {
     // Larang Karyawan menambah karyawan lain (RBAC)
     if (_isKaryawanSession()) {
-      return const Left("Maaf, Karyawan tidak memiliki akses untuk menambah data karyawan baru.");
+      return const Left(
+        "Maaf, Karyawan tidak memiliki akses untuk menambah data karyawan baru.",
+      );
     }
 
     try {
@@ -94,7 +96,9 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
   Future<Either<String, Karyawan>> updateKaryawan(Karyawan karyawan) async {
     // Larang Karyawan mengedit data karyawan lain (RBAC)
     if (_isKaryawanSession()) {
-      return const Left("Maaf, Karyawan tidak memiliki akses untuk mengubah data karyawan.");
+      return const Left(
+        "Maaf, Karyawan tidak memiliki akses untuk mengubah data karyawan.",
+      );
     }
 
     try {
@@ -121,7 +125,9 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
   Future<Either<String, void>> deleteKaryawan(String id) async {
     // Larang Karyawan menghapus data (RBAC)
     if (_isKaryawanSession()) {
-      return const Left("Maaf, Karyawan tidak memiliki akses untuk menghapus data karyawan.");
+      return const Left(
+        "Maaf, Karyawan tidak memiliki akses untuk menghapus data karyawan.",
+      );
     }
 
     try {

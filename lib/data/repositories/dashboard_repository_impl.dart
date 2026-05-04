@@ -17,27 +17,32 @@ class DashboardRepositoryImpl implements DashboardRepository {
       final startOfDay = DateTime(now.year, now.month, now.day);
       final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
-      final result = await transactionRepository.getTransactionsByRange(startOfDay, endOfDay);
-      
-      return result.fold(
-        (failure) => Left(failure),
-        (transactions) {
-          final double totalSales = transactions.fold(0.0, (sum, t) => sum + t.total);
-          final int totalTransactions = transactions.length;
-          final double avgTicket = totalTransactions > 0 ? totalSales / totalTransactions : 0.0;
-
-          final stats = DashboardStatsModel(
-            totalSales: totalSales,
-            salesGrowth: 0.0, // Bisa dihitung jika ambil data kemarin
-            totalTransactions: totalTransactions,
-            transactionsGrowth: 0.0,
-            avgTicketSize: avgTicket,
-            ticketSizeGrowth: 0.0,
-          );
-          
-          return Right(stats);
-        },
+      final result = await transactionRepository.getTransactionsByRange(
+        startOfDay,
+        endOfDay,
       );
+
+      return result.fold((failure) => Left(failure), (transactions) {
+        final double totalSales = transactions.fold(
+          0.0,
+          (sum, t) => sum + t.total,
+        );
+        final int totalTransactions = transactions.length;
+        final double avgTicket = totalTransactions > 0
+            ? totalSales / totalTransactions
+            : 0.0;
+
+        final stats = DashboardStatsModel(
+          totalSales: totalSales,
+          salesGrowth: 0.0, // Bisa dihitung jika ambil data kemarin
+          totalTransactions: totalTransactions,
+          transactionsGrowth: 0.0,
+          avgTicketSize: avgTicket,
+          ticketSizeGrowth: 0.0,
+        );
+
+        return Right(stats);
+      });
     } catch (e) {
       return Left(e.toString());
     }

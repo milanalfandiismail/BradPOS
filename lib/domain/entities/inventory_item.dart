@@ -85,7 +85,19 @@ class InventoryItem extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, ownerId, categoryId, name, category, purchasePrice, sellingPrice,
-        stock, unit, barcode, imageUrl, isActive, createdAt, updatedAt,
-      ];
+    id,
+    ownerId,
+    categoryId,
+    name,
+    category,
+    purchasePrice,
+    sellingPrice,
+    stock,
+    unit,
+    barcode,
+    imageUrl,
+    isActive,
+    createdAt,
+    updatedAt,
+  ];
 }

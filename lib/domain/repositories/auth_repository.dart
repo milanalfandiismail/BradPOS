@@ -10,7 +10,11 @@ abstract class AuthRepository {
   Future<Either<String, UserEntity>> signIn(String email, String password);
 
   /// Registrasi akun Owner baru via Supabase.
-  Future<Either<String, UserEntity>> signUp(String email, String password, String fullName);
+  Future<Either<String, UserEntity>> signUp(
+    String email,
+    String password,
+    String fullName,
+  );
 
   /// Login Owner menggunakan akun Google (OAuth).
   Future<Either<String, UserEntity>> signInWithGoogle();
@@ -21,11 +25,17 @@ abstract class AuthRepository {
   /// Mengecek apakah ada sesi yang masih aktif saat aplikasi dibuka.
   Future<Either<String, UserEntity?>> getCurrentUser();
 
-  /// Mengupdate nama toko (Hanya bisa dilakukan oleh Owner).
-  Future<Either<String, void>> updateShopName(String shopName);
+  /// Mengupdate profil toko (Nama, Gambar).
+  Future<Either<String, UserEntity>> updateProfile({
+    String? shopName,
+    String? remoteImage,
+    String? localImage,
+    String? address,
+    String? phone,
+  });
 
-  /// Refresh nama toko dari server (Sinkronisasi profil).
-  Future<void> refreshShopName();
+  /// Sinkronisasi profil lengkap dari server (Nama Toko, Alamat, HP, Gambar).
+  Future<void> syncProfile();
 
   // ==================== Guest Auth (Offline Mode) ====================
 
@@ -38,8 +48,15 @@ abstract class AuthRepository {
   // ==================== Karyawan Auth (Custom Database) ====================
 
   /// Login Karyawan menggunakan email dan password yang tersimpan di tabel 'karyawan'.
-  Future<Either<String, UserEntity>> signInAsKaryawan(String email, String password);
+  Future<Either<String, UserEntity>> signInAsKaryawan(
+    String email,
+    String password,
+  );
 
   /// Membuat akun karyawan baru (hanya bisa dilakukan oleh Owner).
-  Future<Either<String, String>> createKaryawan(String fullName, String email, String password);
+  Future<Either<String, String>> createKaryawan(
+    String fullName,
+    String email,
+    String password,
+  );
 }

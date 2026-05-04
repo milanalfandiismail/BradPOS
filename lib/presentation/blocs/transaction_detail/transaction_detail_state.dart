@@ -3,7 +3,7 @@ import 'package:bradpos/domain/entities/transaction_item.dart';
 
 abstract class TransactionDetailState extends Equatable {
   const TransactionDetailState();
-  
+
   @override
   List<Object> get props => [];
 }

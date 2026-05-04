@@ -7,15 +7,20 @@ class UserEntity extends Equatable {
   final String email;
   final String? name;
   final String? shopName;
-  
-  /// Role pengguna: 
+
+  /// Role pengguna:
   /// - 'owner': Pemilik toko, memiliki akses penuh ke semua fitur.
   /// - 'karyawan': Staf toko, akses terbatas (tidak bisa kelola karyawan lain).
   /// - 'guest': Mode offline tanpa akun.
-  final String role; 
-  
+  final String role;
+
   /// ID Owner yang menaungi karyawan ini (Hanya diisi jika role adalah 'karyawan').
-  final String? ownerId; 
+  final String? ownerId;
+
+  final String? remoteImage;
+  final String? localImage;
+  final String? address;
+  final String? phone;
 
   const UserEntity({
     required this.id,
@@ -24,11 +29,15 @@ class UserEntity extends Equatable {
     this.shopName,
     this.role = 'owner',
     this.ownerId,
+    this.remoteImage,
+    this.localImage,
+    this.address,
+    this.phone,
   });
 
   /// Helper untuk mengecek apakah user adalah Owner.
   bool get isOwner => role == 'owner';
-  
+
   /// Helper untuk mengecek apakah user adalah Karyawan.
   bool get isKaryawan => role == 'karyawan';
 
@@ -39,10 +48,14 @@ class UserEntity extends Equatable {
     return UserEntity(
       id: map['id'],
       email: map['email'],
-      name: map['name'],
+      name: map['name'] ?? map['full_name'],
       shopName: map['shop_name'],
       role: map['role'] ?? 'owner',
       ownerId: map['owner_id'],
+      remoteImage: map['remote_image'],
+      localImage: map['local_image'],
+      address: map['address'],
+      phone: map['phone'],
     );
   }
 
@@ -54,9 +67,13 @@ class UserEntity extends Equatable {
       'shop_name': shopName,
       'role': role,
       'owner_id': ownerId,
+      'remote_image': remoteImage,
+      'local_image': localImage,
+      'address': address,
+      'phone': phone,
     };
   }
 
   @override
-  List<Object?> get props => [id, email, name, shopName, role, ownerId];
+  List<Object?> get props => [id, email, name, shopName, role, ownerId, remoteImage, localImage, address, phone];
 }

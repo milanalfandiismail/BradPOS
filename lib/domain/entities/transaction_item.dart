@@ -33,8 +33,8 @@ class TransactionItem extends Equatable {
       unitPrice: (map['unit_price'] as num).toDouble(),
       discount: (map['discount'] as num?)?.toDouble() ?? 0,
       subtotal: (map['subtotal'] as num).toDouble(),
-      createdAt: map['created_at'] != null 
-          ? DateTime.parse(map['created_at']) 
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'])
           : DateTime.now(),
     );
   }
@@ -79,7 +79,14 @@ class TransactionItem extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, transactionId, produkId, productName, quantity,
-        unitPrice, discount, subtotal, createdAt,
-      ];
+    id,
+    transactionId,
+    produkId,
+    productName,
+    quantity,
+    unitPrice,
+    discount,
+    subtotal,
+    createdAt,
+  ];
 }

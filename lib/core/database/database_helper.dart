@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
+  static const int _databaseVersion = 13;
   static Database? _database;
 
   DatabaseHelper._init();
@@ -20,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10,
+      version: _databaseVersion,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -38,7 +39,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 5) {
       try {
-        await db.execute('ALTER TABLE transactions ADD COLUMN cashier_name TEXT');
+        await db.execute(
+          'ALTER TABLE transactions ADD COLUMN cashier_name TEXT',
+        );
       } catch (e) {
         debugPrint(e.toString());
       }
@@ -52,10 +55,18 @@ class DatabaseHelper {
     }
     if (oldVersion < 7) {
       try {
-        await db.execute('ALTER TABLE produk ADD COLUMN purchase_price REAL DEFAULT 0');
-        await db.execute('ALTER TABLE produk ADD COLUMN selling_price REAL DEFAULT 0');
-        await db.execute('ALTER TABLE produk ADD COLUMN unit TEXT DEFAULT "pcs"');
-        await db.execute('ALTER TABLE produk ADD COLUMN is_active INTEGER DEFAULT 1');
+        await db.execute(
+          'ALTER TABLE produk ADD COLUMN purchase_price REAL DEFAULT 0',
+        );
+        await db.execute(
+          'ALTER TABLE produk ADD COLUMN selling_price REAL DEFAULT 0',
+        );
+        await db.execute(
+          'ALTER TABLE produk ADD COLUMN unit TEXT DEFAULT "pcs"',
+        );
+        await db.execute(
+          'ALTER TABLE produk ADD COLUMN is_active INTEGER DEFAULT 1',
+        );
       } catch (e) {
         debugPrint(e.toString());
       }
@@ -77,6 +88,21 @@ class DatabaseHelper {
     if (oldVersion < 10) {
       try {
         await db.execute('ALTER TABLE transactions ADD COLUMN shop_name TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 11) {
+      try {
+        await db.execute('ALTER TABLE profiles ADD COLUMN remote_image TEXT');
+        await db.execute('ALTER TABLE profiles ADD COLUMN local_image TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 12) {
+      try {
+        await db.execute('ALTER TABLE profiles ADD COLUMN full_name TEXT');
       } catch (e) {
         debugPrint(e.toString());
       }
@@ -190,6 +216,9 @@ CREATE TABLE transactions (
 CREATE TABLE profiles (
   id $idType,
   shop_name $textType,
+  full_name $textNullable,
+  remote_image $textNullable,
+  local_image $textNullable,
   updated_at $textNullable
 )
 ''');

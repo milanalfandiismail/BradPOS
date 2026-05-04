@@ -16,6 +16,7 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage> {
   bool _hasNavigated = false;
+  bool _isProcessing = false;
   String _statusMessage = 'Menyiapkan aplikasi...';
 
   @override
@@ -42,7 +43,8 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _syncAndGo() async {
-    if (_hasNavigated) return;
+    if (_hasNavigated || _isProcessing) return;
+    _isProcessing = true;
     if (mounted) setState(() => _statusMessage = 'Menyelaraskan data...');
 
     try {
@@ -53,6 +55,9 @@ class _SplashPageState extends State<SplashPage> {
     } catch (e) {
       debugPrint("Splash: sync error: $e");
     }
+
+    // Fake loading biar estetik
+    await Future.delayed(const Duration(seconds: 8));
 
     _goToDashboard();
   }

@@ -8,7 +8,9 @@ abstract class HistoryState extends Equatable {
 }
 
 class HistoryInitial extends HistoryState {}
+
 class HistoryLoading extends HistoryState {}
+
 class HistoryLoaded extends HistoryState {
   final List<Transaction> transactions;
   final double totalOmzet;
@@ -16,6 +18,7 @@ class HistoryLoaded extends HistoryState {
   @override
   List<Object?> get props => [transactions, totalOmzet];
 }
+
 class HistoryError extends HistoryState {
   final String message;
   const HistoryError(this.message);

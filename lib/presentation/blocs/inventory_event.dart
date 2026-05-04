@@ -26,9 +26,15 @@ class LoadInventory extends InventoryEvent {
   });
 
   @override
-  List<Object?> get props => [page, limit, searchQuery, category, stockStatus, skipSync];
+  List<Object?> get props => [
+    page,
+    limit,
+    searchQuery,
+    category,
+    stockStatus,
+    skipSync,
+  ];
 }
-
 
 class AddInventoryItemEvent extends InventoryEvent {
   final InventoryItem item;

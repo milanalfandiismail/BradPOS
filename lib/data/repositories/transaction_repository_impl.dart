@@ -81,21 +81,32 @@ class TransactionRepositoryImpl implements TransactionRepository {
   ) async {
     try {
       await remoteDataSource.createTransaction(transaction, items);
-      
+
       // Update stock di remote Supabase
       for (var item in items) {
         final pid = item.produkId;
         if (pid != null && pid.isNotEmpty) {
           try {
-            final res = await supabase.from('produk').select('stock').eq('id', pid).single();
+            final res = await supabase
+                .from('produk')
+                .select('stock')
+                .eq('id', pid)
+                .single();
             final rawStock = res['stock'];
-            final currentStock = rawStock is int ? rawStock : int.tryParse(rawStock.toString()) ?? 0;
-            final newStock = currentStock == -1 ? -1 : currentStock - item.quantity;
-            await supabase.from('produk').update({'stock': newStock}).eq('id', pid);
+            final currentStock = rawStock is int
+                ? rawStock
+                : int.tryParse(rawStock.toString()) ?? 0;
+            final newStock = currentStock == -1
+                ? -1
+                : currentStock - item.quantity;
+            await supabase
+                .from('produk')
+                .update({'stock': newStock})
+                .eq('id', pid);
           } catch (_) {}
         }
       }
-      
+
       // Push sukses → tandai 'synced' biar SyncService gak push ulang
       await localDataSource.updateSyncStatus(transaction.id, 'synced');
     } catch (e) {

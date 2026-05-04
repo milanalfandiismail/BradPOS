@@ -33,8 +33,8 @@ class InventoryItemModel extends InventoryItem {
       imageUrl: json['image_url'],
       isActive: json['is_active'] ?? true,
       createdAt: DateTime.parse(json['created_at']),
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at']) 
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
           : DateTime.parse(json['created_at']),
     );
   }
@@ -54,8 +54,8 @@ class InventoryItemModel extends InventoryItem {
       imageUrl: map['image_url'],
       isActive: map['is_active'] == 1 || map['is_active'] == true,
       createdAt: DateTime.parse(map['created_at']),
-      updatedAt: map['updated_at'] != null 
-          ? DateTime.parse(map['updated_at']) 
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'])
           : DateTime.parse(map['created_at']),
     );
   }

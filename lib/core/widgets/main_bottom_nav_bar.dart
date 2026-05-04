@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import '../app_colors.dart';
+import 'package:bradpos/presentation/widgets/stock_alert_badge.dart';
 import 'package:bradpos/presentation/screens/dashboard_screen.dart';
 import 'package:bradpos/presentation/screens/cashier_screen.dart';
 import 'package:bradpos/presentation/screens/inventory_screen.dart';
 import 'package:bradpos/presentation/screens/history_screen.dart';
+import 'package:bradpos/injection_container.dart' as di;
+import 'package:bradpos/core/services/stock_alert_service.dart';
 
 class MainBottomNavBar extends StatelessWidget {
   final String activeLabel;
 
   const MainBottomNavBar({
-    super.key, 
+    super.key,
     required this.activeLabel,
   });
+
+  int get _badgeCount => di.sl<StockAlertService>().lastTotalAlert;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +42,7 @@ class MainBottomNavBar extends StatelessWidget {
               'DASHBOARD',
               activeLabel == 'DASHBOARD',
               () => _navigateTo(context, const DashboardScreen(), 'DASHBOARD'),
+              badgeCount: 0,
             ),
             _buildNavItem(
               context,
@@ -44,6 +50,7 @@ class MainBottomNavBar extends StatelessWidget {
               'CASHIER',
               activeLabel == 'CASHIER',
               () => _navigateTo(context, const CashierScreen(), 'CASHIER'),
+              badgeCount: 0,
             ),
             _buildNavItem(
               context,
@@ -51,6 +58,7 @@ class MainBottomNavBar extends StatelessWidget {
               'INVENTORY',
               activeLabel == 'INVENTORY',
               () => _navigateTo(context, const InventoryScreen(), 'INVENTORY'),
+              badgeCount: _badgeCount,
             ),
             _buildNavItem(
               context,
@@ -58,6 +66,7 @@ class MainBottomNavBar extends StatelessWidget {
               'HISTORY',
               activeLabel == 'HISTORY',
               () => _navigateTo(context, const HistoryScreen(), 'HISTORY'),
+              badgeCount: 0,
             ),
           ],
         ),
@@ -67,9 +76,9 @@ class MainBottomNavBar extends StatelessWidget {
 
   void _navigateTo(BuildContext context, Widget page, String label) {
     if (activeLabel != label) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => page),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => page));
     }
   }
 
@@ -78,20 +87,36 @@ class MainBottomNavBar extends StatelessWidget {
     IconData icon,
     String label,
     bool isActive,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    int badgeCount = 0,
+  }) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            color: isActive ? AppColors.primary : AppColors.textSecondary,
-            size: 24,
+          if (isActive)
+            Container(
+              width: 24,
+              height: 3,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            )
+          else
+            const SizedBox(height: 3),
+          StockAlertBadge(
+            count: badgeCount,
+            color: AppColors.warning,
+            child: Icon(
+              icon,
+              color: isActive ? AppColors.primary : AppColors.textSecondary,
+              size: 24,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             label,
             style: TextStyle(

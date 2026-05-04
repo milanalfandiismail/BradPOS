@@ -59,11 +59,15 @@ class TransactionModel extends Transaction {
       customerName: map['customer_name'],
       customerPhone: map['customer_phone'],
       shopName: map['shop_name'],
-      items: (map['items'] is String 
-          ? (jsonDecode(map['items'] as String) as List)
-          : (map['items'] as List))
-          .map((item) => TransactionItem.fromMap(Map<String, dynamic>.from(item)))
-          .toList(),
+      items:
+          (map['items'] is String
+                  ? (jsonDecode(map['items'] as String) as List)
+                  : (map['items'] as List))
+              .map(
+                (item) =>
+                    TransactionItem.fromMap(Map<String, dynamic>.from(item)),
+              )
+              .toList(),
       subtotal: (map['subtotal'] as num).toDouble(),
       discount: (map['discount'] as num).toDouble(),
       tax: (map['tax'] as num).toDouble(),

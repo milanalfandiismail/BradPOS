@@ -55,5 +55,13 @@ class Karyawan extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, ownerId, name, email, password, isActive, createdAt];
+  List<Object?> get props => [
+    id,
+    ownerId,
+    name,
+    email,
+    password,
+    isActive,
+    createdAt,
+  ];
 }

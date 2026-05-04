@@ -29,7 +29,13 @@ class InventoryLoaded extends InventoryState {
   });
 
   @override
-  List<Object?> get props => [items, categories, totalItems, currentPage, searchQuery];
+  List<Object?> get props => [
+    items,
+    categories,
+    totalItems,
+    currentPage,
+    searchQuery,
+  ];
 }
 
 class InventoryError extends InventoryState {

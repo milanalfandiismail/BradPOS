@@ -287,16 +287,28 @@ class InventoryItemCard extends StatelessWidget {
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
           color: const Color(0xFFF8FAFC),
-          child: const Center(
+          child: Center(
             child: SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
             ),
           ),
         ),
-        errorWidget: (context, url, error) =>
-            const Icon(Icons.broken_image, color: Colors.red),
+        errorWidget: (context, url, error) => Container(
+          color: const Color(0xFFF1F5F9),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.fastfood, color: Colors.grey.shade400, size: 24),
+              const SizedBox(height: 2),
+              Text(
+                item.name.isNotEmpty ? item.name.substring(0, 1).toUpperCase() : '?',
+                style: TextStyle(color: Colors.grey.shade300, fontWeight: FontWeight.bold, fontSize: 10),
+              ),
+            ],
+          ),
+        ),
       );
     } else {
       final file = io.File(imageUrl);

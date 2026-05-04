@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as path;
 import 'package:bradpos/data/models/inventory_item_model.dart';
-import 'package:bradpos/data/models/category_model.dart';
 
 abstract class InventoryRemoteDataSource {
   Future<List<InventoryItemModel>> getInventory(
@@ -13,6 +12,7 @@ abstract class InventoryRemoteDataSource {
     String? searchQuery,
     String? category,
     String? stockStatus,
+    String? lastSync,
   });
   Future<int> getInventoryCount(
     String userId, {
@@ -21,14 +21,10 @@ abstract class InventoryRemoteDataSource {
     String? stockStatus,
   });
 
-  Future<List<CategoryModel>> getCategories(String userId);
-
   // Sync methods (push to server) - return new image_url if uploaded
   Future<String?> pushCreatedItem(Map<String, dynamic> itemMap);
   Future<String?> pushUpdatedItem(Map<String, dynamic> itemMap);
   Future<void> pushDeletedItem(String id, String userId);
-
-  Future<void> pushCreatedCategory(Map<String, dynamic> categoryMap);
 }
 
 class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
@@ -44,12 +40,13 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     String? searchQuery,
     String? category,
     String? stockStatus,
+    String? lastSync,
   }) async {
-    dynamic query = supabase
-        .from("produk")
-        .select("*")
-        .eq("owner_id", userId);
+    dynamic query = supabase.from("produk").select("*").eq("owner_id", userId);
 
+    if (lastSync != null && lastSync.isNotEmpty) {
+      query = query.gt('updated_at', lastSync);
+    }
 
     // Apply Filters
     if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -75,10 +72,10 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     }
 
     final List<dynamic> response = await query;
-    return response.map((row) => InventoryItemModel.fromMap(row)).toList();
+    return response
+        .map((row) => InventoryItemModel.fromMap(row as Map<String, dynamic>))
+        .toList();
   }
-
-
 
   @override
   Future<int> getInventoryCount(
@@ -114,52 +111,46 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     return 0;
   }
 
-
-
-
-
-
-  @override
-  Future<List<CategoryModel>> getCategories(String userId) async {
-    final response = await supabase
-        .from("categories")
-        .select("*")
-        .eq("owner_id", userId)
-        .order('name', ascending: true);
-
-    return response.map((row) => CategoryModel.fromMap(row)).toList();
-  }
-
   Future<void> _deleteOldImageByUrl(String? imageUrl) async {
-    if (imageUrl == null || imageUrl.isEmpty || !imageUrl.contains('produk_images')) return;
+    if (imageUrl == null ||
+        imageUrl.isEmpty ||
+        !imageUrl.contains('produk_images')) {
+      return;
+    }
 
     try {
       debugPrint("Storage: Analisis URL untuk dihapus -> $imageUrl");
-      
+
       // Cara yang lebih mantap: Cari posisi nama bucket
       const bucketName = 'produk_images';
       final bucketPattern = '/$bucketName/';
       final bucketIndex = imageUrl.indexOf(bucketPattern);
-      
+
       if (bucketIndex != -1) {
         // Ambil semua teks setelah '/produk_images/'
         // Contoh: https://.../produk_images/userId/file.jpg -> userId/file.jpg
-        String filePath = imageUrl.substring(bucketIndex + bucketPattern.length);
-        
+        String filePath = imageUrl.substring(
+          bucketIndex + bucketPattern.length,
+        );
+
         // Buang query parameter jika ada (seperti ?v=123)
         if (filePath.contains('?')) {
           filePath = filePath.split('?')[0];
         }
-        
+
         // Decode URL encoding (misal %20 jadi spasi)
         filePath = Uri.decodeComponent(filePath);
-        
+
         debugPrint("Storage: Mencoba hapus file dengan path -> '$filePath'");
-        
-        final List<FileObject> response = await supabase.storage.from(bucketName).remove([filePath]);
-        
+
+        final List<FileObject> response = await supabase.storage
+            .from(bucketName)
+            .remove([filePath]);
+
         if (response.isEmpty) {
-          debugPrint("Storage Warning: Supabase melaporkan tidak ada file yang dihapus. Cek Path atau Policy!");
+          debugPrint(
+            "Storage Warning: Supabase melaporkan tidak ada file yang dihapus. Cek Path atau Policy!",
+          );
         } else {
           debugPrint("Storage Success: File '$filePath' berhasil dihapus");
         }
@@ -248,7 +239,9 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
       if (finalRemoteUrl != null) {
         payload['image_url'] = finalRemoteUrl;
       } else {
-        debugPrint("RemoteDataSource: Upload image gagal, tetap sync produk tanpa image");
+        debugPrint(
+          "RemoteDataSource: Upload image gagal, tetap sync produk tanpa image",
+        );
         payload['image_url'] = null;
       }
     }
@@ -259,12 +252,15 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     payload['is_active'] = payload['is_active'] == 1;
 
     // Proteksi: Pastikan category_id valid UUID atau null (jangan String kosong)
-    if (payload['category_id'] != null && (payload['category_id'] as String).isEmpty) {
+    if (payload['category_id'] != null &&
+        (payload['category_id'] as String).isEmpty) {
       payload['category_id'] = null;
     }
 
     try {
-      debugPrint("RemoteDataSource: Upserting produk ${payload['id']} to Supabase...");
+      debugPrint(
+        "RemoteDataSource: Upserting produk ${payload['id']} to Supabase...",
+      );
       await supabase.from("produk").upsert(payload);
       debugPrint("RemoteDataSource: Upsert produk success!");
     } catch (e) {
@@ -272,15 +268,6 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
       rethrow;
     }
     return finalRemoteUrl;
-  }
-
-  @override
-  Future<void> pushCreatedCategory(Map<String, dynamic> categoryMap) async {
-    final payload = Map<String, dynamic>.from(categoryMap);
-    payload.remove('sync_status');
-    payload.remove('updated_at');
-
-    await supabase.from("categories").upsert(payload);
   }
 
   @override
@@ -295,11 +282,14 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     if (imageUrl != null &&
         imageUrl.isNotEmpty &&
         !imageUrl.startsWith('http')) {
-      
       // 1. Ambil data lama untuk menghapus fotonya dari storage
-      final oldData = await supabase.from('produk').select('image_url').eq('id', id).maybeSingle();
+      final oldData = await supabase
+          .from('produk')
+          .select('image_url')
+          .eq('id', id)
+          .maybeSingle();
       final oldImageUrl = oldData?['image_url'] as String?;
-      
+
       // 2. Hapus file lama jika ada
       await _deleteOldImageByUrl(oldImageUrl);
 
@@ -313,7 +303,9 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
       if (finalRemoteUrl != null) {
         payload['image_url'] = finalRemoteUrl;
       } else {
-        debugPrint("RemoteDataSource: Upload image gagal, tetap sync produk tanpa image");
+        debugPrint(
+          "RemoteDataSource: Upload image gagal, tetap sync produk tanpa image",
+        );
         payload['image_url'] = null;
       }
     }
@@ -324,12 +316,15 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     payload['is_active'] = payload['is_active'] == 1;
 
     // Proteksi: Pastikan category_id valid UUID atau null
-    if (payload['category_id'] != null && (payload['category_id'] as String).isEmpty) {
+    if (payload['category_id'] != null &&
+        (payload['category_id'] as String).isEmpty) {
       payload['category_id'] = null;
     }
 
     try {
-      debugPrint("RemoteDataSource: Updating (upsert) produk $id to Supabase...");
+      debugPrint(
+        "RemoteDataSource: Updating (upsert) produk $id to Supabase...",
+      );
       await supabase.from("produk").upsert(payload);
       debugPrint("RemoteDataSource: Update produk success!");
     } catch (e) {
@@ -344,27 +339,40 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
   Future<void> pushDeletedItem(String id, String userId) async {
     try {
       // 1. Ambil data lama untuk hapus gambarnya
-      final oldData = await supabase.from('produk').select('image_url').eq('id', id).maybeSingle();
+      final oldData = await supabase
+          .from('produk')
+          .select('image_url')
+          .eq('id', id)
+          .maybeSingle();
       final oldImageUrl = oldData?['image_url'] as String?;
-      
+
       // 2. Hapus gambar dari storage
       await _deleteOldImageByUrl(oldImageUrl);
     } catch (e) {
       debugPrint("PushDeletedItem Warning (Storage): $e");
     }
-    
+
     // 3. Hapus data dari tabel
-    debugPrint("PushDeletedItem: Deleting produk id=$id where owner_id=$userId");
-    
+    debugPrint(
+      "PushDeletedItem: Deleting produk id=$id where owner_id=$userId",
+    );
+
     // Coba hapus dengan owner_id
-    var result = await supabase.from("produk").delete().eq("id", id).eq("owner_id", userId);
-    
-    // Kalau tidak ada yang terhapus (mungkin owner_id kosong/null), coba tanpa owner_id filter
+    final result = await supabase
+        .from("produk")
+        .delete()
+        .eq("id", id)
+        .eq("owner_id", userId)
+        .select();
+
+    // Kalau tidak ada yang terhapus, coba tanpa owner_id filter (atau log saja)
     if (result.isEmpty) {
-      debugPrint("PushDeletedItem: Tidak ada yang terhapus, coba tanpa owner_id filter");
-      result = await supabase.from("produk").delete().eq("id", id);
+      debugPrint(
+        "PushDeletedItem: Tidak ada data yang terhapus dengan filter owner_id=$userId",
+      );
+    } else {
+      debugPrint("PushDeletedItem: Berhasil hapus ${result.length} baris");
     }
-    
-    debugPrint("PushDeletedItem: Delete result = $result");
   }
+
 }

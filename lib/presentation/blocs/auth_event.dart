@@ -40,7 +40,10 @@ class SignInAsKaryawanRequested extends AuthEvent {
   final String email;
   final String password;
 
-  const SignInAsKaryawanRequested({required this.email, required this.password});
+  const SignInAsKaryawanRequested({
+    required this.email,
+    required this.password,
+  });
 
   @override
   List<Object> get props => [email, password];
@@ -58,10 +61,27 @@ class AuthStatusChanged extends AuthEvent {
   List<Object> get props => [user ?? 'null'];
 }
 
-class UpdateShopNameEvent extends AuthEvent {
-  final String shopName;
-  const UpdateShopNameEvent(this.shopName);
+class UpdateProfileEvent extends AuthEvent {
+  final String? shopName;
+  final String? remoteImage;
+  final String? localImage;
+  final String? address;
+  final String? phone;
+
+  const UpdateProfileEvent({
+    this.shopName,
+    this.remoteImage,
+    this.localImage,
+    this.address,
+    this.phone,
+  });
 
   @override
-  List<Object> get props => [shopName];
+  List<Object> get props => [
+        shopName ?? '',
+        remoteImage ?? '',
+        localImage ?? '',
+        address ?? '',
+        phone ?? '',
+      ];
 }

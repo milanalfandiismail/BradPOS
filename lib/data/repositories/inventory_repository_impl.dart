@@ -1,47 +1,41 @@
 import 'package:dartz/dartz.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart' hide Category;
-import 'dart:math';
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/domain/entities/category.dart';
 import 'package:bradpos/domain/repositories/inventory_repository.dart';
 import 'package:bradpos/data/data_sources/inventory_local_data_source.dart';
 import 'package:bradpos/data/data_sources/inventory_remote_data_source.dart';
+import 'package:bradpos/data/data_sources/category_local_data_source.dart';
 import 'package:bradpos/data/models/inventory_item_model.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
+import 'package:bradpos/core/sync/sync_service.dart';
 
 class InventoryRepositoryImpl implements InventoryRepository {
   final SupabaseClient supabase;
   final InventoryLocalDataSource localDataSource;
   final InventoryRemoteDataSource remoteDataSource;
+  final CategoryLocalDataSource categoryLocalDataSource;
   final AuthRepository authRepository;
+  final SyncService syncService;
 
   InventoryRepositoryImpl({
     required this.supabase,
     required this.localDataSource,
     required this.remoteDataSource,
+    required this.categoryLocalDataSource,
     required this.authRepository,
+    required this.syncService,
   });
 
   Future<String?> _getUserId() async {
     final userResult = await authRepository.getCurrentUser();
-    return userResult.fold(
-      (failure) => null,
-      (user) {
-        if (user == null) return null;
-        if (user.role == 'karyawan') return user.ownerId;
-        return user.id;
-      },
-    );
-  }
-
-  String _generateUuid() {
-    final random = Random();
-    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-    bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
-    bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 10xx
-    final hexStr = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join('');
-    return '${hexStr.substring(0, 8)}-${hexStr.substring(8, 12)}-${hexStr.substring(12, 16)}-${hexStr.substring(16, 20)}-${hexStr.substring(20)}';
+    return userResult.fold((failure) => 'offline_guest', (user) {
+      if (user == null) return 'offline_guest';
+      if (user.role == 'karyawan') return user.ownerId;
+      return user.id;
+    });
   }
 
   @override
@@ -54,10 +48,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     bool skipSync = false,
   }) async {
     try {
-      final userId = await _getUserId();
-      if (userId == null) return const Left("Anda harus login terlebih dahulu.");
-
-      // 1. Ambil dari lokal sesuai filter
+      final userId = await _getUserId() ?? 'offline_guest';
       final localItems = await localDataSource.getInventory(
         userId,
         limit: limit,
@@ -66,13 +57,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
         category: category,
         stockStatus: stockStatus,
       );
-
       return Right(localItems);
     } catch (e) {
       return Left("Gagal memuat data inventory: $e");
     }
   }
-
 
   @override
   Future<Either<String, int>> getInventoryCount({
@@ -81,8 +70,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     String? stockStatus,
   }) async {
     try {
-      final userId = await _getUserId();
-      if (userId == null) return const Left("User tidak terautentikasi.");
+      final userId = await _getUserId() ?? 'offline_guest';
       final count = await localDataSource.getInventoryCount(
         userId,
         searchQuery: searchQuery,
@@ -95,38 +83,36 @@ class InventoryRepositoryImpl implements InventoryRepository {
     }
   }
 
-
-  // Legacy: Tidak digunakan - sync inventory dari server ke lokal sekarang handled by SyncService
-
-
   @override
-  Future<Either<String, InventoryItem>> addInventoryItem(InventoryItem item) async {
+  Future<Either<String, InventoryItem>> addInventoryItem(
+    InventoryItem item,
+  ) async {
     try {
-      final userId = await _getUserId();
-      if (userId == null) return const Left("User tidak terautentikasi.");
-
-      // Set ownerId jika belum ada
+      final userId = await _getUserId() ?? 'offline_guest';
       var newItem = item.copyWith(ownerId: userId);
 
-      // Otomatis buat Kategori baru jika dipilih "Lainnya" (categoryId == null tapi ada text)
       if (newItem.categoryId == null && newItem.category.isNotEmpty) {
-        final newCat = Category(
-          id: _generateUuid(),
-          ownerId: userId,
-          name: newItem.category,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-        // Simpan kategori ke lokal
-        final savedCat = await localDataSource.addCategory(newCat);
-        
-        newItem = newItem.copyWith(categoryId: savedCat.id);
+        final existingCats = await categoryLocalDataSource.getCategories(userId);
+        final match = existingCats.where(
+          (c) => c.name.trim().toLowerCase() == newItem.category.trim().toLowerCase(),
+        ).toList();
+
+        if (match.isNotEmpty) {
+          newItem = newItem.copyWith(categoryId: match.first.id);
+        } else {
+          final newCat = Category(
+            id: const Uuid().v4(),
+            ownerId: userId,
+            name: newItem.category,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          await categoryLocalDataSource.addCategory(newCat);
+          newItem = newItem.copyWith(categoryId: newCat.id);
+        }
       }
 
-      // Simpan ke lokal (SyncService yang akan menangani push ke server)
       final savedLocal = await localDataSource.addInventoryItem(newItem);
-
-      // Push ke Supabase segera
       await _pushItemToRemote(newItem.copyWith(id: savedLocal.id));
 
       return Right(savedLocal);
@@ -136,31 +122,35 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }
 
   @override
-  Future<Either<String, InventoryItem>> updateInventoryItem(InventoryItem item) async {
+  Future<Either<String, InventoryItem>> updateInventoryItem(
+    InventoryItem item,
+  ) async {
     try {
-      final userId = await _getUserId();
-      if (userId == null) return const Left("User tidak terautentikasi.");
-
+      final userId = await _getUserId() ?? 'offline_guest';
       var updatedItem = item;
 
-      // Otomatis buat Kategori baru jika dipilih "Lainnya"
       if (updatedItem.categoryId == null && updatedItem.category.isNotEmpty) {
-        final newCat = Category(
-          id: _generateUuid(),
-          ownerId: userId,
-          name: updatedItem.category,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-        final savedCat = await localDataSource.addCategory(newCat);
-        
-        updatedItem = updatedItem.copyWith(categoryId: savedCat.id);
+        final existingCats = await categoryLocalDataSource.getCategories(userId);
+        final match = existingCats.where(
+          (c) => c.name.trim().toLowerCase() == updatedItem.category.trim().toLowerCase(),
+        ).toList();
+
+        if (match.isNotEmpty) {
+          updatedItem = updatedItem.copyWith(categoryId: match.first.id);
+        } else {
+          final newCat = Category(
+            id: const Uuid().v4(),
+            ownerId: userId,
+            name: updatedItem.category,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          await categoryLocalDataSource.addCategory(newCat);
+          updatedItem = updatedItem.copyWith(categoryId: newCat.id);
+        }
       }
 
-      // Update ke lokal (SyncService yang akan menangani push ke server)
       final updatedLocal = await localDataSource.updateInventoryItem(updatedItem);
-
-      // Push ke Supabase segera
       await _pushItemToRemote(updatedItem);
 
       return Right(updatedLocal);
@@ -170,40 +160,28 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }
 
   @override
-  Future<bool> isProductNameExists(String name, {String? excludeId}) async {
-    final userId = await _getUserId();
-    if (userId == null) return false;
-    return await localDataSource.isProductNameExists(name, userId, excludeId: excludeId);
-  }
-
-  @override
-  Future<Either<String, List<Category>>> getCategories() async {
-    try {
-      final userId = await _getUserId();
-      if (userId == null) return const Left("Anda harus login terlebih dahulu.");
-
-      // Ambil dari lokal
-      final localCategories = await localDataSource.getCategories(userId);
-
-      return Right(localCategories);
-    } catch (e) {
-      return Left("Gagal memuat kategori: $e");
-    }
-  }
-
-  @override
   Future<Either<String, void>> deleteInventoryItem(String id) async {
     try {
-      final userId = await _getUserId();
-      if (userId == null) return const Left("User tidak terautentikasi.");
-
-      // Tandai deleted di lokal (SyncService yang akan menangani hapus di server)
+      final userId = await _getUserId() ?? 'offline_guest';
       await localDataSource.deleteInventoryItem(id, userId);
-
+      if (userId != 'offline_guest') {
+        _pushDeletedItemToRemote(id, userId);
+      }
       return const Right(null);
     } catch (e) {
       return Left("Gagal menghapus item: $e");
     }
+  }
+
+  @override
+  Future<bool> isProductNameExists(String name, {String? excludeId}) async {
+    final userId = await _getUserId();
+    if (userId == null) return false;
+    return await localDataSource.isProductNameExists(
+      name,
+      userId,
+      excludeId: excludeId,
+    );
   }
 
   @override
@@ -221,24 +199,31 @@ class InventoryRepositoryImpl implements InventoryRepository {
     try {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) return const Left("Harus login untuk sinkronisasi.");
-
       await localDataSource.migrateOfflineData(userId);
+      syncService.syncAll();
       return const Right(null);
     } catch (e) {
       return Left("Gagal sinkronisasi data offline: $e");
     }
   }
 
-  // Push single item to Supabase immediately
   Future<void> _pushItemToRemote(InventoryItem item) async {
     try {
+      if (item.ownerId == 'offline_guest') return;
       final itemMap = InventoryItemModel.fromEntity(item).toMap();
       itemMap.remove('sync_status');
       itemMap.remove('updated_at');
-      
       await remoteDataSource.pushCreatedItem(itemMap);
     } catch (e) {
       debugPrint('Immediate sync failed: $e');
+    }
+  }
+
+  Future<void> _pushDeletedItemToRemote(String id, String userId) async {
+    try {
+      await remoteDataSource.pushDeletedItem(id, userId);
+    } catch (e) {
+      debugPrint('Immediate delete sync failed: $e');
     }
   }
 }

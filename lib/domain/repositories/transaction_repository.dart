@@ -13,6 +13,8 @@ abstract class TransactionRepository {
     DateTime endDate,
   );
   Future<Either<String, Transaction>> getTransactionById(String id);
-  Future<Either<String, List<TransactionItem>>> getTransactionItems(String transactionId);
+  Future<Either<String, List<TransactionItem>>> getTransactionItems(
+    String transactionId,
+  );
   Future<Either<String, void>> deleteTransaction(String id);
 }
