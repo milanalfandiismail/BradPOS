@@ -67,6 +67,24 @@ Didesain untuk kecepatan transaksi di kasir.
 -   **QRIS**: Memilih QRIS otomatis mengisi `amountReceived` sesuai total belanja, melewati input manual.
 -   **Transaksi**: Disimpan lokal sebagai entitas `Transaction`, lalu dikirim ke cloud untuk laporan.
 
+### 5. Manajemen Profil & Autentikasi Role-Based
+Memisahkan identitas bisnis dan identitas personal.
+
+-   **Owner vs Karyawan**: 
+    -   **Owner**: Mengelola profil bisnis (Nama Toko, Alamat, ID Toko) dan profil pribadi.
+    -   **Karyawan**: Hanya mengelola profil pribadi. Login menggunakan `Shop ID` + Nama + PIN.
+-   **Sinkronisasi Data Profil**:
+    -   Aplikasi memprioritaskan tabel `profiles` lokal/remote daripada metadata OAuth (Google/Supabase).
+    -   Mencegah data (seperti Nama Toko) kembali ke default Google saat refresh sesi.
+    -   **Shop ID**: Dihasilkan otomatis saat pergantian nama toko untuk memastikan keunikan identitas login staf.
+
+### 6. Sistem Struk (Receipt)
+Komponen UI untuk bukti transaksi yang efisien.
+
+-   **Dialog Struk**: Menampilkan rincian item, informasi kasir, tanggal, dan data pelanggan.
+-   **Thermal Look**: Desain layout disesuaikan untuk kemudahan baca pada printer thermal (informasi ringkas, font kontras).
+-   **Integrasi Hardware**: Menyediakan hook untuk trigger fungsi print ke perangkat keras (Bluetooth/USB).
+
 ---
 
 ## 🛠 Pemeliharaan (Maintenance)
