@@ -6,6 +6,7 @@ import 'package:bradpos/presentation/screens/dashboard_screen.dart';
 import 'package:bradpos/core/sync/sync_service.dart';
 import '../../injection_container.dart';
 import '../app_colors.dart';
+import '../utils/app_navigator.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -65,23 +66,13 @@ class _SplashPageState extends State<SplashPage> {
   void _goToDashboard() {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const DashboardScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 600),
-      ),
-    );
+    AppNavigator.pushReplacement(context, const DashboardScreen());
   }
 
   void _goToLogin() {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    AppNavigator.pushReplacement(context, const LoginScreen());
   }
 
   @override

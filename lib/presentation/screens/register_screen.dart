@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/core/widgets/splash_page.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
+import 'package:bradpos/core/utils/app_navigator.dart';
 
 /// Halaman Registrasi akun Owner baru.
 /// Hanya untuk Owner - Karyawan didaftarkan oleh Owner melalui menu Karyawan.
@@ -49,16 +50,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => AppNavigator.pop(context),
         ),
       ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const SplashPage()),
-              (route) => false,
-            );
+            AppNavigator.pushAndRemoveUntil(context, const SplashPage());
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

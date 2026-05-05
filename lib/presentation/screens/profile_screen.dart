@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
@@ -18,6 +19,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
+  late TextEditingController _shopIdController;
   late TextEditingController _addressController;
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
@@ -29,6 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+    _shopIdController = TextEditingController();
     _addressController = TextEditingController();
     _phoneController = TextEditingController();
     _emailController = TextEditingController();
@@ -36,15 +39,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthAuthenticated) {
       _nameController.text = authState.user.shopName ?? '';
+      _shopIdController.text = authState.user.shopId ?? '';
       _addressController.text = authState.user.address ?? '';
       _phoneController.text = authState.user.phone ?? '';
       _emailController.text = authState.user.email;
     }
   }
 
+  String _generateShopId(String name) {
+    final cleanName = name.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    if (cleanName.isEmpty) return '';
+
+    final prefix = cleanName.substring(0, 1).toUpperCase();
+    final random = Random().nextInt(9999).toString().padLeft(4, '0');
+    return '$prefix-ID-$random';
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
+    _shopIdController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
@@ -60,7 +74,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (image == null) return;
       if (!mounted) return;
 
-      // Copy ke lokasi persist biar gak ilang pas upload
       final dir = await getApplicationDocumentsDirectory();
       final localPath =
           '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}${p.extension(image.path)}';
@@ -73,13 +86,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : null;
 
       setState(() => _isUploadingImage = true);
-      authBloc.add(UpdateProfileEvent(localImage: localPath));
+      authBloc.add(
+        UpdateProfileEvent(
+          localImage: localPath,
+          shopName: _nameController.text,
+          shopId: _shopIdController.text,
+          address: _addressController.text,
+          phone: _phoneController.text,
+        ),
+      );
 
-      // Listen for remoteImage change to clear loading
       authBloc.stream
-          .firstWhere((s) =>
-              s is AuthAuthenticated &&
-              s.user.remoteImage != oldRemoteImage)
+          .firstWhere(
+            (s) =>
+                s is AuthAuthenticated && s.user.remoteImage != oldRemoteImage,
+          )
           .timeout(const Duration(seconds: 15))
           .then((_) {
             if (mounted) setState(() => _isUploadingImage = false);
@@ -91,15 +112,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       debugPrint("ProfileScreen: Error: $e");
       if (mounted) {
         setState(() => _isUploadingImage = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengambil gambar: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal mengambil gambar: $e')));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
@@ -108,19 +131,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: BlocBuilder<AuthBloc, AuthState>(
-                builder: (context, state) {
-                  String shopName = 'BradPOS';
-                  if (state is AuthAuthenticated) {
-                    shopName = state.user.shopName ?? 'BradPOS';
-                  }
-                  return BradHeader(
-                    title: 'Profil Toko',
-                    subtitle: shopName,
-                    showBackButton: true,
-                    leadingIcon: Icons.store_rounded,
-                  );
-                },
+              child: BradHeader(
+                title: 'Profil Toko',
+                subtitle: authState is AuthAuthenticated
+                    ? (authState.user.shopId != null &&
+                              authState.user.shopId!.isNotEmpty
+                          ? "${authState.user.shopName ?? 'BradPOS'} (${authState.user.shopId})"
+                          : (authState.user.shopName ?? 'BradPOS'))
+                    : 'BradPOS',
+                showBackButton: true,
+                leadingIcon: Icons.store_rounded,
               ),
             ),
             Expanded(
@@ -142,12 +162,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: BlocBuilder<AuthBloc, AuthState>(
                             builder: (context, state) {
                               String? remoteUrl;
+                              String? localPath;
                               if (state is AuthAuthenticated) {
                                 remoteUrl = state.user.remoteImage;
+                                localPath = state.user.localImage;
                               }
 
                               return InkWell(
-                                onTap: _isUploadingImage ? null : _pickAndUploadImage,
+                                onTap: _isUploadingImage
+                                    ? null
+                                    : _pickAndUploadImage,
                                 borderRadius: BorderRadius.circular(50),
                                 child: Stack(
                                   children: [
@@ -155,8 +179,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       child: SizedBox(
                                         width: 100,
                                         height: 100,
-                                        child: remoteUrl != null &&
-                                                remoteUrl.isNotEmpty
+                                        child:
+                                            (localPath != null &&
+                                                File(localPath).existsSync())
+                                            ? Image.file(
+                                                File(localPath),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : remoteUrl != null &&
+                                                  remoteUrl.isNotEmpty
                                             ? CachedNetworkImage(
                                                 imageUrl: remoteUrl,
                                                 fit: BoxFit.cover,
@@ -179,7 +210,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             child: CircularProgressIndicator(
                                               valueColor:
                                                   AlwaysStoppedAnimation<Color>(
-                                                      Colors.white),
+                                                    Colors.white,
+                                                  ),
                                               strokeWidth: 3,
                                             ),
                                           ),
@@ -214,7 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 12),
                         const Center(
                           child: Text(
-                            'Store Profile',
+                            'Logo Toko',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -236,15 +268,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 24),
                         _buildFieldLabel('Store Name'),
                         _buildTextField(
-                            _nameController, 'Sterling Gourmet Coffee'),
+                          _nameController,
+                          'Sterling Gourmet Coffee',
+                        ),
+                        const SizedBox(height: 20),
+                        _buildFieldLabel('Shop ID (Untuk Login Karyawan)'),
+                        _buildTextField(
+                          _shopIdController,
+                          'Auto-generated ID',
+                          icon: Icons.vpn_key_outlined,
+                          readOnly: true,
+                        ),
                         const SizedBox(height: 20),
                         _buildFieldLabel('Business Address'),
-                        _buildTextField(_addressController, 'Enter address...',
-                            maxLines: 3),
+                        _buildTextField(
+                          _addressController,
+                          'Enter address...',
+                          maxLines: 3,
+                        ),
                         const SizedBox(height: 20),
                         _buildFieldLabel('Phone Number'),
-                        _buildTextField(_phoneController, '+1 (555) 902-4432',
-                            icon: Icons.phone_outlined),
+                        _buildTextField(
+                          _phoneController,
+                          '',
+                          icon: Icons.phone_outlined,
+                        ),
                         const SizedBox(height: 20),
                         _buildFieldLabel('Email Address'),
                         _buildTextField(
@@ -272,8 +320,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.notifications_none_rounded,
-                                  color: Color(0xFF1E40AF)),
+                              const Icon(
+                                Icons.notifications_none_rounded,
+                                color: Color(0xFF1E40AF),
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
@@ -311,17 +361,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: ElevatedButton.icon(
                             onPressed: () {
                               if (_formKey.currentState!.validate()) {
+                                final authState = context
+                                    .read<AuthBloc>()
+                                    .state;
+                                String finalShopId = _shopIdController.text;
+
+                                if (authState is AuthAuthenticated) {
+                                  final oldName =
+                                      authState.user.shopName?.trim() ?? '';
+                                  final newName = _nameController.text.trim();
+
+                                  if (newName != oldName ||
+                                      finalShopId.isEmpty) {
+                                    finalShopId = _generateShopId(newName);
+                                  }
+                                }
+
                                 context.read<AuthBloc>().add(
-                                      UpdateProfileEvent(
-                                        shopName: _nameController.text,
-                                        address: _addressController.text,
-                                        phone: _phoneController.text,
-                                      ),
-                                    );
+                                  UpdateProfileEvent(
+                                    shopName: _nameController.text,
+                                    shopId: finalShopId,
+                                    address: _addressController.text,
+                                    phone: _phoneController.text,
+                                  ),
+                                );
+
+                                setState(() {
+                                  _shopIdController.text = finalShopId;
+                                });
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content:
-                                        Text('Profil berhasil diperbarui!'),
+                                    content: Text(
+                                      'Profil berhasil diperbarui!',
+                                    ),
                                     backgroundColor: Color(0xFF006D44),
                                   ),
                                 );
@@ -358,9 +430,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildAvatarPlaceholder() {
     return Container(
       color: Colors.grey.shade200,
-      child: const Center(
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
+      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
     );
   }
 
@@ -403,12 +473,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       readOnly: readOnly,
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon:
-            icon != null ? Icon(icon, size: 20, color: Colors.grey) : null,
+        prefixIcon: icon != null
+            ? Icon(icon, size: 20, color: Colors.grey)
+            : null,
         filled: true,
         fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFCBD5E1)),

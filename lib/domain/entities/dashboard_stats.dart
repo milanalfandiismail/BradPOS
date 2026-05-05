@@ -21,6 +21,9 @@ class DashboardStats extends Equatable {
   /// Persentase pertumbuhan rata-rata transaksi.
   final double ticketSizeGrowth;
 
+  /// Data penjualan harian untuk grafik (7 hari terakhir).
+  final List<double> dailySales;
+
   const DashboardStats({
     required this.totalSales,
     required this.salesGrowth,
@@ -28,6 +31,7 @@ class DashboardStats extends Equatable {
     required this.transactionsGrowth,
     required this.avgTicketSize,
     required this.ticketSizeGrowth,
+    this.dailySales = const [],
   });
 
   @override
@@ -38,5 +42,6 @@ class DashboardStats extends Equatable {
     transactionsGrowth,
     avgTicketSize,
     ticketSizeGrowth,
+    dailySales,
   ];
 }

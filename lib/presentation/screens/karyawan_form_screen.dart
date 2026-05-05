@@ -22,9 +22,9 @@ class KaryawanFormScreen extends StatefulWidget {
 class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _emailController;
   late TextEditingController _passwordController;
   bool _obscurePassword = true;
+  bool _isActive = true;
 
   bool get isEditing => widget.karyawan != null;
 
@@ -33,16 +33,13 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
     super.initState();
     // Inisialisasi controller dengan nilai yang sudah ada (jika mode edit)
     _nameController = TextEditingController(text: widget.karyawan?.name ?? '');
-    _emailController = TextEditingController(
-      text: widget.karyawan?.email ?? '',
-    );
     _passwordController = TextEditingController();
+    _isActive = widget.karyawan?.isActive ?? true;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -62,9 +59,8 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
             Supabase.instance.client.auth.currentUser?.id ??
             '',
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
         password: password,
-        isActive: true,
+        isActive: _isActive,
         createdAt: widget.karyawan?.createdAt ?? DateTime.now(),
       );
 
@@ -128,27 +124,6 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Input Email
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: InputDecoration(
-                        labelText: 'Email',
-                        hintText: 'Masukkan email karyawan',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Email wajib diisi';
-                        }
-                        if (!value.contains('@')) {
-                          return 'Masukkan email yang valid';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
                     // Input Password
                     TextFormField(
                       controller: _passwordController,
@@ -181,6 +156,29 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 24),
+                    // Input Status (Hanya muncul jika mode edit atau opsional)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: SwitchListTile(
+                        title: const Text(
+                          'Karyawan Aktif',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: const Text(
+                          'Nonaktifkan jika karyawan sudah tidak bekerja',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        value: _isActive,
+                        onChanged: (val) => setState(() => _isActive = val),
+                        activeTrackColor: AppColors.primary,
+                      ),
                     ),
                     const SizedBox(height: 32),
                     // Tombol Submit

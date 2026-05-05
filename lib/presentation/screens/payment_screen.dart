@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/presentation/blocs/cashier_bloc.dart';
+import 'package:bradpos/presentation/widgets/receipt_dialog.dart';
 
 class PaymentScreen extends StatefulWidget {
   final CashierState cashierState;
@@ -820,8 +821,69 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  // TODO: Implement Print Logic
+                  _printReceipt();
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.print_rounded, color: AppColors.primary),
+                label: const Text(
+                  'PRINT RECEIPT',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+  void _printReceipt() {
+    final state = context.read<AuthBloc>().state;
+    String shopName = 'BradPOS';
+    String? shopAddress;
+    String? shopPhone;
+    if (state is AuthAuthenticated) {
+      shopName = state.user.shopName ?? 'BradPOS';
+      shopAddress = state.user.address;
+      shopPhone = state.user.phone;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => ReceiptDialog(
+        items: widget.cashierState.cartItems
+            .map((e) => ReceiptItem(
+                  productName: e.productName,
+                  quantity: e.quantity,
+                  unitPrice: e.unitPrice,
+                  subtotal: e.subtotal,
+                ))
+            .toList(),
+        shopName: shopName,
+        customerName: _customerController.text.trim().isEmpty
+            ? 'Pelanggan Umum'
+            : _customerController.text.trim(),
+        cashierName: state is AuthAuthenticated ? (state.user.name ?? 'System') : 'System',
+        amountReceived: _amountReceived,
+        change: _change,
+        paymentMethod: _selectedMethod,
+        total: widget.cashierState.total,
+        shopAddress: shopAddress,
+        shopPhone: shopPhone,
       ),
     );
   }

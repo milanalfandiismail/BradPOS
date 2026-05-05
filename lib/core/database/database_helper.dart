@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
-  static const int _databaseVersion = 13;
+  static const int _databaseVersion = 14;
   static Database? _database;
 
   DatabaseHelper._init();
@@ -103,6 +103,13 @@ class DatabaseHelper {
     if (oldVersion < 12) {
       try {
         await db.execute('ALTER TABLE profiles ADD COLUMN full_name TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 14) {
+      try {
+        await db.execute('ALTER TABLE profiles ADD COLUMN shop_id TEXT');
       } catch (e) {
         debugPrint(e.toString());
       }
@@ -215,6 +222,7 @@ CREATE TABLE transactions (
     await db.execute('''
 CREATE TABLE profiles (
   id $idType,
+  shop_id $textNullable,
   shop_name $textType,
   full_name $textNullable,
   remote_image $textNullable,

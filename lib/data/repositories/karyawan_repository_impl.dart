@@ -60,10 +60,9 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
     try {
       // Gunakan RPC agar pembuatan akun karyawan tersentralisasi di server
       final response = await supabase.rpc(
-        "create_karyawan",
+        "create_karyawan_v2",
         params: {
           "p_full_name": karyawan.name,
-          "p_email": karyawan.email,
           "p_password": karyawan.password,
         },
       );
@@ -109,7 +108,6 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
           .from("karyawan")
           .update({
             "full_name": karyawan.name,
-            "email": karyawan.email,
             "is_active": karyawan.isActive,
           })
           .eq("id", karyawan.id)

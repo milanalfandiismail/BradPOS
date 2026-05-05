@@ -25,15 +25,20 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }) async {
     var query = supabase
         .from('profiles')
-        .select('shop_name, full_name, address, phone, remote_image, local_image, updated_at')
+        .select('shop_name, shop_id, full_name, address, phone, remote_image, local_image, updated_at')
         .eq('id', effectiveUserId);
 
     if (localUpdatedAt != null) {
       query = query.gt('updated_at', localUpdatedAt);
     }
 
-    final response = await query.maybeSingle();
-    return response;
+    try {
+      final response = await query.maybeSingle();
+      return response;
+    } catch (e) {
+      debugPrint("ProfileRemoteDataSource: getProfile failed: $e");
+      return null;
+    }
   }
 
   @override

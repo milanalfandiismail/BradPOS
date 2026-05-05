@@ -17,7 +17,36 @@ void main() async {
   await initializeDateFormatting('id_ID', null);
   await dotenv.load(fileName: ".env");
   await di.init();
-  runApp(const MyApp());
+  runApp(const BradPOSApp());
+}
+
+class BradPOSApp extends StatefulWidget {
+  const BradPOSApp({super.key});
+
+  static void restartApp(BuildContext context) {
+    context.findAncestorStateOfType<_BradPOSAppState>()?.restartApp();
+  }
+
+  @override
+  State<BradPOSApp> createState() => _BradPOSAppState();
+}
+
+class _BradPOSAppState extends State<BradPOSApp> {
+  Key _key = UniqueKey();
+
+  void restartApp() {
+    setState(() {
+      _key = UniqueKey();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: _key,
+      child: const MyApp(),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -41,6 +70,12 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF065F46)),
           useMaterial3: true,
           fontFamily: 'Inter',
+          pageTransitionsTheme: const PageTransitionsTheme(
+            builders: {
+              TargetPlatform.android: ZoomPageTransitionsBuilder(),
+              TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            },
+          ),
         ),
         home: const SplashPage(),
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/presentation/screens/profile_screen.dart';
+import 'package:bradpos/presentation/screens/personal_profile_screen.dart';
 
 class SettingsModal {
   static void show(BuildContext context) {
@@ -35,42 +36,89 @@ class SettingsModal {
               ),
             ),
             const SizedBox(height: 16),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.person_outline_rounded, color: Colors.blue.shade700, size: 20),
-              ),
-              title: const Text(
-                'Profil Bisnis',
-                style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
-              ),
-              subtitle: const Text('Kelola informasi toko & akun', style: TextStyle(fontSize: 12)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            // Tab Content
+            BlocBuilder<AuthBloc, AuthState>(
+              builder: (context, state) {
+                final bool isOwner = state is AuthAuthenticated && state.user.isOwner;
+                
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isOwner)
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.store_rounded,
+                              color: Colors.blue.shade700, size: 20),
+                        ),
+                        title: const Text(
+                          'Profil Bisnis',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1E293B)),
+                        ),
+                        subtitle: const Text('Kelola informasi toko & akun',
+                            style: TextStyle(fontSize: 12)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const ProfileScreen()),
+                          );
+                        },
+                      ),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.person_outline_rounded,
+                            color: Colors.teal.shade700, size: 20),
+                      ),
+                      title: const Text(
+                        'Profil Saya',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E293B)),
+                      ),
+                      subtitle: const Text('Kelola informasi akun pribadi',
+                          style: TextStyle(fontSize: 12)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const PersonalProfileScreen()),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.help_outline_rounded,
+                            color: Colors.orange.shade700, size: 20),
+                      ),
+                      title: const Text(
+                        'Bantuan',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                      ),
+                      subtitle: const Text('Pusat bantuan & panduan',
+                          style: TextStyle(fontSize: 12)),
+                      onTap: () => Navigator.pop(context),
+                    ),
+                  ],
                 );
               },
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.help_outline_rounded, color: Colors.orange.shade700, size: 20),
-              ),
-              title: const Text(
-                'Bantuan',
-                style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
-              ),
-              subtitle: const Text('Pusat bantuan & panduan', style: TextStyle(fontSize: 12)),
-              onTap: () => Navigator.pop(context),
             ),
             const Divider(height: 32, indent: 20, endIndent: 20),
             ListTile(

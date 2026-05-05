@@ -7,6 +7,7 @@ class UserEntity extends Equatable {
   final String email;
   final String? name;
   final String? shopName;
+  final String? shopId;
 
   /// Role pengguna:
   /// - 'owner': Pemilik toko, memiliki akses penuh ke semua fitur.
@@ -27,6 +28,7 @@ class UserEntity extends Equatable {
     required this.email,
     this.name,
     this.shopName,
+    this.shopId,
     this.role = 'owner',
     this.ownerId,
     this.remoteImage,
@@ -50,6 +52,7 @@ class UserEntity extends Equatable {
       email: map['email'],
       name: map['name'] ?? map['full_name'],
       shopName: map['shop_name'],
+      shopId: map['shop_id'],
       role: map['role'] ?? 'owner',
       ownerId: map['owner_id'],
       remoteImage: map['remote_image'],
@@ -65,6 +68,7 @@ class UserEntity extends Equatable {
       'email': email,
       'name': name,
       'shop_name': shopName,
+      'shop_id': shopId,
       'role': role,
       'owner_id': ownerId,
       'remote_image': remoteImage,
@@ -75,5 +79,5 @@ class UserEntity extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, email, name, shopName, role, ownerId, remoteImage, localImage, address, phone];
+  List<Object?> get props => [id, email, name, shopName, shopId, role, ownerId, remoteImage, localImage, address, phone];
 }

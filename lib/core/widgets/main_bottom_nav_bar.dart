@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_colors.dart';
+import '../utils/app_navigator.dart';
 import 'package:bradpos/presentation/widgets/stock_alert_badge.dart';
 import 'package:bradpos/presentation/screens/dashboard_screen.dart';
 import 'package:bradpos/presentation/screens/cashier_screen.dart';
@@ -76,9 +77,7 @@ class MainBottomNavBar extends StatelessWidget {
 
   void _navigateTo(BuildContext context, Widget page, String label) {
     if (activeLabel != label) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => page));
+      AppNavigator.pushReplacement(context, page);
     }
   }
 

@@ -40,14 +40,21 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       final user = response.user;
       if (user != null) {
-        final shopName = user.userMetadata?['shop_name'] ?? 'BradPOS';
+        // Fetch profile immediately
+        final profile = await profileRemoteDataSource.getProfile(user.id);
+        
         final userEntity = UserEntity(
           id: user.id,
           email: user.email ?? '',
-          name: user.userMetadata?['full_name'],
-          shopName: shopName,
+          name: profile?['full_name'] ?? user.userMetadata?['full_name'],
+          shopName: profile?['shop_name'] ?? user.userMetadata?['shop_name'] ?? 'BradPOS',
+          shopId: profile?['shop_id'] ?? user.userMetadata?['shop_id'],
           role: 'owner',
+          remoteImage: profile?['remote_image'],
+          address: profile?['address'],
+          phone: profile?['phone'],
         );
+        
         await _saveLocalProfile(userEntity);
         await prefs.setString(_ownerSessionKey, jsonEncode(userEntity.toMap()));
         return Right(userEntity);
@@ -77,12 +84,17 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       final user = response.user;
       if (user != null) {
+        // Fetch profile (might be empty but good for consistency)
+        final profile = await profileRemoteDataSource.getProfile(user.id);
+
         final userEntity = UserEntity(
           id: user.id,
           email: user.email ?? '',
-          name: user.userMetadata?['full_name'],
-          shopName: 'BradPOS',
+          name: fullName,
+          shopName: profile?['shop_name'] ?? 'BradPOS',
+          shopId: profile?['shop_id'],
           role: 'owner',
+          remoteImage: profile?['remote_image'],
         );
         await _saveLocalProfile(userEntity);
         await prefs.setString(_ownerSessionKey, jsonEncode(userEntity.toMap()));
@@ -114,13 +126,19 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final user = response.user;
       if (user != null) {
-        final shopName = user.userMetadata?['shop_name'] ?? 'BradPOS';
+        // Fetch profile immediately
+        final profile = await profileRemoteDataSource.getProfile(user.id);
+
         final userEntity = UserEntity(
           id: user.id,
           email: user.email ?? '',
-          name: user.userMetadata?['full_name'],
-          shopName: shopName,
+          name: profile?['full_name'] ?? user.userMetadata?['full_name'],
+          shopName: profile?['shop_name'] ?? user.userMetadata?['shop_name'] ?? 'BradPOS',
+          shopId: profile?['shop_id'] ?? user.userMetadata?['shop_id'],
           role: 'owner',
+          remoteImage: profile?['remote_image'],
+          address: profile?['address'],
+          phone: profile?['phone'],
         );
         await _saveLocalProfile(userEntity);
         await prefs.setString(_ownerSessionKey, jsonEncode(userEntity.toMap()));
@@ -142,6 +160,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await prefs.remove(_karyawanSessionKey);
       await prefs.remove(_ownerSessionKey);
       await prefs.remove(_guestSessionKey);
+      
       return const Right(null);
     } catch (e) {
       return Left(e.toString());
@@ -162,6 +181,7 @@ class AuthRepositoryImpl implements AuthRepository {
         final profile = await profileLocalDataSource.getProfile(ownerMap['id']);
         final shopName =
             profile?['shop_name'] ?? ownerMap['shop_name'] ?? 'BradPOS';
+        final shopId = profile?['shop_id'] ?? ownerMap['shop_id'];
         final remoteImage =
             profile?['remote_image'] ?? ownerMap['remote_image'];
         final localImage = profile?['local_image'] ?? ownerMap['local_image'];
@@ -170,6 +190,7 @@ class AuthRepositoryImpl implements AuthRepository {
           UserEntity.fromMap({
             ...ownerMap,
             'shop_name': shopName,
+            'shop_id': shopId,
             'remote_image': remoteImage,
             'local_image': localImage,
           }),
@@ -180,10 +201,13 @@ class AuthRepositoryImpl implements AuthRepository {
       final sbUser = supabase.auth.currentUser;
       if (sbUser != null) {
         final profile = await profileLocalDataSource.getProfile(sbUser.id);
+        final fullName =
+            profile?['full_name'] ?? sbUser.userMetadata?['full_name'];
         final shopName =
             profile?['shop_name'] ??
             sbUser.userMetadata?['shop_name'] ??
             'BradPOS';
+        final shopId = profile?['shop_id'] ?? sbUser.userMetadata?['shop_id'];
         final remoteImage =
             profile?['remote_image'] ?? sbUser.userMetadata?['remote_image'];
         final localImage =
@@ -192,8 +216,9 @@ class AuthRepositoryImpl implements AuthRepository {
         final userEntity = UserEntity(
           id: sbUser.id,
           email: sbUser.email ?? '',
-          name: sbUser.userMetadata?['full_name'],
+          name: fullName,
           shopName: shopName,
+          shopId: shopId,
           role: 'owner',
           remoteImage: remoteImage,
           localImage: localImage,
@@ -236,7 +261,9 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<String, UserEntity>> updateProfile({
+    String? fullName,
     String? shopName,
+    String? shopId,
     String? remoteImage,
     String? localImage,
     String? address,
@@ -259,8 +286,9 @@ class AuthRepositoryImpl implements AuthRepository {
       final updatedUser = UserEntity(
         id: user.id,
         email: user.email,
-        name: user.name,
+        name: fullName ?? user.name,
         shopName: shopName ?? user.shopName,
+        shopId: shopId ?? user.shopId,
         role: user.role,
         ownerId: user.ownerId,
         remoteImage: finalRemoteUrl ?? user.remoteImage,
@@ -277,13 +305,20 @@ class AuthRepositoryImpl implements AuthRepository {
           'id': user.id,
           'updated_at': DateTime.now().toIso8601String(),
         };
+        if (fullName != null) updateData['full_name'] = fullName;
         if (shopName != null) updateData['shop_name'] = shopName;
+        if (shopId != null) updateData['shop_id'] = shopId;
         if (address != null) updateData['address'] = address;
         if (phone != null) updateData['phone'] = phone;
         if (finalRemoteUrl != null) updateData['remote_image'] = finalRemoteUrl;
         if (localImage != null) updateData['local_image'] = localImage;
 
-        await profileRemoteDataSource.upsertProfile(updateData);
+        try {
+          await profileRemoteDataSource.upsertProfile(updateData);
+        } catch (e) {
+          debugPrint("AuthRepository: Remote profile update failed: $e");
+          // Kita lanjut saja karena local sudah sukses
+        }
 
         if (shopName != null && user.role == 'owner') {
           await supabase.auth.updateUser(
@@ -338,17 +373,22 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<String, UserEntity>> signInAsKaryawan(
-    String email,
+    String shopId,
+    String name,
     String password,
   ) async {
     try {
       final response = await supabase.rpc(
-        'verify_karyawan_login',
-        params: {'p_email': email, 'p_password': password},
+        'verify_karyawan_login_v2',
+        params: {
+          'p_shop_id': shopId,
+          'p_full_name': name,
+          'p_password': password
+        },
       );
 
       if (response == null || (response as List).isEmpty) {
-        return const Left('Email atau password karyawan salah');
+        return const Left('Shop ID, Nama, atau password salah');
       }
 
       final karyawanData = response[0];
@@ -365,7 +405,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final user = UserEntity(
         id: karyawanData['id'],
-        email: karyawanData['email'],
+        email: '', // No email for employee
         name: karyawanData['full_name'],
         shopName: shopName,
         role: 'karyawan',
@@ -384,15 +424,13 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<String, String>> createKaryawan(
     String fullName,
-    String email,
     String password,
   ) async {
     try {
       final response = await supabase.rpc(
-        'create_karyawan',
+        'create_karyawan_v2',
         params: {
           'p_full_name': fullName,
-          'p_email': email,
           'p_password': password,
         },
       );
@@ -409,6 +447,7 @@ class AuthRepositoryImpl implements AuthRepository {
     await profileLocalDataSource.saveProfile({
       'id': user.role == 'karyawan' ? user.ownerId : user.id,
       'shop_name': user.shopName,
+      'shop_id': user.shopId,
       'full_name': user.name,
       'remote_image': user.remoteImage,
       'local_image': user.localImage,

@@ -70,12 +70,18 @@ class KaryawanCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            karyawan.email,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+          Row(
+            children: [
+              const Icon(Icons.shield_outlined, size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                karyawan.isActive ? 'Status: Aktif' : 'Status: Nonaktif',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           // Tombol aksi untuk Edit dan Delete

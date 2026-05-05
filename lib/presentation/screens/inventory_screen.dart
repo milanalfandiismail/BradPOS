@@ -14,7 +14,7 @@ import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
 import 'package:bradpos/injection_container.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
-
+import 'package:bradpos/core/utils/app_navigator.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -96,13 +96,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   void _openForm({InventoryItem? item}) {
-    Navigator.push(
+    AppNavigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => BlocProvider.value(
-          value: context.read<InventoryBloc>(),
-          child: InventoryFormScreen(item: item),
-        ),
+      BlocProvider.value(
+        value: context.read<InventoryBloc>(),
+        child: InventoryFormScreen(item: item),
       ),
     );
   }
@@ -264,21 +262,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
               if (state is AuthAuthenticated) {
                 shopName = state.user.shopName ?? 'BradPOS';
               }
-                    return BradHeader(
-                      title: 'Stok',
-                      subtitle: shopName,
-                      leadingIcon: Icons.inventory_2_rounded,
-                      onSettingsTap: () => SettingsModal.show(context),
-                      actions: [
+              return BradHeader(
+                title: 'Manajemen Inventory / Produk',
+                subtitle: shopName,
+                leadingIcon: Icons.inventory_2_rounded,
+                onSettingsTap: () => SettingsModal.show(context),
+                actions: [
                   IconButton(
                     onPressed: () {
-                      Navigator.push(
+                      AppNavigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider.value(
-                            value: context.read<InventoryBloc>(),
-                            child: const CategoryListScreen(),
-                          ),
+                        BlocProvider.value(
+                          value: context.read<InventoryBloc>(),
+                          child: const CategoryListScreen(),
                         ),
                       ).then((_) {
                         if (!mounted) return;
@@ -462,144 +458,164 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void _showFilterSheet() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) {
           return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
             decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Filter Inventory',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Filter Produk',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setSheetState(() {
+                                  _selectedCategory = 'All';
+                                  _stockFilter = 'All';
+                                });
+                                setState(() {
+                                  _selectedCategory = 'All';
+                                  _stockFilter = 'All';
+                                });
+                              },
+                              child: const Text(
+                                'Reset',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedCategory = 'All';
-                              _stockFilter = 'All';
-                            });
-                            Navigator.pop(context);
+                        const SizedBox(height: 24),
+                        const _FilterSectionTitle(title: 'Kategori Produk'),
+                        const SizedBox(height: 12),
+                        BlocBuilder<InventoryBloc, InventoryState>(
+                          builder: (context, state) {
+                            List<String> categories = ['All', 'Tanpa Kategori'];
+                            if (state is InventoryLoaded) {
+                              categories.addAll(
+                                state.categories
+                                    .map((c) => c.name)
+                                    .where((name) => name != 'Tanpa Kategori'),
+                              );
+                            }
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: categories.map((c) {
+                                final isSel = _selectedCategory == c;
+                                return _CustomFilterChip(
+                                  label: c,
+                                  isSelected: isSel,
+                                  onSelected: (val) {
+                                    setSheetState(() => _selectedCategory = c);
+                                    setState(() => _selectedCategory = c);
+                                  },
+                                );
+                              }).toList(),
+                            );
                           },
-                          child: const Text('Reset'),
+                        ),
+                        const SizedBox(height: 24),
+                        const _FilterSectionTitle(title: 'Status Stok'),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children:
+                              [
+                                'All',
+                                'Low Stock',
+                                'Out of Stock',
+                                'Unlimited',
+                              ].map((s) {
+                                final isSel = _stockFilter == s;
+                                return _CustomFilterChip(
+                                  label: s,
+                                  isSelected: isSel,
+                                  onSelected: (val) {
+                                    setSheetState(() => _stockFilter = s);
+                                    setState(() => _stockFilter = s);
+                                  },
+                                );
+                              }).toList(),
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _currentPage = 1;
+                              _loadPage();
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Terapkan Filter',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Category',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    BlocBuilder<InventoryBloc, InventoryState>(
-                      builder: (context, state) {
-                        List<String> categories = ['All', 'Tanpa Kategori'];
-                        if (state is InventoryLoaded) {
-                          categories.addAll(
-                            state.categories
-                                .map((c) => c.name)
-                                .where((name) => name != 'Tanpa Kategori'),
-                          );
-                        }
-                        return Wrap(
-                          spacing: 8,
-                          children: categories.map((c) {
-                            final isSel = _selectedCategory == c;
-                            return ChoiceChip(
-                              label: Text(c),
-                              selected: isSel,
-                              onSelected: (val) {
-                                setSheetState(() => _selectedCategory = c);
-                                setState(() => _selectedCategory = c);
-                              },
-                              selectedColor: AppColors.primary.withValues(
-                                alpha: 0.1,
-                              ),
-                              labelStyle: TextStyle(
-                                color: isSel ? AppColors.primary : Colors.black,
-                                fontSize: 12,
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Stock Status',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      children:
-                          [
-                            'All',
-                            'Low Stock',
-                            'Out of Stock',
-                            'Unlimited',
-                          ].map((s) {
-                            final isSel = _stockFilter == s;
-                            return ChoiceChip(
-                              label: Text(s),
-                              selected: isSel,
-                              onSelected: (val) {
-                                setSheetState(() => _stockFilter = s);
-                                setState(() => _stockFilter = s);
-                              },
-                              selectedColor: AppColors.primary.withValues(
-                                alpha: 0.1,
-                              ),
-                              labelStyle: TextStyle(
-                                color: isSel ? AppColors.primary : Colors.black,
-                                fontSize: 12,
-                              ),
-                            );
-                          }).toList(),
-                    ),
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          _currentPage = 1;
-                          _loadPage();
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('Apply Filters'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           );
         },
@@ -752,6 +768,60 @@ class _InventoryScreenState extends State<InventoryScreen> {
             child: const Text('Simpan'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterSectionTitle extends StatelessWidget {
+  final String title;
+  const _FilterSectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontWeight: FontWeight.w700,
+        fontSize: 15,
+        color: Color(0xFF475569),
+      ),
+    );
+  }
+}
+
+class _CustomFilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final Function(bool) onSelected;
+
+  const _CustomFilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: onSelected,
+      backgroundColor: Colors.white,
+      selectedColor: AppColors.primary.withValues(alpha: 0.1),
+      checkmarkColor: AppColors.primary,
+      labelStyle: TextStyle(
+        color: isSelected ? AppColors.primary : const Color(0xFF64748B),
+        fontSize: 13,
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+          width: 1.5,
+        ),
       ),
     );
   }

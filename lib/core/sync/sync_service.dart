@@ -4,6 +4,7 @@ import 'package:bradpos/core/sync/category_sync_manager.dart';
 import 'package:bradpos/core/sync/product_sync_manager.dart';
 import 'package:bradpos/core/sync/transaction_sync_manager.dart';
 import 'package:bradpos/core/sync/profile_sync_manager.dart';
+import 'package:bradpos/domain/entities/user_entity.dart';
 
 class SyncService {
   final AuthRepository authRepository;
@@ -22,28 +23,28 @@ class SyncService {
     required this.profileSync,
   });
 
-  Future<void> syncAll({int? limit, int? offset}) async {
+  Future<void> syncAll({UserEntity? user, int? limit, int? offset}) async {
     if (_isSyncing) return;
     _isSyncing = true;
 
-    final userResult = await authRepository.getCurrentUser();
-    final user = userResult.getOrElse(() => null);
+    final activeUser = user ?? (await authRepository.getCurrentUser()).getOrElse(() => null);
 
-    if (user == null) {
+    if (activeUser == null) {
       debugPrint("SyncService: Skip sync karena user belum login atau sesi hilang");
+      _isSyncing = false;
       return;
     }
 
-    final String effectiveUserId = (user.isKaryawan && user.ownerId != null)
-        ? user.ownerId!
-        : user.id;
+    final String effectiveUserId = (activeUser.isKaryawan && activeUser.ownerId != null)
+        ? activeUser.ownerId!
+        : activeUser.id;
 
     try {
       debugPrint("SyncService: Memulai sinkronisasi modular untuk user $effectiveUserId");
 
       // 1. Profile Sync
       try {
-        await profileSync.sync(user);
+        await profileSync.sync(activeUser);
       } catch (e) {
         debugPrint("SyncService: ProfileSync failed: $e");
       }

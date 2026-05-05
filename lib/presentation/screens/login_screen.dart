@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/core/widgets/splash_page.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
+import 'package:bradpos/core/utils/app_navigator.dart';
 import 'register_screen.dart';
 
 /// Halaman Login utama BradPOS.
@@ -18,7 +19,8 @@ class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _karyawanIdController = TextEditingController();
+  final _shopIdController = TextEditingController();
+  final _karyawanNameController = TextEditingController();
   final _karyawanPassController = TextEditingController();
   final _ownerFormKey = GlobalKey<FormState>();
   final _karyawanFormKey = GlobalKey<FormState>();
@@ -36,7 +38,8 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _karyawanIdController.dispose();
+    _shopIdController.dispose();
+    _karyawanNameController.dispose();
     _karyawanPassController.dispose();
     _tabController.dispose();
     super.dispose();
@@ -57,7 +60,8 @@ class _LoginScreenState extends State<LoginScreen>
     if (_karyawanFormKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
         SignInAsKaryawanRequested(
-          email: _karyawanIdController.text.trim(),
+          shopId: _shopIdController.text.trim().toUpperCase(),
+          name: _karyawanNameController.text.trim(),
           password: _karyawanPassController.text,
         ),
       );
@@ -71,9 +75,7 @@ class _LoginScreenState extends State<LoginScreen>
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const SplashPage()),
-            );
+            AppNavigator.pushReplacement(context, const SplashPage());
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -152,23 +154,29 @@ class _LoginScreenState extends State<LoginScreen>
                       padding: const EdgeInsets.all(4),
                       tabs: const [
                         Tab(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.admin_panel_settings, size: 20),
-                              SizedBox(width: 8),
-                              Text('Owner'),
-                            ],
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.admin_panel_settings, size: 20),
+                                SizedBox(width: 8),
+                                Text('Owner'),
+                              ],
+                            ),
                           ),
                         ),
                         Tab(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.badge, size: 20),
-                              SizedBox(width: 8),
-                              Text('Karyawan'),
-                            ],
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.badge, size: 20),
+                                SizedBox(width: 8),
+                                Text('Karyawan'),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -414,10 +422,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                  );
+                  AppNavigator.push(context, const RegisterScreen());
                 },
                 child: const Text(
                   'Daftar',
@@ -458,7 +463,7 @@ class _LoginScreenState extends State<LoginScreen>
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Gunakan Email & Password yang diberikan oleh Owner toko anda.',
+                    'Gunakan Shop ID, Nama & Password yang diberikan oleh Owner toko anda.',
                     style: TextStyle(
                       color: AppColors.secondary,
                       fontSize: 13,
@@ -471,14 +476,49 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           const SizedBox(height: 24),
 
-          // karyawan.email
+          // Shop ID
           TextFormField(
-            controller: _karyawanIdController,
-            keyboardType: TextInputType.emailAddress,
+            controller: _shopIdController,
             textInputAction: TextInputAction.next,
             style: const TextStyle(fontSize: 16),
             decoration: InputDecoration(
-              labelText: 'Email Karyawan',
+              labelText: 'Shop ID',
+              hintText: 'Contoh: BAA-2026',
+              prefixIcon: const Icon(Icons.store_outlined),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppColors.secondary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: AppColors.white,
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Masukkan Shop ID';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Nama Karyawan
+          TextFormField(
+            controller: _karyawanNameController,
+            textInputAction: TextInputAction.next,
+            style: const TextStyle(fontSize: 16),
+            decoration: InputDecoration(
+              labelText: 'Nama Karyawan',
               prefixIcon: const Icon(Icons.badge_outlined),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -499,11 +539,8 @@ class _LoginScreenState extends State<LoginScreen>
               fillColor: AppColors.white,
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Masukkan email karyawan';
-              }
-              if (!value.contains('@')) {
-                return 'Masukkan email yang valid';
+              if (value == null || value.trim().isEmpty) {
+                return 'Masukkan nama karyawan';
               }
               return null;
             },

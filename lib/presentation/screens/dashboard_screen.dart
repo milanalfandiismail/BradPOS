@@ -10,7 +10,6 @@ import 'package:bradpos/presentation/widgets/quick_action_button.dart';
 import 'package:bradpos/presentation/widgets/quick_action_card.dart';
 import 'package:bradpos/presentation/widgets/low_stock_banner.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
-import 'package:bradpos/presentation/screens/login_screen.dart';
 import 'package:bradpos/presentation/screens/karyawan_list_screen.dart';
 import 'package:bradpos/presentation/screens/inventory_screen.dart';
 import 'package:bradpos/presentation/screens/cashier_screen.dart';
@@ -18,18 +17,30 @@ import 'package:bradpos/presentation/screens/history_screen.dart';
 import 'package:bradpos/core/widgets/main_bottom_nav_bar.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
+import 'package:bradpos/core/utils/app_navigator.dart';
+import 'package:bradpos/main.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load data immediately on screen entry
+    context.read<DashboardBloc>().add(LoadDashboardStats());
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthUnauthenticated) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          );
+          BradPOSApp.restartApp(context);
         }
       },
       child: Scaffold(
@@ -64,7 +75,10 @@ class DashboardScreen extends StatelessWidget {
                   },
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -76,20 +90,25 @@ class DashboardScreen extends StatelessWidget {
                         BlocBuilder<DashboardBloc, DashboardState>(
                           builder: (context, state) {
                             if (state is DashboardLoading) {
-                              return const Center(child: CircularProgressIndicator());
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
                             } else if (state is DashboardLoaded) {
                               return Column(
                                 children: [
                                   LowStockBanner(
                                     lowStockCount: state.lowStockCount,
                                     outOfStockCount: state.outOfStockCount,
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const InventoryScreen(),
-                                      ),
+                                    onTap: () => AppNavigator.push(
+                                      context,
+                                      const InventoryScreen(),
                                     ),
                                   ),
                                   _buildStats(state.stats),
+                                  const SizedBox(height: 24),
+                                  _buildSalesPerformance(
+                                    state.stats.dailySales,
+                                  ),
                                 ],
                               );
                             } else if (state is DashboardError) {
@@ -98,8 +117,6 @@ class DashboardScreen extends StatelessWidget {
                             return const SizedBox();
                           },
                         ),
-                        const SizedBox(height: 24),
-                        _buildSalesPerformance(),
                         const SizedBox(height: 24),
                         _buildBottomActions(context),
                         const SizedBox(height: 100),
@@ -112,9 +129,7 @@ class DashboardScreen extends StatelessWidget {
           ),
         ),
         bottomNavigationBar: BlocBuilder<DashboardBloc, DashboardState>(
-          builder: (_, _) => MainBottomNavBar(
-            activeLabel: 'DASHBOARD',
-          ),
+          builder: (_, _) => const MainBottomNavBar(activeLabel: 'DASHBOARD'),
         ),
       ),
     );
@@ -170,9 +185,7 @@ class DashboardScreen extends StatelessWidget {
               icon: Icons.point_of_sale_rounded,
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              onTap: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const CashierScreen())),
+              onTap: () => AppNavigator.push(context, const CashierScreen()),
             ),
             if (isOwner) ...[
               const SizedBox(width: 12),
@@ -181,9 +194,8 @@ class DashboardScreen extends StatelessWidget {
                 icon: Icons.people_alt_rounded,
                 backgroundColor: const Color(0xFFE0F2FE),
                 foregroundColor: const Color(0xFF0369A1),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const KaryawanListScreen()),
-                ),
+                onTap: () =>
+                    AppNavigator.push(context, const KaryawanListScreen()),
               ),
             ],
           ],
@@ -211,7 +223,6 @@ class DashboardScreen extends StatelessWidget {
         StatCard(
           title: 'Penjualan Hari Ini',
           value: currencyFormat.format(stats.totalSales),
-          growth: stats.salesGrowth,
           icon: Icons.payments_rounded,
           iconColor: const Color(0xFF059669),
           iconBgColor: const Color(0xFFD1FAE5),
@@ -220,7 +231,6 @@ class DashboardScreen extends StatelessWidget {
         StatCard(
           title: 'Total Transaksi',
           value: stats.totalTransactions.toString(),
-          growth: stats.transactionsGrowth,
           icon: Icons.receipt_rounded,
           iconColor: const Color(0xFF2563EB),
           iconBgColor: const Color(0xFFDBEAFE),
@@ -229,7 +239,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSalesPerformance() {
+  Widget _buildSalesPerformance(List<double> dailySales) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -249,7 +259,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
           const Text(
-            'Trend per jam hari ini',
+            'Trend per hari',
             style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
           ),
           const SizedBox(height: 30),
@@ -258,24 +268,53 @@ class DashboardScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(6, (index) {
-                final heights = [45.0, 85.0, 65.0, 100.0, 75.0, 95.0];
-                final times = [
-                  '08:00',
-                  '10:00',
-                  '12:00',
-                  '14:00',
-                  '16:00',
-                  '18:00',
-                ];
+              children: List.generate(7, (index) {
+                final sales = index < dailySales.length
+                    ? dailySales[index]
+                    : 0.0;
+                // Calculate relative height (max height 100)
+                double maxSales = dailySales.fold(0.0, (m, v) => v > m ? v : m);
+                if (maxSales == 0) maxSales = 1.0;
+                final barHeight = (sales / maxSales) * 100;
+
+                final days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+                final now = DateTime.now();
+                // index 6 is today, index 0 is 6 days ago
+                final date = now.subtract(Duration(days: 6 - index));
+                final dayLabel = days[date.weekday - 1];
+
+                String formatCompact(double value) {
+                  if (value <= 0) return '';
+                  if (value >= 1000000) {
+                    return '${(value / 1000000).toStringAsFixed(1)}jt';
+                  }
+                  if (value >= 1000) {
+                    return '${(value / 1000).toStringAsFixed(0)}rb';
+                  }
+                  return value.toStringAsFixed(0);
+                }
+
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    Text(
+                      formatCompact(sales),
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        color: index == 6
+                            ? AppColors.primary
+                            : const Color(0xFF94A3B8),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     Container(
-                      width: 32,
-                      height: heights[index],
+                      width: 28,
+                      height: barHeight < 5 ? 5 : barHeight,
                       decoration: BoxDecoration(
-                        color: index == 3
+                        color:
+                            index ==
+                                6 // Highlighting today
                             ? AppColors.primary
                             : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(6),
@@ -283,7 +322,7 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      times[index],
+                      dayLabel,
                       style: const TextStyle(
                         fontSize: 9,
                         color: Color(0xFF94A3B8),
@@ -308,9 +347,7 @@ class DashboardScreen extends StatelessWidget {
           subtitle: 'Proses belanja pelanggan',
           icon: Icons.add_shopping_cart_rounded,
           iconBgColor: AppColors.primary,
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const CashierScreen())),
+          onTap: () => AppNavigator.push(context, const CashierScreen()),
         ),
         const SizedBox(height: 12),
         QuickActionCard(
@@ -319,9 +356,7 @@ class DashboardScreen extends StatelessWidget {
           icon: Icons.inventory_2_rounded,
           iconBgColor: AppColors.secondary,
           badgeCount: _getTotalStockAlert(context),
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const InventoryScreen())),
+          onTap: () => AppNavigator.push(context, const InventoryScreen()),
         ),
         const SizedBox(height: 12),
         QuickActionCard(
@@ -329,9 +364,7 @@ class DashboardScreen extends StatelessWidget {
           subtitle: 'Daftar nota belanja',
           icon: Icons.receipt_long_rounded,
           iconBgColor: Colors.purple,
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const HistoryScreen())),
+          onTap: () => AppNavigator.push(context, const HistoryScreen()),
         ),
       ],
     );

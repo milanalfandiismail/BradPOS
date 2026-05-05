@@ -46,6 +46,7 @@ class ProfileSyncManager {
       }
 
       final newShopName = response['shop_name'] as String?;
+      final newShopId = response['shop_id'] as String?;
       final newFullName = response['full_name'] as String?;
       final newAddress = response['address'] as String?;
       final newPhone = response['phone'] as String?;
@@ -54,6 +55,7 @@ class ProfileSyncManager {
 
       bool isChanged =
           newShopName != user.shopName ||
+          newShopId != user.shopId ||
           newFullName != user.name ||
           newAddress != user.address ||
           newPhone != user.phone ||
@@ -72,6 +74,7 @@ class ProfileSyncManager {
         email: user.email,
         name: newFullName ?? user.name,
         shopName: newShopName ?? user.shopName,
+        shopId: (newShopId != null && newShopId.isNotEmpty) ? newShopId : user.shopId,
         role: user.role,
         ownerId: user.ownerId,
         remoteImage: newRemoteImg,
@@ -83,6 +86,7 @@ class ProfileSyncManager {
       await localDataSource.saveProfile({
         'id': effectiveUserId,
         'shop_name': updatedUser.shopName,
+        'shop_id': updatedUser.shopId,
         'full_name': updatedUser.name,
         'remote_image': updatedUser.remoteImage,
         'local_image': updatedUser.localImage,

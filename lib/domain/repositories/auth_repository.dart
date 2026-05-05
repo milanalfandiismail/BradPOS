@@ -27,7 +27,9 @@ abstract class AuthRepository {
 
   /// Mengupdate profil toko (Nama, Gambar).
   Future<Either<String, UserEntity>> updateProfile({
+    String? fullName,
     String? shopName,
+    String? shopId,
     String? remoteImage,
     String? localImage,
     String? address,
@@ -49,14 +51,14 @@ abstract class AuthRepository {
 
   /// Login Karyawan menggunakan email dan password yang tersimpan di tabel 'karyawan'.
   Future<Either<String, UserEntity>> signInAsKaryawan(
-    String email,
+    String shopId,
+    String name,
     String password,
   );
 
   /// Membuat akun karyawan baru (hanya bisa dilakukan oleh Owner).
   Future<Either<String, String>> createKaryawan(
     String fullName,
-    String email,
     String password,
   );
 }

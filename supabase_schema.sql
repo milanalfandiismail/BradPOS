@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   phone TEXT,
   remote_image TEXT,
   local_image TEXT,
+  shop_id TEXT UNIQUE, -- ID Unik Toko untuk Login Karyawan
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -78,7 +79,7 @@ CREATE TABLE IF NOT EXISTS karyawan (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id UUID NOT NULL,
   full_name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
+  email TEXT UNIQUE, -- Optional since we use Shop ID + Name now
   password_hash TEXT NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -210,6 +211,16 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='phone') THEN
         ALTER TABLE public.profiles ADD COLUMN phone TEXT;
     END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='shop_id') THEN
+        ALTER TABLE public.profiles ADD COLUMN shop_id TEXT;
+        CREATE UNIQUE INDEX IF NOT EXISTS profiles_shop_id_idx ON profiles (shop_id);
+    END IF;
+
+    -- Make karyawan.email nullable for new login system
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='karyawan' AND column_name='email') THEN
+        ALTER TABLE public.karyawan ALTER COLUMN email DROP NOT NULL;
+    END IF;
 END $$;
 
 -- Re-apply trigger function to ensure it's the latest version
@@ -249,3 +260,35 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================================
+-- 13. CUSTOM RPC FOR KARYAWAN V2 (Shop ID Based)
+-- ============================================================
+
+-- Verify Karyawan Login (uses shop_id + name + password)
+CREATE OR REPLACE FUNCTION verify_karyawan_login_v2(p_shop_id TEXT, p_full_name TEXT, p_password TEXT)
+RETURNS SETOF public.karyawan AS $$
+BEGIN
+    RETURN QUERY
+    SELECT k.* FROM public.karyawan k
+    JOIN public.profiles p ON k.owner_id = p.id
+    WHERE p.shop_id = p_shop_id 
+      AND k.full_name = p_full_name 
+      AND k.password_hash = p_password
+      AND k.is_active = true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create Karyawan (without email)
+CREATE OR REPLACE FUNCTION create_karyawan_v2(p_full_name TEXT, p_password TEXT)
+RETURNS UUID AS $$
+DECLARE
+    v_karyawan_id UUID;
+BEGIN
+    INSERT INTO public.karyawan (owner_id, full_name, password_hash, is_active, created_at)
+    VALUES (auth.uid(), p_full_name, p_password, true, now())
+    RETURNING id INTO v_karyawan_id;
+    
+    RETURN v_karyawan_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

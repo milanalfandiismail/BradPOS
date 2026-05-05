@@ -77,7 +77,6 @@ class _CashierScreenState extends State<CashierScreen> {
                     setState(() {
                       _categories = state.categories;
                     });
-                    context.read<AuthBloc>().add(CheckAuthStatus());
                   }
                 },
                 child: BlocListener<CashierBloc, CashierState>(

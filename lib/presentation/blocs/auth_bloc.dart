@@ -30,38 +30,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           final user = session?.user;
 
           if (user != null) {
-            // Merge dengan state existing biar field profile (remoteImage dll) gak ilang
-            final currentState = state;
-            String? existingRemoteImage;
-            String? existingLocalImage;
-            String? existingAddress;
-            String? existingPhone;
-            if (currentState is AuthAuthenticated) {
-              existingRemoteImage = currentState.user.remoteImage;
-              existingLocalImage = currentState.user.localImage;
-              existingAddress = currentState.user.address;
-              existingPhone = currentState.user.phone;
-            }
-
-            add(
-              AuthStatusChanged(
-                UserEntity(
-                  id: user.id,
-                  email: user.email ?? '',
-                  name:
-                      user.userMetadata?['full_name'] ??
-                      user.userMetadata?['name'],
-                  shopName: user.userMetadata?['shop_name'],
-                  role: 'owner',
-                  remoteImage: existingRemoteImage,
-                  localImage: existingLocalImage,
-                  address: existingAddress,
-                  phone: existingPhone,
-                ),
-              ),
-            );
+            // Trigger check auth status to get the latest profile from repository
+            add(CheckAuthStatus());
           } else if (event == supabase_auth.AuthChangeEvent.signedOut) {
-            // Only trigger if it was an explicit sign out from Supabase (Owner)
             add(AuthStatusChanged(null));
           }
         });
@@ -137,7 +108,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<SignInAsKaryawanRequested>((event, emit) async {
       emit(AuthLoading());
       final result = await authRepository.signInAsKaryawan(
-        event.email,
+        event.shopId,
+        event.name,
         event.password,
       );
       result.fold(
@@ -159,17 +131,32 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final updatedUser = UserEntity(
           id: current.user.id,
           email: current.user.email,
-          name: current.user.name,
-          shopName: event.shopName ?? current.user.shopName,
+          name: (event.fullName != null && event.fullName!.isNotEmpty)
+              ? event.fullName
+              : current.user.name,
+          shopName: (event.shopName != null && event.shopName!.isNotEmpty)
+              ? event.shopName
+              : current.user.shopName,
+          shopId: (event.shopId != null && event.shopId!.isNotEmpty)
+              ? event.shopId
+              : current.user.shopId,
           role: current.user.role,
           ownerId: current.user.ownerId,
-          remoteImage: event.remoteImage ?? current.user.remoteImage,
+          remoteImage: current.user.remoteImage, // Will be updated by repository result
           localImage: event.localImage ?? current.user.localImage,
+          address: (event.address != null && event.address!.isNotEmpty)
+              ? event.address
+              : current.user.address,
+          phone: (event.phone != null && event.phone!.isNotEmpty)
+              ? event.phone
+              : current.user.phone,
         );
         emit(AuthAuthenticated(updatedUser));
 
         final result = await authRepository.updateProfile(
+          fullName: event.fullName,
           shopName: event.shopName,
+          shopId: event.shopId,
           remoteImage: event.remoteImage,
           localImage: event.localImage,
           address: event.address,
@@ -181,7 +168,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           },
           (finalUser) {
             emit(AuthAuthenticated(finalUser));
-            syncService.syncAll(); // Instant Sync
+            syncService.syncAll(user: finalUser); // Instant Sync dengan data terbaru
           },
         );
       }
