@@ -8,6 +8,8 @@ import 'package:bradpos/presentation/blocs/karyawan_state.dart';
 import 'package:bradpos/presentation/widgets/karyawan_card.dart';
 import 'package:bradpos/domain/entities/karyawan.dart';
 import 'package:bradpos/presentation/screens/karyawan_form_screen.dart';
+import 'package:bradpos/core/widgets/brad_header.dart';
+import 'package:bradpos/presentation/widgets/settings_modal.dart';
 
 /// Halaman Daftar Karyawan.
 /// Menampilkan semua karyawan yang terdaftar dan menyediakan akses ke Tambah/Edit/Hapus.
@@ -53,7 +55,14 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
                     if (state is KaryawanLoading) {
                       return const Center(child: CircularProgressIndicator());
                     } else if (state is KaryawanListLoaded) {
-                      return _buildKaryawanList(state.karyawanList);
+                      return RefreshIndicator(
+                        onRefresh: () async {
+                          context.read<AuthBloc>().syncService.syncAll();
+                          context.read<KaryawanBloc>().add(LoadKaryawanList());
+                          await Future.delayed(const Duration(seconds: 1));
+                        },
+                        child: _buildKaryawanList(state.karyawanList),
+                      );
                     } else if (state is KaryawanError) {
                       return Center(child: Text(state.message));
                     }
@@ -69,32 +78,30 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
   }
 
   /// Bagian Header Halaman yang berisi Judul, Pencarian, dan Tombol Tambah.
+  /// Bagian Header Halaman yang berisi Judul, Pencarian, dan Tombol Tambah.
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_ios, size: 20),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Manajemen Karyawan',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, state) {
+              String shopName = 'BradPOS';
+              if (state is AuthAuthenticated) {
+                shopName = state.user.shopName ?? 'BradPOS';
+              }
+              return BradHeader(
+                title: 'Karyawan',
+                subtitle: shopName,
+                showBackButton: true,
+                leadingIcon: Icons.people_rounded,
+                onSettingsTap: () => SettingsModal.show(context),
+              );
+            },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
           // Filter Pencarian
           TextField(
             decoration: InputDecoration(
@@ -108,15 +115,12 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
                 color: AppColors.textSecondary,
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: const Color(0xFFF1F5F9),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200),
+                borderSide: BorderSide.none,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200),
-              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
           ),
           const SizedBox(height: 16),
@@ -135,11 +139,12 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
                       label: const Text('Filter'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
-                        side: BorderSide(color: Colors.grey.shade300),
+                        side: const BorderSide(color: Color(0xFFE2E8F0)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        backgroundColor: const Color(0xFFF1F5F9),
                       ),
                     ),
                   ),
@@ -160,14 +165,15 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
                           );
                         },
                         icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Tambah Karyawan'),
+                        label: const Text('Tambah'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
+                          elevation: 0,
                         ),
                       ),
                     ),
@@ -176,6 +182,7 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
               );
             },
           ),
+          const SizedBox(height: 20),
         ],
       ),
     );

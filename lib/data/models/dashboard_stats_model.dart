@@ -10,6 +10,7 @@ class DashboardStatsModel extends DashboardStats {
     required super.transactionsGrowth,
     required super.avgTicketSize,
     required super.ticketSizeGrowth,
+    required super.dailySales,
   });
 
   factory DashboardStatsModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +21,10 @@ class DashboardStatsModel extends DashboardStats {
       transactionsGrowth: (json['transactionsGrowth'] as num).toDouble(),
       avgTicketSize: (json['avgTicketSize'] as num).toDouble(),
       ticketSizeGrowth: (json['ticketSizeGrowth'] as num).toDouble(),
+      dailySales: (json['dailySales'] as List<dynamic>?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
     );
   }
 
@@ -31,6 +36,7 @@ class DashboardStatsModel extends DashboardStats {
       'transactionsGrowth': transactionsGrowth,
       'avgTicketSize': avgTicketSize,
       'ticketSizeGrowth': ticketSizeGrowth,
+      'dailySales': dailySales,
     };
   }
 }

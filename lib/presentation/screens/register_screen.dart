@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/core/widgets/splash_page.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
+import 'package:bradpos/core/utils/app_navigator.dart';
 
 /// Halaman Registrasi akun Owner baru.
 /// Hanya untuk Owner - Karyawan didaftarkan oleh Owner melalui menu Karyawan.
@@ -31,12 +32,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _onRegister() {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
-            SignUpRequested(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-              fullName: _fullNameController.text.trim(),
-            ),
-          );
+        SignUpRequested(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          fullName: _fullNameController.text.trim(),
+        ),
+      );
     }
   }
 
@@ -49,16 +50,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => AppNavigator.pop(context),
         ),
       ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const SplashPage()),
-              (route) => false,
-            );
+            AppNavigator.pushAndRemoveUntil(context, const SplashPage());
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -136,8 +134,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         fillColor: AppColors.white,
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'Please enter email';
-                        if (!value.contains('@')) return 'Enter a valid email';
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter email';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Enter a valid email';
+                        }
                         return null;
                       },
                     ),
@@ -153,9 +155,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
                           ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -164,8 +170,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         fillColor: AppColors.white,
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'Please enter password';
-                        if (value.length < 6) return 'Password must be at least 6 characters';
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter password';
+                        }
+                        if (value.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
                         return null;
                       },
                     ),
@@ -177,7 +187,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         return SizedBox(
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: state is AuthLoading ? null : _onRegister,
+                            onPressed: state is AuthLoading
+                                ? null
+                                : _onRegister,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: AppColors.white,
@@ -186,10 +198,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ),
                             child: state is AuthLoading
-                                ? const CircularProgressIndicator(color: Colors.white)
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
                                 : const Text(
                                     'Create Account',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                           ),
                         );

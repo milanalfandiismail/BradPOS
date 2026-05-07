@@ -8,7 +8,6 @@ class Karyawan extends Equatable {
   final String id;
   final String ownerId;
   final String name;
-  final String email;
   final String password;
   final bool isActive;
   final DateTime createdAt;
@@ -17,7 +16,6 @@ class Karyawan extends Equatable {
     required this.id,
     required this.ownerId,
     required this.name,
-    required this.email,
     required this.password,
     required this.isActive,
     required this.createdAt,
@@ -27,9 +25,7 @@ class Karyawan extends Equatable {
     return {
       'owner_id': ownerId,
       'full_name': name,
-      'email': email,
       'is_active': isActive,
-      // created_at is usually handled by DB, but we'll include it for updates
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -38,7 +34,6 @@ class Karyawan extends Equatable {
     String? id,
     String? ownerId,
     String? name,
-    String? email,
     String? password,
     bool? isActive,
     DateTime? createdAt,
@@ -47,7 +42,6 @@ class Karyawan extends Equatable {
       id: id ?? this.id,
       ownerId: ownerId ?? this.ownerId,
       name: name ?? this.name,
-      email: email ?? this.email,
       password: password ?? this.password,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
@@ -55,5 +49,12 @@ class Karyawan extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, ownerId, name, email, password, isActive, createdAt];
+  List<Object?> get props => [
+    id,
+    ownerId,
+    name,
+    password,
+    isActive,
+    createdAt,
+  ];
 }

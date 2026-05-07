@@ -18,11 +18,7 @@ class Category extends Equatable {
   });
 
   Map<String, dynamic> toMap() {
-    return {
-      'owner_id': ownerId,
-      'name': name,
-      'description': description,
-    };
+    return {'owner_id': ownerId, 'name': name, 'description': description};
   }
 
   Category copyWith({
@@ -44,5 +40,12 @@ class Category extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, ownerId, name, description, createdAt, updatedAt];
+  List<Object?> get props => [
+    id,
+    ownerId,
+    name,
+    description,
+    createdAt,
+    updatedAt,
+  ];
 }

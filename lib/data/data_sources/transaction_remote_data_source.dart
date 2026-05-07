@@ -1,11 +1,20 @@
+import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:bradpos/domain/entities/transaction.dart' as ent;
 import 'package:bradpos/domain/entities/transaction_item.dart';
 import 'package:bradpos/data/models/transaction_model.dart';
 
 abstract class TransactionRemoteDataSource {
-  Future<TransactionModel> createTransaction(ent.Transaction transaction, List<TransactionItem> items);
-  Future<List<TransactionModel>> getTransactions(String userId);
+  Future<TransactionModel> createTransaction(
+    ent.Transaction transaction,
+    List<TransactionItem> items,
+  );
+  Future<List<TransactionModel>> getTransactions(String userId, {String? lastSync});
+  Future<void> pushUnsyncedTransaction(
+    Map<String, dynamic> trxMap,
+    List<Map<String, dynamic>> itemsData,
+  );
+  Future<List<Map<String, dynamic>>> getTransactionItems(String transactionId);
 }
 
 class TransactionRemoteDataSourceImpl implements TransactionRemoteDataSource {
@@ -14,37 +23,68 @@ class TransactionRemoteDataSourceImpl implements TransactionRemoteDataSource {
   TransactionRemoteDataSourceImpl({required this.supabase});
 
   @override
-  Future<TransactionModel> createTransaction(ent.Transaction transaction, List<TransactionItem> items) async {
-    // 1. Simpan Header
-    final trxMap = transaction.toMap();
-    final resTrx = await supabase.from('transactions').insert(trxMap).select().single();
-    final String transactionId = resTrx['id'];
+  Future<TransactionModel> createTransaction(
+    ent.Transaction transaction,
+    List<TransactionItem> items,
+  ) async {
+    // 1. Simpan Header + Items (Items sudah masuk di toMap() via TransactionModel)
+    final trxModel = TransactionModel.fromEntity(
+      transaction.copyWith(items: items),
+    );
+    final trxMap = trxModel.toMap();
 
-    // 2. Simpan Items
-    final List<Map<String, dynamic>> itemsData = items.map((item) {
-      return {
-        'transaction_id': transactionId,
-        'produk_id': item.produkId,
-        'product_name': item.productName,
-        'quantity': item.quantity,
-        'unit_price': item.unitPrice,
-        'discount': item.discount,
-        'subtotal': item.subtotal,
-      };
-    }).toList();
-
-    await supabase.from('transaction_items').insert(itemsData);
-    
+    final resTrx = await supabase
+        .from('transactions')
+        .upsert(trxMap)
+        .select()
+        .maybeSingle();
+    if (resTrx == null) throw Exception("Gagal membuat transaksi di remote");
     return TransactionModel.fromMap(resTrx);
   }
 
   @override
-  Future<List<TransactionModel>> getTransactions(String userId) async {
-    final response = await supabase
+  Future<List<TransactionModel>> getTransactions(String userId, {String? lastSync}) async {
+    dynamic query = supabase
         .from('transactions')
         .select()
-        .eq('owner_id', userId)
-        .order('created_at', ascending: false);
-    return response.map((m) => TransactionModel.fromMap(m)).toList();
+        .eq('owner_id', userId);
+
+    if (lastSync != null && lastSync.isNotEmpty) {
+      query = query.gt('created_at', lastSync);
+    }
+
+    final response = await query.order('created_at', ascending: false);
+    final data = response as List<dynamic>;
+    return data.map((m) => TransactionModel.fromMap(m as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<void> pushUnsyncedTransaction(
+    Map<String, dynamic> trxMap,
+    List<Map<String, dynamic>> itemsData,
+  ) async {
+    final cleanTrxMap = Map<String, dynamic>.from(trxMap);
+    cleanTrxMap.remove('sync_status');
+    // Note: cleanTrxMap sudah punya kolom 'items' berisi JSON string dari Local DS
+    await supabase.from('transactions').upsert(cleanTrxMap);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getTransactionItems(
+    String transactionId,
+  ) async {
+    final res = await supabase
+        .from('transactions')
+        .select('items')
+        .eq('id', transactionId)
+        .maybeSingle();
+
+    if (res == null) return [];
+    final items = res['items'];
+    if (items == null) return [];
+    if (items is String) {
+      return List<Map<String, dynamic>>.from(jsonDecode(items));
+    }
+    return List<Map<String, dynamic>>.from(items);
   }
 }

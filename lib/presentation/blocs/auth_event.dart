@@ -37,13 +37,18 @@ class GoogleSignInRequested extends AuthEvent {}
 class ContinueAsGuestRequested extends AuthEvent {}
 
 class SignInAsKaryawanRequested extends AuthEvent {
-  final String email;
+  final String shopId;
+  final String name;
   final String password;
 
-  const SignInAsKaryawanRequested({required this.email, required this.password});
+  const SignInAsKaryawanRequested({
+    required this.shopId,
+    required this.name,
+    required this.password,
+  });
 
   @override
-  List<Object> get props => [email, password];
+  List<Object> get props => [shopId, name, password];
 }
 
 class SignOutRequested extends AuthEvent {}
@@ -58,10 +63,36 @@ class AuthStatusChanged extends AuthEvent {
   List<Object> get props => [user ?? 'null'];
 }
 
-class UpdateShopNameEvent extends AuthEvent {
-  final String shopName;
-  const UpdateShopNameEvent(this.shopName);
+class UpdateProfileEvent extends AuthEvent {
+  final String? fullName;
+  final String? shopName;
+  final String? shopId;
+  final String? remoteImage;
+  final String? localImage;
+  final String? address;
+  final String? phone;
+  final String? newPassword;
+
+  const UpdateProfileEvent({
+    this.fullName,
+    this.shopName,
+    this.shopId,
+    this.remoteImage,
+    this.localImage,
+    this.address,
+    this.phone,
+    this.newPassword,
+  });
 
   @override
-  List<Object> get props => [shopName];
+  List<Object> get props => [
+        fullName ?? '',
+        shopName ?? '',
+        shopId ?? '',
+        remoteImage ?? '',
+        localImage ?? '',
+        address ?? '',
+        phone ?? '',
+        newPassword ?? '',
+      ];
 }

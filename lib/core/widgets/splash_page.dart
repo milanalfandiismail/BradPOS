@@ -6,6 +6,7 @@ import 'package:bradpos/presentation/screens/dashboard_screen.dart';
 import 'package:bradpos/core/sync/sync_service.dart';
 import '../../injection_container.dart';
 import '../app_colors.dart';
+import '../utils/app_navigator.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -16,6 +17,7 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage> {
   bool _hasNavigated = false;
+  bool _isProcessing = false;
   String _statusMessage = 'Menyiapkan aplikasi...';
 
   @override
@@ -42,7 +44,8 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _syncAndGo() async {
-    if (_hasNavigated) return;
+    if (_hasNavigated || _isProcessing) return;
+    _isProcessing = true;
     if (mounted) setState(() => _statusMessage = 'Menyelaraskan data...');
 
     try {
@@ -54,29 +57,22 @@ class _SplashPageState extends State<SplashPage> {
       debugPrint("Splash: sync error: $e");
     }
 
+    // Fake loading biar estetik
+    await Future.delayed(const Duration(seconds: 8));
+
     _goToDashboard();
   }
 
   void _goToDashboard() {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const DashboardScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 600),
-      ),
-    );
+    AppNavigator.pushReplacement(context, const DashboardScreen());
   }
 
   void _goToLogin() {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    AppNavigator.pushReplacement(context, const LoginScreen());
   }
 
   @override

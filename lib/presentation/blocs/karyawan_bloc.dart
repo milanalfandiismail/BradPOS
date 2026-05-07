@@ -8,11 +8,7 @@ import 'karyawan_state.dart';
 class KaryawanBloc extends Bloc<KaryawanEvent, KaryawanState> {
   final KaryawanRepository repository;
 
-  KaryawanBloc({
-    required this.repository,
-  }) : super(KaryawanInitial()) {
-
-    
+  KaryawanBloc({required this.repository}) : super(KaryawanInitial()) {
     // Handler untuk memuat daftar seluruh karyawan
     on<LoadKaryawanList>((event, emit) async {
       emit(KaryawanLoading());
@@ -27,40 +23,30 @@ class KaryawanBloc extends Bloc<KaryawanEvent, KaryawanState> {
     on<CreateKaryawan>((event, emit) async {
       emit(KaryawanLoading());
       final result = await repository.addKaryawan(event.karyawan);
-      result.fold(
-        (failure) => emit(KaryawanError(failure)),
-        (karyawan) {
-          emit(const KaryawanOperationSuccess("Karyawan berhasil ditambahkan"));
-          add(LoadKaryawanList());
-        },
-      );
+      result.fold((failure) => emit(KaryawanError(failure)), (karyawan) {
+        emit(const KaryawanOperationSuccess("Karyawan berhasil ditambahkan"));
+        add(LoadKaryawanList());
+      });
     });
 
     // Handler untuk mengedit data karyawan
     on<EditKaryawan>((event, emit) async {
       emit(KaryawanLoading());
       final result = await repository.updateKaryawan(event.karyawan);
-      result.fold(
-        (failure) => emit(KaryawanError(failure)),
-        (karyawan) {
-          emit(const KaryawanOperationSuccess("Karyawan berhasil diperbarui"));
-          add(LoadKaryawanList());
-        },
-      );
+      result.fold((failure) => emit(KaryawanError(failure)), (karyawan) {
+        emit(const KaryawanOperationSuccess("Karyawan berhasil diperbarui"));
+        add(LoadKaryawanList());
+      });
     });
 
     // Handler untuk menghapus karyawan
     on<RemoveKaryawan>((event, emit) async {
       emit(KaryawanLoading());
       final result = await repository.deleteKaryawan(event.id);
-      result.fold(
-        (failure) => emit(KaryawanError(failure)),
-        (_) {
-          emit(const KaryawanOperationSuccess("Karyawan berhasil dihapus"));
-          add(LoadKaryawanList());
-        },
-      );
+      result.fold((failure) => emit(KaryawanError(failure)), (_) {
+        emit(const KaryawanOperationSuccess("Karyawan berhasil dihapus"));
+        add(LoadKaryawanList());
+      });
     });
   }
 }
-

@@ -1,9 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:uuid/uuid.dart';
 import 'package:bradpos/domain/entities/transaction.dart';
 import 'package:bradpos/domain/entities/transaction_item.dart';
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/domain/repositories/transaction_repository.dart';
+import 'package:bradpos/core/sync/sync_service.dart';
 
 // --- Events ---
 abstract class CashierEvent extends Equatable {
@@ -39,7 +41,17 @@ class ClearCart extends CashierEvent {}
 class ProcessPayment extends CashierEvent {
   final double paymentAmount;
   final String paymentMethod;
-  const ProcessPayment({required this.paymentAmount, required this.paymentMethod});
+  final String? customerName;
+  const ProcessPayment({
+    required this.paymentAmount,
+    required this.paymentMethod,
+    this.customerName,
+  });
+}
+
+class UpdateCustomerName extends CashierEvent {
+  final String name;
+  const UpdateCustomerName(this.name);
 }
 
 // --- States ---
@@ -51,6 +63,8 @@ class CashierState extends Equatable {
   final String? error;
   final bool isSuccess;
 
+  final String customerName;
+
   const CashierState({
     this.cartItems = const [],
     this.subtotal = 0,
@@ -58,6 +72,7 @@ class CashierState extends Equatable {
     this.isProcessing = false,
     this.error,
     this.isSuccess = false,
+    this.customerName = '',
   });
 
   CashierState copyWith({
@@ -67,6 +82,7 @@ class CashierState extends Equatable {
     bool? isProcessing,
     String? error,
     bool? isSuccess,
+    String? customerName,
   }) {
     return CashierState(
       cartItems: cartItems ?? this.cartItems,
@@ -75,27 +91,42 @@ class CashierState extends Equatable {
       isProcessing: isProcessing ?? this.isProcessing,
       error: error,
       isSuccess: isSuccess ?? false,
+      customerName: customerName ?? this.customerName,
     );
   }
 
   @override
-  List<Object?> get props => [cartItems, subtotal, total, isProcessing, error, isSuccess];
+  List<Object?> get props => [
+    cartItems,
+    subtotal,
+    total,
+    isProcessing,
+    error,
+    isSuccess,
+    customerName,
+  ];
 }
 
 // --- Bloc ---
 class CashierBloc extends Bloc<CashierEvent, CashierState> {
   final TransactionRepository repository;
+  final SyncService syncService;
 
-  CashierBloc({required this.repository}) : super(const CashierState()) {
+  CashierBloc({required this.repository, required this.syncService}) : super(const CashierState()) {
     on<AddToCart>(_onAddToCart);
     on<UpdateCartQuantity>(_onUpdateQuantity);
     on<RemoveFromCart>(_onRemoveFromCart);
     on<ClearCart>((event, emit) => emit(const CashierState()));
+    on<UpdateCustomerName>(
+      (event, emit) => emit(state.copyWith(customerName: event.name)),
+    );
     on<ProcessPayment>(_onProcessPayment);
   }
 
   void _onAddToCart(AddToCart event, Emitter<CashierState> emit) {
-    final existingIndex = state.cartItems.indexWhere((i) => i.produkId == event.product.id);
+    final existingIndex = state.cartItems.indexWhere(
+      (i) => i.produkId == event.product.id,
+    );
     List<TransactionItem> newItems = List.from(state.cartItems);
 
     if (existingIndex >= 0) {
@@ -105,23 +136,27 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
         subtotal: (existing.quantity + 1) * existing.unitPrice,
       );
     } else {
-      newItems.add(TransactionItem(
-        id: '',
-        transactionId: '',
-        produkId: event.product.id,
-        productName: event.product.name,
-        quantity: 1,
-        unitPrice: event.product.sellingPrice,
-        discount: 0,
-        subtotal: event.product.sellingPrice,
-        createdAt: DateTime.now(),
-      ));
+      newItems.add(
+        TransactionItem(
+          id: '',
+          transactionId: '',
+          produkId: event.product.id,
+          productName: event.product.name,
+          quantity: 1,
+          unitPrice: event.product.sellingPrice,
+          discount: 0,
+          subtotal: event.product.sellingPrice,
+          createdAt: DateTime.now(),
+        ),
+      );
     }
     _emitCartUpdate(emit, newItems);
   }
 
   void _onUpdateQuantity(UpdateCartQuantity event, Emitter<CashierState> emit) {
-    final index = state.cartItems.indexWhere((i) => i.produkId == event.produkId);
+    final index = state.cartItems.indexWhere(
+      (i) => i.produkId == event.produkId,
+    );
     if (index < 0) return;
 
     List<TransactionItem> newItems = List.from(state.cartItems);
@@ -140,24 +175,35 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
   }
 
   void _onRemoveFromCart(RemoveFromCart event, Emitter<CashierState> emit) {
-    final newItems = state.cartItems.where((i) => i.produkId != event.produkId).toList();
+    final newItems = state.cartItems
+        .where((i) => i.produkId != event.produkId)
+        .toList();
     _emitCartUpdate(emit, newItems);
   }
 
-  void _emitCartUpdate(Emitter<CashierState> emit, List<TransactionItem> items) {
+  void _emitCartUpdate(
+    Emitter<CashierState> emit,
+    List<TransactionItem> items,
+  ) {
     final subtotal = items.fold(0.0, (sum, i) => sum + i.subtotal);
     emit(state.copyWith(cartItems: items, subtotal: subtotal, total: subtotal));
   }
 
-  Future<void> _onProcessPayment(ProcessPayment event, Emitter<CashierState> emit) async {
-    if (state.cartItems.isEmpty) return;
+  Future<void> _onProcessPayment(
+    ProcessPayment event,
+    Emitter<CashierState> emit,
+  ) async {
+    if (state.cartItems.isEmpty || state.isProcessing) return;
 
     emit(state.copyWith(isProcessing: true));
 
+    final transactionId = const Uuid().v4();
     final transaction = Transaction(
-      id: '',
+      id: transactionId,
       ownerId: '', // Filled by Repo
       transactionNumber: '', // Generated by DB
+      customerName: event.customerName ?? state.customerName,
+      items: const [], // Will be filled by repository.createTransaction
       subtotal: state.subtotal,
       total: state.total,
       paymentMethod: event.paymentMethod,
@@ -166,11 +212,17 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
       createdAt: DateTime.now(),
     );
 
-    final result = await repository.createTransaction(transaction, state.cartItems);
+    final result = await repository.createTransaction(
+      transaction,
+      state.cartItems,
+    );
 
     result.fold(
       (l) => emit(state.copyWith(isProcessing: false, error: l)),
-      (r) => emit(const CashierState(isSuccess: true)),
+      (r) {
+        emit(const CashierState(isSuccess: true));
+        syncService.syncAll(); // Instant Sync
+      },
     );
   }
 }

@@ -24,11 +24,17 @@ class DashboardLoading extends DashboardState {}
 
 class DashboardLoaded extends DashboardState {
   final DashboardStats stats;
+  final int lowStockCount;
+  final int outOfStockCount;
 
-  const DashboardLoaded(this.stats);
+  const DashboardLoaded(
+    this.stats, {
+    this.lowStockCount = 0,
+    this.outOfStockCount = 0,
+  });
 
   @override
-  List<Object?> get props => [stats];
+  List<Object?> get props => [stats, lowStockCount, outOfStockCount];
 }
 
 class DashboardError extends DashboardState {

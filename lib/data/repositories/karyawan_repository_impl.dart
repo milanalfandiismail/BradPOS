@@ -24,10 +24,10 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
   Future<Either<String, List<Karyawan>>> getKaryawans() async {
     try {
       final userId = supabase.auth.currentUser?.id;
-      
+
       // Jika yang login adalah Karyawan, mereka tidak boleh melihat daftar karyawan lain.
       if (_isKaryawanSession()) {
-        return const Right([]); 
+        return const Right([]);
       }
 
       if (userId == null) return const Left("Anda harus login sebagai Owner.");
@@ -52,16 +52,17 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
   Future<Either<String, Karyawan>> addKaryawan(Karyawan karyawan) async {
     // Larang Karyawan menambah karyawan lain (RBAC)
     if (_isKaryawanSession()) {
-      return const Left("Maaf, Karyawan tidak memiliki akses untuk menambah data karyawan baru.");
+      return const Left(
+        "Maaf, Karyawan tidak memiliki akses untuk menambah data karyawan baru.",
+      );
     }
 
     try {
       // Gunakan RPC agar pembuatan akun karyawan tersentralisasi di server
       final response = await supabase.rpc(
-        "create_karyawan",
+        "create_karyawan_v2",
         params: {
           "p_full_name": karyawan.name,
-          "p_email": karyawan.email,
           "p_password": karyawan.password,
         },
       );
@@ -94,20 +95,27 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
   Future<Either<String, Karyawan>> updateKaryawan(Karyawan karyawan) async {
     // Larang Karyawan mengedit data karyawan lain (RBAC)
     if (_isKaryawanSession()) {
-      return const Left("Maaf, Karyawan tidak memiliki akses untuk mengubah data karyawan.");
+      return const Left(
+        "Maaf, Karyawan tidak memiliki akses untuk mengubah data karyawan.",
+      );
     }
 
     try {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) return const Left("User tidak terautentikasi.");
 
+      final Map<String, dynamic> updateData = {
+        "full_name": karyawan.name,
+        "is_active": karyawan.isActive,
+      };
+
+      if (karyawan.password.isNotEmpty) {
+        updateData["password_hash"] = karyawan.password;
+      }
+
       await supabase
           .from("karyawan")
-          .update({
-            "full_name": karyawan.name,
-            "email": karyawan.email,
-            "is_active": karyawan.isActive,
-          })
+          .update(updateData)
           .eq("id", karyawan.id)
           .eq("owner_id", userId);
 
@@ -121,7 +129,9 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
   Future<Either<String, void>> deleteKaryawan(String id) async {
     // Larang Karyawan menghapus data (RBAC)
     if (_isKaryawanSession()) {
-      return const Left("Maaf, Karyawan tidak memiliki akses untuk menghapus data karyawan.");
+      return const Left(
+        "Maaf, Karyawan tidak memiliki akses untuk menghapus data karyawan.",
+      );
     }
 
     try {

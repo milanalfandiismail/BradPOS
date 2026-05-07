@@ -123,4 +123,5 @@ app.*.symbols
 # AI Agents and Editor tools
 .aider*
 .agents/
+.claude/
 tags

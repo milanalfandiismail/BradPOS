@@ -88,52 +88,54 @@ class InventoryItemCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                'SKU: ${item.barcode ?? "N/A"}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  item.category.toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF64748B),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      item.category.toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusBg,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              statusLabel,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: statusColor,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            flex: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusBg,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                statusLabel,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: statusColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
@@ -148,6 +150,8 @@ class InventoryItemCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1E293B),
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 8),
                       if (!isUnlimited)
@@ -164,11 +168,14 @@ class InventoryItemCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              '${item.unit} remaining',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF64748B),
+                            Expanded(
+                              child: Text(
+                                '${item.unit} remaining',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -287,16 +294,28 @@ class InventoryItemCard extends StatelessWidget {
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
           color: const Color(0xFFF8FAFC),
-          child: const Center(
+          child: Center(
             child: SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
             ),
           ),
         ),
-        errorWidget: (context, url, error) =>
-            const Icon(Icons.broken_image, color: Colors.red),
+        errorWidget: (context, url, error) => Container(
+          color: const Color(0xFFF1F5F9),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.fastfood, color: Colors.grey.shade400, size: 24),
+              const SizedBox(height: 2),
+              Text(
+                item.name.isNotEmpty ? item.name.substring(0, 1).toUpperCase() : '?',
+                style: TextStyle(color: Colors.grey.shade300, fontWeight: FontWeight.bold, fontSize: 10),
+              ),
+            ],
+          ),
+        ),
       );
     } else {
       final file = io.File(imageUrl);

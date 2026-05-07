@@ -1,8 +1,10 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:flutter/foundation.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
+  static const int _databaseVersion = 14;
   static Database? _database;
 
   DatabaseHelper._init();
@@ -19,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: _databaseVersion,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -31,30 +33,95 @@ class DatabaseHelper {
     }
     if (oldVersion < 3) {
       await _createKaryawanTable(db);
-      await _createTransactionsTable(db);
-      await _createTransactionItemsTable(db);
     }
     if (oldVersion < 4) {
       await _createProfilesTable(db);
     }
+    if (oldVersion < 5) {
+      try {
+        await db.execute(
+          'ALTER TABLE transactions ADD COLUMN cashier_name TEXT',
+        );
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 6) {
+      try {
+        await db.execute('ALTER TABLE produk ADD COLUMN category_id TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 7) {
+      try {
+        await db.execute(
+          'ALTER TABLE produk ADD COLUMN purchase_price REAL DEFAULT 0',
+        );
+        await db.execute(
+          'ALTER TABLE produk ADD COLUMN selling_price REAL DEFAULT 0',
+        );
+        await db.execute(
+          'ALTER TABLE produk ADD COLUMN unit TEXT DEFAULT "pcs"',
+        );
+        await db.execute(
+          'ALTER TABLE produk ADD COLUMN is_active INTEGER DEFAULT 1',
+        );
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 8) {
+      try {
+        await db.execute('ALTER TABLE produk ADD COLUMN barcode TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 9) {
+      try {
+        await db.execute('ALTER TABLE categories ADD COLUMN description TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 10) {
+      try {
+        await db.execute('ALTER TABLE transactions ADD COLUMN shop_name TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 11) {
+      try {
+        await db.execute('ALTER TABLE profiles ADD COLUMN remote_image TEXT');
+        await db.execute('ALTER TABLE profiles ADD COLUMN local_image TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 12) {
+      try {
+        await db.execute('ALTER TABLE profiles ADD COLUMN full_name TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 14) {
+      try {
+        await db.execute('ALTER TABLE profiles ADD COLUMN shop_id TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
   }
 
   Future _createDB(Database db, int version) async {
-    await _createProdukTable(db);
-    await _createCategoriesTable(db);
-    await _createKaryawanTable(db);
-    await _createTransactionsTable(db);
-    await _createTransactionItemsTable(db);
-    await _createProfilesTable(db);
-  }
-
-  Future<void> _createProdukTable(Database db) async {
     const idType = 'TEXT PRIMARY KEY';
     const textType = 'TEXT NOT NULL';
     const textNullable = 'TEXT';
     const integerType = 'INTEGER NOT NULL';
     const realType = 'REAL NOT NULL';
-    const boolType = 'INTEGER NOT NULL';
 
     await db.execute('''
 CREATE TABLE produk (
@@ -63,26 +130,18 @@ CREATE TABLE produk (
   category_id $textNullable,
   name $textType,
   category $textType,
-  purchase_price $realType,
-  selling_price $realType,
+  purchase_price $realType DEFAULT 0,
+  selling_price $realType DEFAULT 0,
   stock $integerType,
-  unit $textType,
+  unit $textType DEFAULT 'pcs',
   barcode $textNullable,
   image_url $textNullable,
-  is_active $boolType,
-  created_at $textType,
-  
-  -- Offline Sync Columns
-  sync_status $textType DEFAULT 'created', 
-  updated_at $textType
+  is_active INTEGER DEFAULT 1,
+  created_at $textNullable,
+  sync_status $textType DEFAULT 'synced',
+  updated_at $textNullable
 )
 ''');
-  }
-
-  Future<void> _createCategoriesTable(Database db) async {
-    const idType = 'TEXT PRIMARY KEY';
-    const textType = 'TEXT NOT NULL';
-    const textNullable = 'TEXT';
 
     await db.execute('''
 CREATE TABLE categories (
@@ -90,18 +149,21 @@ CREATE TABLE categories (
   owner_id $textType,
   name $textType,
   description $textNullable,
-  created_at $textType,
-  
-  -- Offline Sync Columns
-  sync_status $textType DEFAULT 'created',
-  updated_at $textType
+  created_at $textNullable,
+  sync_status $textType DEFAULT 'synced',
+  updated_at $textNullable
 )
 ''');
+
+    await _createTransactionsTable(db);
+    await _createKaryawanTable(db);
+    await _createProfilesTable(db);
   }
 
   Future<void> _createKaryawanTable(Database db) async {
     const idType = 'TEXT PRIMARY KEY';
     const textType = 'TEXT NOT NULL';
+    const textNullable = 'TEXT';
     const boolType = 'INTEGER NOT NULL';
 
     await db.execute('''
@@ -112,9 +174,9 @@ CREATE TABLE karyawan (
   email $textType,
   password_hash $textType,
   is_active $boolType DEFAULT 1,
-  created_at $textType,
+  created_at $textNullable,
   sync_status $textType DEFAULT 'synced',
-  updated_at $textType
+  updated_at $textNullable
 )
 ''');
   }
@@ -130,9 +192,11 @@ CREATE TABLE transactions (
   id $idType,
   owner_id $textType,
   karyawan_id $textNullable,
+  cashier_name $textNullable,
   transaction_number $textType,
   customer_name $textNullable,
   customer_phone $textNullable,
+  shop_name $textNullable,
   subtotal $realType,
   discount $realType,
   tax $realType,
@@ -142,32 +206,10 @@ CREATE TABLE transactions (
   change_amount $realType,
   notes $textNullable,
   status $textType,
-  created_at $textType,
+  items $textType,
+  created_at $textNullable,
   sync_status $textType DEFAULT 'created',
-  updated_at $textType
-)
-''');
-  }
-
-  Future<void> _createTransactionItemsTable(Database db) async {
-    const idType = 'TEXT PRIMARY KEY';
-    const textType = 'TEXT NOT NULL';
-    const integerType = 'INTEGER NOT NULL';
-    const realType = 'REAL NOT NULL';
-
-    await db.execute('''
-CREATE TABLE transaction_items (
-  id $idType,
-  transaction_id $textType,
-  produk_id $textType,
-  product_name $textType,
-  quantity $integerType,
-  unit_price $realType,
-  discount $realType,
-  subtotal $realType,
-  created_at $textType,
-  sync_status $textType DEFAULT 'created',
-  updated_at $textType
+  updated_at $textNullable
 )
 ''');
   }
@@ -180,7 +222,11 @@ CREATE TABLE transaction_items (
     await db.execute('''
 CREATE TABLE profiles (
   id $idType,
+  shop_id $textNullable,
   shop_name $textType,
+  full_name $textNullable,
+  remote_image $textNullable,
+  local_image $textNullable,
   updated_at $textNullable
 )
 ''');

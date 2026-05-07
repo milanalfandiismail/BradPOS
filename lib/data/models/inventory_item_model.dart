@@ -33,8 +33,8 @@ class InventoryItemModel extends InventoryItem {
       imageUrl: json['image_url'],
       isActive: json['is_active'] ?? true,
       createdAt: DateTime.parse(json['created_at']),
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at']) 
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
           : DateTime.parse(json['created_at']),
     );
   }
@@ -54,10 +54,30 @@ class InventoryItemModel extends InventoryItem {
       imageUrl: map['image_url'],
       isActive: map['is_active'] == 1 || map['is_active'] == true,
       createdAt: DateTime.parse(map['created_at']),
-      updatedAt: map['updated_at'] != null 
-          ? DateTime.parse(map['updated_at']) 
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'])
           : DateTime.parse(map['created_at']),
     );
+  }
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'owner_id': ownerId,
+      'category_id': categoryId,
+      'name': name,
+      'category': category,
+      'purchase_price': purchasePrice,
+      'selling_price': sellingPrice,
+      'stock': stock,
+      'unit': unit,
+      'barcode': barcode,
+      'image_url': imageUrl,
+      'is_active': isActive ? 1 : 0,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
   }
 
   Map<String, dynamic> toJson() {

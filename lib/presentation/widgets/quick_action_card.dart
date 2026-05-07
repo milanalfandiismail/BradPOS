@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bradpos/core/app_colors.dart';
+import 'package:bradpos/presentation/widgets/stock_alert_badge.dart';
 
 /// Card aksi di bagian bawah Dashboard (misal: "New Transaction", "Look Up Items").
 class QuickActionCard extends StatelessWidget {
@@ -8,6 +9,7 @@ class QuickActionCard extends StatelessWidget {
   final IconData icon;
   final Color iconBgColor;
   final VoidCallback onTap;
+  final int? badgeCount;
 
   const QuickActionCard({
     super.key,
@@ -16,6 +18,7 @@ class QuickActionCard extends StatelessWidget {
     required this.icon,
     required this.iconBgColor,
     required this.onTap,
+    this.badgeCount,
   });
 
   @override
@@ -26,18 +29,24 @@ class QuickActionCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF), // Very light blue
+          color: const Color(0xFFEFF6FF),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                borderRadius: BorderRadius.circular(12),
+            StockAlertBadge(
+              count: badgeCount ?? 0,
+              color: badgeCount != null && badgeCount! > 0
+                  ? AppColors.warning
+                  : Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: Colors.white, size: 24),
               ),
-              child: Icon(icon, color: Colors.white, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
