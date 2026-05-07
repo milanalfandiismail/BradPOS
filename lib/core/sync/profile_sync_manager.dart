@@ -99,12 +99,10 @@ class ProfileSyncManager {
           jsonEncode(updatedUser.toMap()),
         );
       } else if (user.role == 'karyawan') {
-        final karyawanJson = prefs.getString(_karyawanSessionKey);
-        if (karyawanJson != null) {
-          final karyawanMap = jsonDecode(karyawanJson);
-          karyawanMap['shop_name'] = newShopName;
-          await prefs.setString(_karyawanSessionKey, jsonEncode(karyawanMap));
-        }
+        await prefs.setString(
+          _karyawanSessionKey,
+          jsonEncode(updatedUser.toMap()),
+        );
       }
 
       debugPrint("ProfileSync: Berhasil sinkronisasi profil.");

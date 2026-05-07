@@ -238,7 +238,9 @@ class _CashierScreenState extends State<CashierScreen> {
                       final qty = cartIdx >= 0
                           ? cashierState.cartItems[cartIdx].quantity
                           : 0;
-                      return _buildProductCard(product, qty);
+                      final authState = context.read<AuthBloc>().state;
+                      final isGuest = authState is AuthAuthenticated && authState.user.isGuest;
+                      return _buildProductCard(product, qty, isGuest);
                     },
                   ),
                 );
@@ -251,7 +253,7 @@ class _CashierScreenState extends State<CashierScreen> {
     );
   }
 
-  Widget _buildProductCard(InventoryItem product, int qty) {
+  Widget _buildProductCard(InventoryItem product, int qty, bool isGuest) {
     final trackStock = product.stock != -1;
     final isOutOfStock = trackStock && product.stock <= 0;
     return Container(
@@ -283,7 +285,7 @@ class _CashierScreenState extends State<CashierScreen> {
                             Colors.transparent,
                             BlendMode.multiply,
                           ),
-                    child: _buildImage(product),
+                    child: _buildImage(product, isGuest),
                   ),
                 ),
                 if (qty > 0)
@@ -495,8 +497,8 @@ class _CashierScreenState extends State<CashierScreen> {
     );
   }
 
-  Widget _buildImage(InventoryItem product) {
-    final imageUrl = _getImg(product.name, product.imageUrl);
+  Widget _buildImage(InventoryItem product, bool isGuest) {
+    final imageUrl = _getImg(product.name, product.imageUrl, isGuest);
 
     if (imageUrl.startsWith('http')) {
       return CachedNetworkImage(
@@ -507,27 +509,47 @@ class _CashierScreenState extends State<CashierScreen> {
         placeholder: (context, url) => Container(
           color: const Color(0xFFF1F5F9),
           child: Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.primary,
+            child: Icon(
+              Icons.fastfood,
+              size: 40,
+              color: AppColors.primary.withValues(alpha: 0.2),
             ),
           ),
         ),
         errorWidget: (context, url, error) => Container(
-          color: const Color(0xFFF1F5F9),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.fastfood, color: Colors.grey.shade400, size: 32),
-              const SizedBox(height: 4),
-              Text(
-                product.name.substring(0, 1).toUpperCase(),
-                style: TextStyle(
-                  color: Colors.grey.shade300,
-                  fontWeight: FontWeight.bold,
-                ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFF1F5F9),
+                const Color(0xFFE2E8F0),
+              ],
+            ),
+          ),
+          child: Center(
+            child: Opacity(
+              opacity: 0.5,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.fastfood_rounded,
+                    color: Color(0xFF64748B),
+                    size: 40,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    product.name.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 24,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       );
@@ -545,51 +567,48 @@ class _CashierScreenState extends State<CashierScreen> {
 
     // Fallback if empty or file doesn't exist
     return Container(
-      color: const Color(0xFFF1F5F9),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.fastfood, color: Colors.grey.shade400, size: 32),
-          const SizedBox(height: 4),
-          Text(
-            product.name.substring(0, 1).toUpperCase(),
-            style: TextStyle(
-              color: Colors.grey.shade300,
-              fontWeight: FontWeight.bold,
-            ),
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFF1F5F9),
+            const Color(0xFFE2E8F0),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Opacity(
+          opacity: 0.5,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.fastfood_rounded,
+                color: const Color(0xFF64748B),
+                size: 40,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                product.name.substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 24,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  String _getImg(String name, String? url) {
+  String _getImg(String name, String? url, bool isGuest) {
     if (url != null && url.isNotEmpty) return url;
-
-    final Map<String, String> m = {
-      'Classic Iced Latte':
-          'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&q=80&w=400',
-      'Blueberry Muffin':
-          'https://images.unsplash.com/photo-1558301211-0d8c8ddee6ec?auto=format&fit=crop&q=80&w=400',
-      'Avocado Smash':
-          'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&q=80&w=400',
-      'Ceremonial Matcha':
-          'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&q=80&w=400',
-      'Margherita Slice':
-          'https://images.unsplash.com/photo-1574071318508-1cdbad80ad50?auto=format&fit=crop&q=80&w=400',
-      'Fresh OJ':
-          'https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&q=80&w=400',
-      'Butter Croissant':
-          'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=400',
-      'Garden Power':
-          'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=400',
-      'Red Velvet Cupcake':
-          'https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?auto=format&fit=crop&q=80&w=400',
-      'Signature Burger':
-          'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=400',
-    };
-    return m[name] ??
-        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400';
+    return ''; // No fallback to online images, will use local icon in _buildImage
   }
 }
 

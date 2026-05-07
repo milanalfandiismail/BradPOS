@@ -35,6 +35,12 @@ class SyncService {
       return;
     }
 
+    if (activeUser.isGuest) {
+      debugPrint("SyncService: Skip sync karena user berada dalam Mode Guest (Offline)");
+      _isSyncing = false;
+      return;
+    }
+
     final String effectiveUserId = (activeUser.isKaryawan && activeUser.ownerId != null)
         ? activeUser.ownerId!
         : activeUser.id;

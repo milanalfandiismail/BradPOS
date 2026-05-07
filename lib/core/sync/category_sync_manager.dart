@@ -29,6 +29,12 @@ class CategorySyncManager {
           final status = current['sync_status'] as String?;
           final ownerId = current['owner_id'] as String?;
 
+          // Hanya push data milik user ini (Filter Guest data)
+          if (ownerId != userId) {
+            debugPrint("CategorySync: Skip push '$name' (Data milik $ownerId, bukan $userId)");
+            continue;
+          }
+
           if (status == null) continue;
 
           // UUID Fix

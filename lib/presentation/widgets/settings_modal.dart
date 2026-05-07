@@ -39,12 +39,15 @@ class SettingsModal {
             // Tab Content
             BlocBuilder<AuthBloc, AuthState>(
               builder: (context, state) {
-                final bool isOwner = state is AuthAuthenticated && state.user.isOwner;
-                
+                final bool isOwner =
+                    state is AuthAuthenticated && state.user.isOwner;
+                final bool isGuest =
+                    state is AuthAuthenticated && state.user.isGuest;
+
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (isOwner)
+                    if (isOwner || isGuest)
                       ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),
@@ -52,22 +55,63 @@ class SettingsModal {
                             color: Colors.blue.shade50,
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.store_rounded,
-                              color: Colors.blue.shade700, size: 20),
+                          child: Icon(
+                            Icons.store_rounded,
+                            color: Colors.blue.shade700,
+                            size: 20,
+                          ),
                         ),
                         title: const Text(
                           'Profil Bisnis',
                           style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1E293B)),
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E293B),
+                          ),
                         ),
-                        subtitle: const Text('Kelola informasi toko & akun',
-                            style: TextStyle(fontSize: 12)),
+                        subtitle: const Text(
+                          'Kelola informasi toko & akun',
+                          style: TextStyle(fontSize: 12),
+                        ),
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                                builder: (_) => const ProfileScreen()),
+                              builder: (_) => const ProfileScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    if (isOwner || isGuest)
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.teal.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.person_outline_rounded,
+                            color: Colors.teal.shade700,
+                            size: 20,
+                          ),
+                        ),
+                        title: const Text(
+                          'Profil Saya',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Kelola informasi akun pribadi',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const PersonalProfileScreen(),
+                            ),
                           );
                         },
                       ),
@@ -75,45 +119,26 @@ class SettingsModal {
                       leading: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.teal.shade50,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.person_outline_rounded,
-                            color: Colors.teal.shade700, size: 20),
-                      ),
-                      title: const Text(
-                        'Profil Saya',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1E293B)),
-                      ),
-                      subtitle: const Text('Kelola informasi akun pribadi',
-                          style: TextStyle(fontSize: 12)),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const PersonalProfileScreen()),
-                        );
-                      },
-                    ),
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
                           color: Colors.orange.shade50,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.help_outline_rounded,
-                            color: Colors.orange.shade700, size: 20),
+                        child: Icon(
+                          Icons.help_outline_rounded,
+                          color: Colors.orange.shade700,
+                          size: 20,
+                        ),
                       ),
                       title: const Text(
                         'Bantuan',
                         style: TextStyle(
-                            fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E293B),
+                        ),
                       ),
-                      subtitle: const Text('Pusat bantuan & panduan',
-                          style: TextStyle(fontSize: 12)),
+                      subtitle: const Text(
+                        'Pusat bantuan & panduan',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       onTap: () => Navigator.pop(context),
                     ),
                   ],
@@ -128,11 +153,18 @@ class SettingsModal {
                   color: Colors.red.shade50,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.logout_rounded, color: Colors.red, size: 20),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Colors.red,
+                  size: 20,
+                ),
               ),
               title: const Text(
                 'Keluar Akun',
-                style: TextStyle(fontWeight: FontWeight.w700, color: Colors.red),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.red,
+                ),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -151,12 +183,18 @@ class SettingsModal {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Logout', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text(
+          'Logout',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
         content: const Text('Yakin ingin keluar dari BradPOS?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -167,9 +205,14 @@ class SettingsModal {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('Ya, Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Ya, Keluar',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

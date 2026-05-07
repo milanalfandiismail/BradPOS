@@ -34,6 +34,7 @@ abstract class AuthRepository {
     String? localImage,
     String? address,
     String? phone,
+    String? newPassword,
   });
 
   /// Sinkronisasi profil lengkap dari server (Nama Toko, Alamat, HP, Gambar).

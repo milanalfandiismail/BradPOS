@@ -266,18 +266,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 8),
                         const Divider(),
                         const SizedBox(height: 24),
+                        if (authState is AuthAuthenticated && authState.user.isGuest) ...[
+                          _buildFieldLabel('Shop ID (Offline Mode)'),
+                          _buildTextField(
+                            _shopIdController,
+                            'Auto-generated ID',
+                            icon: Icons.vpn_key_outlined,
+                            readOnly: true,
+                          ),
+                        ] else ...[
+                          _buildFieldLabel('Shop ID (Untuk Login Karyawan)'),
+                          _buildTextField(
+                            _shopIdController,
+                            'Auto-generated ID',
+                            icon: Icons.vpn_key_outlined,
+                            readOnly: true,
+                          ),
+                        ],
+                        const SizedBox(height: 20),
                         _buildFieldLabel('Store Name'),
                         _buildTextField(
                           _nameController,
                           'Sterling Gourmet Coffee',
-                        ),
-                        const SizedBox(height: 20),
-                        _buildFieldLabel('Shop ID (Untuk Login Karyawan)'),
-                        _buildTextField(
-                          _shopIdController,
-                          'Auto-generated ID',
-                          icon: Icons.vpn_key_outlined,
-                          readOnly: true,
                         ),
                         const SizedBox(height: 20),
                         _buildFieldLabel('Business Address'),
@@ -293,14 +303,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           '',
                           icon: Icons.phone_outlined,
                         ),
-                        const SizedBox(height: 20),
-                        _buildFieldLabel('Email Address'),
-                        _buildTextField(
-                          _emailController,
-                          'alexander@sterlinggourmet.com',
-                          icon: Icons.mail_outline_rounded,
-                          readOnly: true,
-                        ),
+                        if (authState is AuthAuthenticated && !authState.user.isGuest) ...[
+                          const SizedBox(height: 20),
+                          _buildFieldLabel('Email Address'),
+                          _buildTextField(
+                            _emailController,
+                            'alexander@sterlinggourmet.com',
+                            icon: Icons.mail_outline_rounded,
+                            readOnly: true,
+                          ),
+                        ],
                         const SizedBox(height: 32),
                         const Text(
                           'PREFERENCES',

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:smooth_transition/smooth_transition.dart';
 
 class AppNavigator {
+  static final navigatorKey = GlobalKey<NavigatorState>();
+
   static Future<T?> push<T>(BuildContext context, Widget page) {
     final route = PageTransition(
       child: page,

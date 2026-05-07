@@ -161,6 +161,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           localImage: event.localImage,
           address: event.address,
           phone: event.phone,
+          newPassword: event.newPassword,
         );
         result.fold(
           (failure) {

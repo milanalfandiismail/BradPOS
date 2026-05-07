@@ -19,6 +19,8 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _fullNameController;
   late TextEditingController _emailController;
+  late TextEditingController _shopIdController;
+  late TextEditingController _passwordController;
   final ImagePicker _picker = ImagePicker();
   bool _isUploadingImage = false;
 
@@ -27,11 +29,14 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     super.initState();
     _fullNameController = TextEditingController();
     _emailController = TextEditingController();
+    _shopIdController = TextEditingController();
+    _passwordController = TextEditingController();
 
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthAuthenticated) {
       _fullNameController.text = authState.user.name ?? '';
       _emailController.text = authState.user.email;
+      _shopIdController.text = authState.user.shopId ?? '';
     }
   }
 
@@ -39,6 +44,8 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
+    _shopIdController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -94,6 +101,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
     final bool isOwner = authState is AuthAuthenticated && authState.user.isOwner;
+    final bool isGuest = authState is AuthAuthenticated && authState.user.isGuest;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -216,11 +224,32 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                       const SizedBox(height: 8),
                       const Divider(),
                       const SizedBox(height: 24),
-                      _buildFieldLabel('Full Name'),
-                      _buildTextField(_fullNameController, 'Alexander Sterling', icon: Icons.person_outline_rounded),
-                      const SizedBox(height: 20),
-                      _buildFieldLabel('Email Address'),
-                      _buildTextField(_emailController, 'alexander@sterlinggourmet.com', icon: Icons.mail_outline_rounded, readOnly: true),
+                      if (!isGuest) ...[
+                        if (!isOwner) ...[
+                          _buildFieldLabel('Shop ID'),
+                          _buildTextField(_shopIdController, 'SHOP123', icon: Icons.store_outlined, readOnly: true),
+                          const SizedBox(height: 20),
+                        ],
+                        _buildFieldLabel('Full Name'),
+                        _buildTextField(_fullNameController, 'Alexander Sterling', icon: Icons.person_outline_rounded),
+                        const SizedBox(height: 20),
+                        if (isOwner) ...[
+                          _buildFieldLabel('Email Address'),
+                          _buildTextField(_emailController, 'email@example.com', icon: Icons.mail_outline_rounded, readOnly: true),
+                        ] else ...[
+                          _buildFieldLabel('Password Baru'),
+                          _buildTextField(_passwordController, 'Kosongkan jika tidak diubah', icon: Icons.lock_outline_rounded, obscureText: true),
+                        ],
+                      ] else ...[
+                        // Logika untuk Guest
+                        _buildFieldLabel('Nama Anda (Offline Mode)'),
+                        _buildTextField(_fullNameController, 'Guest User', icon: Icons.person_outline_rounded),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Nama ini akan digunakan pada struk transaksi Anda.',
+                          style: TextStyle(fontSize: 12, color: Colors.blueGrey, fontStyle: FontStyle.italic),
+                        ),
+                      ],
                       const SizedBox(height: 40),
                       SizedBox(
                         width: double.infinity,
@@ -230,6 +259,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                               context.read<AuthBloc>().add(
                                 UpdateProfileEvent(
                                   fullName: _fullNameController.text,
+                                  newPassword: _passwordController.text.isNotEmpty ? _passwordController.text : null,
                                 ),
                               );
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -281,11 +311,12 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, {int maxLines = 1, IconData? icon, bool readOnly = false}) {
+  Widget _buildTextField(TextEditingController controller, String hint, {int maxLines = 1, IconData? icon, bool readOnly = false, bool obscureText = false}) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       readOnly: readOnly,
+      obscureText: obscureText,
       decoration: InputDecoration(
         hintText: hint,
         prefixIcon: icon != null ? Icon(icon, size: 20, color: Colors.grey) : null,

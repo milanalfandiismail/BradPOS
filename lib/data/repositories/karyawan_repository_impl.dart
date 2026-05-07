@@ -104,12 +104,18 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) return const Left("User tidak terautentikasi.");
 
+      final Map<String, dynamic> updateData = {
+        "full_name": karyawan.name,
+        "is_active": karyawan.isActive,
+      };
+
+      if (karyawan.password.isNotEmpty) {
+        updateData["password_hash"] = karyawan.password;
+      }
+
       await supabase
           .from("karyawan")
-          .update({
-            "full_name": karyawan.name,
-            "is_active": karyawan.isActive,
-          })
+          .update(updateData)
           .eq("id", karyawan.id)
           .eq("owner_id", userId);
 

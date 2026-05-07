@@ -23,7 +23,14 @@ class TransactionSyncManager {
       for (var trxMap in unsyncedTrxs) {
         try {
           String id = trxMap['id'] as String;
+          final ownerId = trxMap['owner_id'] as String?;
           final trxNumber = trxMap['transaction_number'] as String? ?? 'N/A';
+
+          // Hanya push data milik user ini (Filter Guest data)
+          if (ownerId != userId) {
+            debugPrint("TransactionSync: Skip push '$trxNumber' (Data milik $ownerId, bukan $userId)");
+            continue;
+          }
 
           if (id.isEmpty) continue;
 

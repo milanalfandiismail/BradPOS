@@ -218,32 +218,26 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     }
   }
 
-  @override
-  Future<String?> pushCreatedItem(Map<String, dynamic> itemMap) async {
+  // ── Private helper: cleans up payload + uploads local image ──
+  Future<({Map<String, dynamic> payload, String? remoteUrl})> _preparePayload(
+    Map<String, dynamic> itemMap, {
+    String? oldImageUrl, // Pass existing remote URL for deletion before upload
+  }) async {
     final payload = Map<String, dynamic>.from(itemMap);
-    String? finalRemoteUrl;
+    String? remoteUrl;
 
-    // Upload gambar jika path-nya lokal
     final String? imageUrl = payload['image_url'];
     final String id = payload['id'];
 
-    if (imageUrl != null &&
-        imageUrl.isNotEmpty &&
-        !imageUrl.startsWith('http')) {
-      finalRemoteUrl = await _uploadImage(
+    if (imageUrl != null && imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+      if (oldImageUrl != null) await _deleteOldImageByUrl(oldImageUrl);
+      remoteUrl = await _uploadImage(
         imageUrl,
         payload['owner_id'],
         id,
         DateTime.parse(itemMap['updated_at']),
       );
-      if (finalRemoteUrl != null) {
-        payload['image_url'] = finalRemoteUrl;
-      } else {
-        debugPrint(
-          "RemoteDataSource: Upload image gagal, tetap sync produk tanpa image",
-        );
-        payload['image_url'] = null;
-      }
+      payload['image_url'] = remoteUrl; // null if upload failed → server stores null
     }
 
     payload.remove('sync_status');
@@ -251,88 +245,54 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     payload.remove('price'); // Legacy SQLite column
     payload['is_active'] = payload['is_active'] == 1;
 
-    // Proteksi: Pastikan category_id valid UUID atau null (jangan String kosong)
-    if (payload['category_id'] != null &&
-        (payload['category_id'] as String).isEmpty) {
+    // Guard: empty string category_id → null (avoid FK violation)
+    final catId = payload['category_id'];
+    if (catId != null && (catId as String).isEmpty) {
       payload['category_id'] = null;
     }
 
+    return (payload: payload, remoteUrl: remoteUrl);
+  }
+
+  @override
+  Future<String?> pushCreatedItem(Map<String, dynamic> itemMap) async {
+    final (:payload, :remoteUrl) = await _preparePayload(itemMap);
     try {
-      debugPrint(
-        "RemoteDataSource: Upserting produk ${payload['id']} to Supabase...",
-      );
+      debugPrint("RemoteDataSource: Upserting produk ${payload['id']} to Supabase...");
       await supabase.from("produk").upsert(payload);
       debugPrint("RemoteDataSource: Upsert produk success!");
     } catch (e) {
       debugPrint("RemoteDataSource ERROR (upsert produk): $e");
       rethrow;
     }
-    return finalRemoteUrl;
+    return remoteUrl;
   }
 
   @override
   Future<String?> pushUpdatedItem(Map<String, dynamic> itemMap) async {
-    final payload = Map<String, dynamic>.from(itemMap);
-    String? finalRemoteUrl;
-
-    // Upload gambar jika path-nya lokal
-    final String? imageUrl = payload['image_url'];
-    final String id = payload['id'];
-
-    if (imageUrl != null &&
-        imageUrl.isNotEmpty &&
-        !imageUrl.startsWith('http')) {
-      // 1. Ambil data lama untuk menghapus fotonya dari storage
+    // Fetch current remote image to delete before replacing
+    final id = itemMap['id'] as String;
+    String? oldImageUrl;
+    final imageUrl = itemMap['image_url'] as String?;
+    if (imageUrl != null && imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
       final oldData = await supabase
           .from('produk')
           .select('image_url')
           .eq('id', id)
           .maybeSingle();
-      final oldImageUrl = oldData?['image_url'] as String?;
-
-      // 2. Hapus file lama jika ada
-      await _deleteOldImageByUrl(oldImageUrl);
-
-      // 3. Upload file baru dengan nama unik (berdasarkan jam update barang)
-      finalRemoteUrl = await _uploadImage(
-        imageUrl,
-        payload['owner_id'],
-        id,
-        DateTime.parse(itemMap['updated_at']),
-      );
-      if (finalRemoteUrl != null) {
-        payload['image_url'] = finalRemoteUrl;
-      } else {
-        debugPrint(
-          "RemoteDataSource: Upload image gagal, tetap sync produk tanpa image",
-        );
-        payload['image_url'] = null;
-      }
+      oldImageUrl = oldData?['image_url'] as String?;
     }
 
-    payload.remove('sync_status');
-    payload.remove('updated_at');
-    payload.remove('price'); // Legacy SQLite column
-    payload['is_active'] = payload['is_active'] == 1;
-
-    // Proteksi: Pastikan category_id valid UUID atau null
-    if (payload['category_id'] != null &&
-        (payload['category_id'] as String).isEmpty) {
-      payload['category_id'] = null;
-    }
-
+    final (:payload, :remoteUrl) = await _preparePayload(itemMap, oldImageUrl: oldImageUrl);
     try {
-      debugPrint(
-        "RemoteDataSource: Updating (upsert) produk $id to Supabase...",
-      );
+      debugPrint("RemoteDataSource: Updating (upsert) produk $id to Supabase...");
       await supabase.from("produk").upsert(payload);
       debugPrint("RemoteDataSource: Update produk success!");
     } catch (e) {
       debugPrint("RemoteDataSource ERROR (update produk): $e");
       rethrow;
     }
-
-    return finalRemoteUrl;
+    return remoteUrl;
   }
 
   @override

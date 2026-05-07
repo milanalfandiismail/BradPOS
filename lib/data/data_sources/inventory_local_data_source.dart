@@ -52,6 +52,45 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
 
   InventoryLocalDataSourceImpl({required this.dbHelper});
 
+  // ── Private helper: builds shared WHERE clause for inventory queries ──
+  ({String clause, List<dynamic> args}) _buildWhereClause(
+    String userId, {
+    String? searchQuery,
+    String? category,
+    String? stockStatus,
+    bool forCount = false,
+  }) {
+    // Count query uses exact 'deleted', list query uses LIKE 'deleted%'
+    final statusCondition = forCount
+        ? 'sync_status != ?'
+        : 'sync_status NOT LIKE ?';
+    final statusArg = forCount ? 'deleted' : 'deleted%';
+
+    String clause = 'owner_id = ? AND $statusCondition';
+    List<dynamic> args = [userId, statusArg];
+
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      clause += ' AND name LIKE ?';
+      args.add('%$searchQuery%');
+    }
+    if (category != null && category != 'All') {
+      if (category == 'Tanpa Kategori') {
+        clause += ' AND (category IS NULL OR category = "" OR category = "Tanpa Kategori")';
+      } else {
+        clause += ' AND category = ?';
+        args.add(category);
+      }
+    }
+    if (stockStatus != null && stockStatus != 'All') {
+      if (stockStatus == 'Low Stock') {
+        clause += ' AND stock > 0 AND stock <= 10';
+      } else if (stockStatus == 'Out of Stock') {
+        clause += ' AND stock <= 0 AND stock != -1';
+      }
+    }
+    return (clause: clause, args: args);
+  }
+
   @override
   Future<List<InventoryItemModel>> getInventory(
     String userId, {
@@ -62,35 +101,17 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     String? stockStatus,
   }) async {
     final db = await dbHelper.database;
-
-    String whereClause = 'owner_id = ? AND sync_status NOT LIKE ?';
-    List<dynamic> whereArgs = [userId, 'deleted%'];
-
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      whereClause += ' AND name LIKE ?';
-      whereArgs.add('%$searchQuery%');
-    }
-    if (category != null && category != 'All') {
-      if (category == 'Tanpa Kategori') {
-        whereClause +=
-            ' AND (category IS NULL OR category = "" OR category = "Tanpa Kategori")';
-      } else {
-        whereClause += ' AND category = ?';
-        whereArgs.add(category);
-      }
-    }
-    if (stockStatus != null && stockStatus != 'All') {
-      if (stockStatus == 'Low Stock') {
-        whereClause += ' AND stock > 0 AND stock <= 10';
-      } else if (stockStatus == 'Out of Stock') {
-        whereClause += ' AND stock <= 0 AND stock != -1';
-      }
-    }
+    final (:clause, :args) = _buildWhereClause(
+      userId,
+      searchQuery: searchQuery,
+      category: category,
+      stockStatus: stockStatus,
+    );
 
     final maps = await db.query(
       'produk',
-      where: whereClause,
-      whereArgs: whereArgs,
+      where: clause,
+      whereArgs: args,
       orderBy: 'category ASC, name ASC',
       limit: limit,
       offset: offset,
@@ -111,34 +132,17 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     String? stockStatus,
   }) async {
     final db = await dbHelper.database;
-
-    String whereClause = 'owner_id = ? AND sync_status != ?';
-    List<dynamic> whereArgs = [userId, 'deleted'];
-
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      whereClause += ' AND name LIKE ?';
-      whereArgs.add('%$searchQuery%');
-    }
-    if (category != null && category != 'All') {
-      if (category == 'Tanpa Kategori') {
-        whereClause +=
-            ' AND (category IS NULL OR category = "" OR category = "Tanpa Kategori")';
-      } else {
-        whereClause += ' AND category = ?';
-        whereArgs.add(category);
-      }
-    }
-    if (stockStatus != null && stockStatus != 'All') {
-      if (stockStatus == 'Low Stock') {
-        whereClause += ' AND stock > 0 AND stock <= 10';
-      } else if (stockStatus == 'Out of Stock') {
-        whereClause += ' AND stock <= 0 AND stock != -1';
-      }
-    }
+    final (:clause, :args) = _buildWhereClause(
+      userId,
+      searchQuery: searchQuery,
+      category: category,
+      stockStatus: stockStatus,
+      forCount: true,
+    );
 
     final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM produk WHERE $whereClause',
-      whereArgs,
+      'SELECT COUNT(*) as count FROM produk WHERE $clause',
+      args,
     );
     return Sqflite.firstIntValue(result) ?? 0;
   }

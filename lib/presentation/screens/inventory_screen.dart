@@ -25,9 +25,10 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   final _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   List<InventoryItem> _lastItems = [];
   int _currentPage = 1;
-  static const int _itemsPerPage = 10;
+  static const int _itemsPerPage = 5;
   String _selectedCategory = 'All';
   String _stockFilter = 'All';
   bool _isKaryawan = false;
@@ -38,15 +39,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
     _checkUserRole();
     _loadPage();
     _searchController.addListener(() {
-      final query = _searchController.text.trim();
-      if (query.isNotEmpty) {
-        context.read<InventoryBloc>().add(
-          LoadInventory(limit: 100, searchQuery: query),
-        );
-      } else {
-        _currentPage = 1;
-        _loadPage();
-      }
+      _currentPage = 1;
+      _loadPage();
       setState(() {});
     });
   }
@@ -58,19 +52,29 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (user != null && mounted) setState(() => _isKaryawan = user.isKaryawan);
   }
 
-  void _loadPage() => context.read<InventoryBloc>().add(
-    LoadInventory(
-      page: _currentPage,
-      limit: _itemsPerPage,
-      searchQuery: _searchController.text.trim(),
-      category: _selectedCategory,
-      stockStatus: _stockFilter,
-    ),
-  );
+  void _loadPage() {
+    context.read<InventoryBloc>().add(
+      LoadInventory(
+        page: _currentPage,
+        limit: _itemsPerPage,
+        searchQuery: _searchController.text.trim(),
+        category: _selectedCategory,
+        stockStatus: _stockFilter,
+      ),
+    );
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -147,7 +151,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildContent(InventoryState state) {
-    if (state is InventoryLoading && _lastItems.isEmpty) {
+    if (state is InventoryLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     if (state is InventoryError && _lastItems.isEmpty) {
@@ -162,7 +166,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
     final displayItems = _filteredItems(itemsToShow);
     if (displayItems.isEmpty) return _buildNoSearchResult();
-    final isSearching = _searchController.text.trim().isNotEmpty;
     int totalPages = (totalItems / _itemsPerPage).ceil();
     if (totalPages == 0) totalPages = 1;
     return Column(
@@ -176,7 +179,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             child: _buildInventoryList(displayItems),
           ),
         ),
-        if (!isSearching && totalPages > 1)
+        if (totalPages > 1)
           _buildPaginationControls(totalPages),
       ],
     );
@@ -279,8 +282,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       ).then((_) {
                         if (!mounted) return;
                         if (!context.mounted) return;
+                        if (!context.mounted) return;
                         context.read<InventoryBloc>().add(
-                          const LoadInventory(page: 1, limit: 5),
+                          const LoadInventory(page: 1, limit: _itemsPerPage),
                         );
                       });
                     },
@@ -375,6 +379,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildInventoryList(List<InventoryItem> items) => ListView.builder(
+    controller: _scrollController,
     physics: const AlwaysScrollableScrollPhysics(),
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
     itemCount: items.length,

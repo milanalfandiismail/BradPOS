@@ -71,6 +71,7 @@ class UpdateProfileEvent extends AuthEvent {
   final String? localImage;
   final String? address;
   final String? phone;
+  final String? newPassword;
 
   const UpdateProfileEvent({
     this.fullName,
@@ -80,6 +81,7 @@ class UpdateProfileEvent extends AuthEvent {
     this.localImage,
     this.address,
     this.phone,
+    this.newPassword,
   });
 
   @override
@@ -91,5 +93,6 @@ class UpdateProfileEvent extends AuthEvent {
         localImage ?? '',
         address ?? '',
         phone ?? '',
+        newPassword ?? '',
       ];
 }

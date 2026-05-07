@@ -18,7 +18,6 @@ import 'package:bradpos/core/widgets/main_bottom_nav_bar.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
 import 'package:bradpos/core/utils/app_navigator.dart';
-import 'package:bradpos/main.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -37,100 +36,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is AuthUnauthenticated) {
-          BradPOSApp.restartApp(context);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                color: Colors.white,
-                child: BlocBuilder<AuthBloc, AuthState>(
-                  builder: (context, state) {
-                    String shopName = 'BradPOS';
-                    if (state is AuthAuthenticated) {
-                      shopName = state.user.shopName ?? 'BradPOS';
-                    }
-                    return BradHeader(
-                      title: 'Beranda',
-                      subtitle: shopName,
-                      leadingIcon: Icons.home_rounded,
-                      onSettingsTap: () => SettingsModal.show(context),
-                    );
-                  },
-                ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              color: Colors.white,
+              child: BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  String shopName = 'BradPOS';
+                  if (state is AuthAuthenticated) {
+                    shopName = state.user.shopName ?? 'BradPOS';
+                  }
+                  return BradHeader(
+                    title: 'Beranda',
+                    subtitle: shopName,
+                    leadingIcon: Icons.home_rounded,
+                    onSettingsTap: () => SettingsModal.show(context),
+                  );
+                },
               ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    context.read<AuthBloc>().syncService.syncAll();
-                    context.read<DashboardBloc>().add(LoadDashboardStats());
-                    await Future.delayed(const Duration(seconds: 1));
-                  },
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 12),
-                        _buildGreeting(),
-                        const SizedBox(height: 24),
-                        _buildMainActions(context),
-                        const SizedBox(height: 24),
-                        BlocBuilder<DashboardBloc, DashboardState>(
-                          builder: (context, state) {
-                            if (state is DashboardLoading) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            } else if (state is DashboardLoaded) {
-                              return Column(
-                                children: [
-                                  LowStockBanner(
-                                    lowStockCount: state.lowStockCount,
-                                    outOfStockCount: state.outOfStockCount,
-                                    onTap: () => AppNavigator.push(
-                                      context,
-                                      const InventoryScreen(),
-                                    ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  context.read<AuthBloc>().syncService.syncAll();
+                  context.read<DashboardBloc>().add(LoadDashboardStats());
+                  await Future.delayed(const Duration(seconds: 1));
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+                      _buildGreeting(),
+                      const SizedBox(height: 24),
+                      _buildMainActions(context),
+                      const SizedBox(height: 24),
+                      BlocBuilder<DashboardBloc, DashboardState>(
+                        builder: (context, state) {
+                          if (state is DashboardLoading) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          } else if (state is DashboardLoaded) {
+                            return Column(
+                              children: [
+                                LowStockBanner(
+                                  lowStockCount: state.lowStockCount,
+                                  outOfStockCount: state.outOfStockCount,
+                                  onTap: () => AppNavigator.push(
+                                    context,
+                                    const InventoryScreen(),
                                   ),
-                                  _buildStats(state.stats),
-                                  const SizedBox(height: 24),
-                                  _buildSalesPerformance(
-                                    state.stats.dailySales,
-                                  ),
-                                ],
-                              );
-                            } else if (state is DashboardError) {
-                              return Center(child: Text(state.message));
-                            }
-                            return const SizedBox();
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        _buildBottomActions(context),
-                        const SizedBox(height: 100),
-                      ],
-                    ),
+                                ),
+                                _buildStats(state.stats),
+                                const SizedBox(height: 24),
+                                _buildSalesPerformance(state.stats.dailySales),
+                              ],
+                            );
+                          } else if (state is DashboardError) {
+                            return Center(child: Text(state.message));
+                          }
+                          return const SizedBox();
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      _buildBottomActions(context),
+                      const SizedBox(height: 100),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        bottomNavigationBar: BlocBuilder<DashboardBloc, DashboardState>(
-          builder: (_, _) => const MainBottomNavBar(activeLabel: 'DASHBOARD'),
-        ),
+      ),
+      bottomNavigationBar: BlocBuilder<DashboardBloc, DashboardState>(
+        builder: (_, _) => const MainBottomNavBar(activeLabel: 'DASHBOARD'),
       ),
     );
   }

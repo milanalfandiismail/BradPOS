@@ -268,6 +268,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? localImage,
     String? address,
     String? phone,
+    String? newPassword,
   }) async {
     try {
       final userResult = await getCurrentUser();
@@ -297,10 +298,34 @@ class AuthRepositoryImpl implements AuthRepository {
         phone: phone ?? user.phone,
       );
 
-      await _saveLocalProfile(updatedUser);
-      await prefs.setString(_ownerSessionKey, jsonEncode(updatedUser.toMap()));
+      // Handle Password Change
+      if (newPassword != null && newPassword.isNotEmpty) {
+        if (user.role == 'karyawan') {
+          await supabase
+              .from('karyawan')
+              .update({'password_hash': newPassword})
+              .eq('id', user.id);
+        } else if (user.role == 'owner') {
+          await supabase.auth.updateUser(UserAttributes(password: newPassword));
+        }
+      }
 
-      if (user.role != 'guest') {
+      // Sync Karyawan Table if name changes
+      if (user.role == 'karyawan' && fullName != null) {
+        await supabase
+            .from('karyawan')
+            .update({'full_name': fullName})
+            .eq('id', user.id);
+      }
+
+      await _saveLocalProfile(updatedUser);
+      if (user.role == 'karyawan') {
+        await prefs.setString(_karyawanSessionKey, jsonEncode(updatedUser.toMap()));
+      } else {
+        await prefs.setString(_ownerSessionKey, jsonEncode(updatedUser.toMap()));
+      }
+
+      if (user.role == 'owner') {
         final Map<String, dynamic> updateData = {
           'id': user.id,
           'updated_at': DateTime.now().toIso8601String(),
@@ -394,13 +419,15 @@ class AuthRepositoryImpl implements AuthRepository {
       final karyawanData = response[0];
 
       String shopName = 'BradPOS';
+      String? dbShopId;
       try {
         final ownerProfile = await supabase
             .from('profiles')
-            .select('shop_name')
+            .select('shop_name, shop_id')
             .eq('id', karyawanData['owner_id'])
             .single();
         shopName = ownerProfile['shop_name'] ?? 'BradPOS';
+        dbShopId = ownerProfile['shop_id'];
       } catch (_) {}
 
       final user = UserEntity(
@@ -408,6 +435,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: '', // No email for employee
         name: karyawanData['full_name'],
         shopName: shopName,
+        shopId: dbShopId ?? shopId,
         role: 'karyawan',
         ownerId: karyawanData['owner_id'],
       );

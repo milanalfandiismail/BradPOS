@@ -8,7 +8,9 @@ import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
 import 'package:bradpos/presentation/blocs/inventory_bloc.dart';
 import 'package:bradpos/presentation/blocs/cashier_bloc.dart';
 import 'package:bradpos/presentation/blocs/history/history_bloc.dart';
+import 'package:bradpos/presentation/screens/login_screen.dart';
 import 'package:bradpos/core/widgets/splash_page.dart';
+import 'package:bradpos/core/utils/app_navigator.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 /// Entry point aplikasi BradPOS.
@@ -42,10 +44,7 @@ class _BradPOSAppState extends State<BradPOSApp> {
 
   @override
   Widget build(BuildContext context) {
-    return KeyedSubtree(
-      key: _key,
-      child: const MyApp(),
-    );
+    return KeyedSubtree(key: _key, child: const MyApp());
   }
 }
 
@@ -64,6 +63,7 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => di.sl<HistoryBloc>()),
       ],
       child: MaterialApp(
+        navigatorKey: AppNavigator.navigatorKey,
         title: 'BradPOS',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -77,6 +77,21 @@ class MyApp extends StatelessWidget {
             },
           ),
         ),
+        builder: (context, child) {
+          return BlocListener<AuthBloc, AuthState>(
+            listenWhen: (previous, current) =>
+                previous is! AuthUnauthenticated && current is AuthUnauthenticated,
+            listener: (context, state) {
+              if (state is AuthUnauthenticated) {
+                AppNavigator.navigatorKey.currentState?.pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            child: child!,
+          );
+        },
         home: const SplashPage(),
       ),
     );

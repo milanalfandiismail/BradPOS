@@ -83,6 +83,26 @@ class InventoryRepositoryImpl implements InventoryRepository {
     }
   }
 
+  // ── Private helper: resolves or creates category for an item ──
+  Future<String?> _resolveCategoryId(String category, String userId) async {
+    if (category.isEmpty) return null;
+    final existing = await categoryLocalDataSource.getCategories(userId);
+    final match = existing.where(
+      (c) => c.name.trim().toLowerCase() == category.trim().toLowerCase(),
+    ).toList();
+    if (match.isNotEmpty) return match.first.id;
+
+    final newCat = Category(
+      id: const Uuid().v4(),
+      ownerId: userId,
+      name: category,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await categoryLocalDataSource.addCategory(newCat);
+    return newCat.id;
+  }
+
   @override
   Future<Either<String, InventoryItem>> addInventoryItem(
     InventoryItem item,
@@ -92,29 +112,12 @@ class InventoryRepositoryImpl implements InventoryRepository {
       var newItem = item.copyWith(ownerId: userId);
 
       if (newItem.categoryId == null && newItem.category.isNotEmpty) {
-        final existingCats = await categoryLocalDataSource.getCategories(userId);
-        final match = existingCats.where(
-          (c) => c.name.trim().toLowerCase() == newItem.category.trim().toLowerCase(),
-        ).toList();
-
-        if (match.isNotEmpty) {
-          newItem = newItem.copyWith(categoryId: match.first.id);
-        } else {
-          final newCat = Category(
-            id: const Uuid().v4(),
-            ownerId: userId,
-            name: newItem.category,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-          await categoryLocalDataSource.addCategory(newCat);
-          newItem = newItem.copyWith(categoryId: newCat.id);
-        }
+        final categoryId = await _resolveCategoryId(newItem.category, userId);
+        if (categoryId != null) newItem = newItem.copyWith(categoryId: categoryId);
       }
 
       final savedLocal = await localDataSource.addInventoryItem(newItem);
       await _pushItemToRemote(newItem.copyWith(id: savedLocal.id));
-
       return Right(savedLocal);
     } catch (e) {
       return Left("Gagal menambah item: $e");
@@ -130,29 +133,12 @@ class InventoryRepositoryImpl implements InventoryRepository {
       var updatedItem = item;
 
       if (updatedItem.categoryId == null && updatedItem.category.isNotEmpty) {
-        final existingCats = await categoryLocalDataSource.getCategories(userId);
-        final match = existingCats.where(
-          (c) => c.name.trim().toLowerCase() == updatedItem.category.trim().toLowerCase(),
-        ).toList();
-
-        if (match.isNotEmpty) {
-          updatedItem = updatedItem.copyWith(categoryId: match.first.id);
-        } else {
-          final newCat = Category(
-            id: const Uuid().v4(),
-            ownerId: userId,
-            name: updatedItem.category,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-          await categoryLocalDataSource.addCategory(newCat);
-          updatedItem = updatedItem.copyWith(categoryId: newCat.id);
-        }
+        final categoryId = await _resolveCategoryId(updatedItem.category, userId);
+        if (categoryId != null) updatedItem = updatedItem.copyWith(categoryId: categoryId);
       }
 
       final updatedLocal = await localDataSource.updateInventoryItem(updatedItem);
       await _pushItemToRemote(updatedItem);
-
       return Right(updatedLocal);
     } catch (e) {
       return Left("Gagal memperbarui item: $e");

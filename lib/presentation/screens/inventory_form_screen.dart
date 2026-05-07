@@ -62,9 +62,9 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
   late TextEditingController _barcodeController;
   String? _selectedCategoryId;
   String? _imagePath;
-  bool _trackStock = true;
   final ImagePicker _picker = ImagePicker();
   final _currencyFormat = NumberFormat.decimalPattern('id');
+  bool _showPurchasePrice = false;
 
   bool get isEditing => widget.item != null;
   static const List<String> _unitOptions = [
@@ -97,7 +97,6 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           ? _currencyFormat.format(widget.item!.sellingPrice)
           : '',
     );
-    _trackStock = widget.item == null || widget.item!.stock != -1;
     _stockController = TextEditingController(
       text: (widget.item != null && widget.item!.stock != -1)
           ? widget.item!.stock.toString()
@@ -108,6 +107,17 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
       text: widget.item?.barcode ?? '',
     );
     _imagePath = widget.item?.imageUrl;
+
+    if (widget.item != null) {
+      // Auto detect mode based on item data
+      _showPurchasePrice = widget.item!.purchasePrice > 0 || widget.item!.stock != -1;
+    }
+  }
+
+  void _toggleRetailMode(bool value) {
+    setState(() {
+      _showPurchasePrice = value;
+    });
   }
 
   @override
@@ -161,14 +171,16 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
         categoryId: _selectedCategoryId,
         name: name,
         category: _categoryController.text.trim(),
-        purchasePrice: _parseCurrency(_purchasePriceController.text),
+        purchasePrice: _showPurchasePrice 
+            ? _parseCurrency(_purchasePriceController.text)
+            : 0,
         sellingPrice: _parseCurrency(_sellingPriceController.text),
-        stock: _trackStock
+        stock: _showPurchasePrice 
             ? (int.tryParse(_stockController.text.trim()) ?? 0)
             : -1,
-        unit: _trackStock
+        unit: _showPurchasePrice
             ? _unitController.text.trim()
-            : 'pcs', // Default to pcs if not tracking
+            : 'pcs',
         barcode: _barcodeController.text.trim().isEmpty
             ? null
             : _barcodeController.text.trim(),
@@ -250,101 +262,75 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                     _buildSectionHeader(Icons.payments_outlined, 'Harga & Stok'),
                     const SizedBox(height: 12),
                     _buildSectionCard([
+                      _buildModernTextField(
+                        controller: _sellingPriceController,
+                        label: 'Harga Jual',
+                        icon: Icons.upload_rounded,
+                        prefix: 'Rp',
+                        keyboard: TextInputType.number,
+                        formatters: [CurrencyInputFormatter()],
+                      ),
+                      if (_showPurchasePrice) ...[
+                        const SizedBox(height: 20),
+                        _buildModernTextField(
+                          controller: _purchasePriceController,
+                          label: 'Harga Beli (Opsional)',
+                          icon: Icons.download_rounded,
+                          prefix: 'Rp',
+                          keyboard: TextInputType.number,
+                          formatters: [CurrencyInputFormatter()],
+                        ),
+                        const SizedBox(height: 20),
+                        _buildModernTextField(
+                          controller: _stockController,
+                          label: 'Stok Saat Ini',
+                          icon: Icons.inventory_rounded,
+                          keyboard: TextInputType.number,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildPickerField(
+                          label: 'Satuan',
+                          icon: Icons.straighten_rounded,
+                          value: _unitController.text,
+                          onTap: _showUnitPicker,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildModernTextField(
+                          controller: _barcodeController,
+                          label: 'Barcode (Opsional)',
+                          icon: Icons.qr_code_scanner_rounded,
+                        ),
+                      ],
+                      const Divider(height: 40),
                       Row(
                         children: [
-                          Expanded(
-                            child: _buildModernTextField(
-                              controller: _purchasePriceController,
-                              label: 'Harga Beli',
-                              icon: Icons.download_rounded,
-                              prefix: 'Rp',
-                              keyboard: TextInputType.number,
-                              formatters: [CurrencyInputFormatter()],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildModernTextField(
-                              controller: _sellingPriceController,
-                              label: 'Harga Jual',
-                              icon: Icons.upload_rounded,
-                              prefix: 'Rp',
-                              keyboard: TextInputType.number,
-                              formatters: [CurrencyInputFormatter()],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.inventory_2_outlined,
-                                size: 18,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 8),
-                              const Expanded(
-                                child: Text(
-                                  'Kelola Stok Barang',
+                          const Icon(Icons.storefront_rounded, size: 18, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Mode Retail',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
                                     color: Color(0xFF475569),
                                   ),
                                 ),
-                              ),
-                              Switch(
-                                value: _trackStock,
-                                onChanged: (v) => setState(() => _trackStock = v),
-                                activeTrackColor: AppColors.primary,
-                              ),
-                            ],
-                          ),
-                          Text(
-                            _trackStock
-                                ? 'Stok akan berkurang otomatis setiap penjualan.'
-                                : 'Stok tidak terbatas (cocok untuk jasa atau menu kustom).',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade500,
-                              fontWeight: FontWeight.w500,
+                                Text(
+                                  'Aktifkan untuk input harga beli & stok',
+                                  style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                                ),
+                              ],
                             ),
+                          ),
+                          Switch(
+                            value: _showPurchasePrice,
+                            onChanged: _toggleRetailMode,
+                            activeTrackColor: AppColors.primary,
                           ),
                         ],
-                      ),
-                      if (_trackStock) ...[
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildModernTextField(
-                                controller: _stockController,
-                                label: 'Stok Saat Ini',
-                                icon: Icons.inventory_rounded,
-                                keyboard: TextInputType.number,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildPickerField(
-                                label: 'Satuan',
-                                icon: Icons.straighten_rounded,
-                                value: _unitController.text,
-                                onTap: _showUnitPicker,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      _buildModernTextField(
-                        controller: _barcodeController,
-                        label: 'Barcode (Opsional)',
-                        icon: Icons.qr_code_scanner_rounded,
                       ),
                     ]),
                     const SizedBox(height: 40),

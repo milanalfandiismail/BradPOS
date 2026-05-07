@@ -25,6 +25,12 @@ class ProductSyncManager {
         final ownerId = itemMap['owner_id'] as String?;
         final name = itemMap['name'] as String? ?? 'Tanpa Nama';
 
+        // Hanya push data milik user ini (Filter Guest data)
+        if (ownerId != userId) {
+          debugPrint("ProductSync: Skip push '$name' (Data milik $ownerId, bukan $userId)");
+          continue;
+        }
+
         if (id.isEmpty) continue;
 
         // UUID Fix

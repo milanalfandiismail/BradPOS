@@ -64,8 +64,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
         updatedItems,
       );
 
-      // 2. Coba SINKRON ke REMOTE (Fire & Forget atau Silent Sync)
-      _syncTransactionToRemote(localTrx, updatedItems);
+      // 2. Coba SINKRON ke REMOTE jika bukan Guest
+      if (!user.isGuest) {
+        _syncTransactionToRemote(localTrx, updatedItems);
+      }
 
       return Right(localTrx);
     } catch (e, st) {
@@ -79,6 +81,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
     ent.Transaction transaction,
     List<TransactionItem> items,
   ) async {
+    // Skip jika offline_guest
+    if (transaction.ownerId == 'offline_guest') return;
+
     try {
       await remoteDataSource.createTransaction(transaction, items);
 
@@ -120,9 +125,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
     try {
       final userResult = await authRepository.getCurrentUser();
       final user = userResult.fold((l) => null, (r) => r);
-      if (user == null) return const Left("User tidak terautentikasi.");
-
-      final userId = (user.role == 'karyawan' ? user.ownerId : user.id) ?? '';
+      final userId = user != null 
+          ? (user.role == 'karyawan' ? user.ownerId : user.id) ?? ''
+          : 'offline_guest';
 
       // Ambil dari lokal untuk kecepatan
       final localTransactions = await localDataSource.getTransactions(userId);
@@ -140,9 +145,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
     try {
       final userResult = await authRepository.getCurrentUser();
       final user = userResult.fold((l) => null, (r) => r);
-      if (user == null) return const Left("User tidak terautentikasi.");
-
-      final userId = (user.role == 'karyawan' ? user.ownerId : user.id) ?? '';
+      final userId = user != null 
+          ? (user.role == 'karyawan' ? user.ownerId : user.id) ?? ''
+          : 'offline_guest';
 
       final transactionModels = await localDataSource.getTransactionsByRange(
         userId,
@@ -160,9 +165,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
     try {
       final userResult = await authRepository.getCurrentUser();
       final user = userResult.fold((l) => null, (r) => r);
-      if (user == null) return const Left("User tidak terautentikasi.");
-
-      final userId = (user.role == 'karyawan' ? user.ownerId : user.id) ?? '';
+      final userId = user != null 
+          ? (user.role == 'karyawan' ? user.ownerId : user.id) ?? ''
+          : 'offline_guest';
 
       // Cari di lokal saja dulu
       final localTransactions = await localDataSource.getTransactions(userId);
