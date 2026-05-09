@@ -7,11 +7,12 @@ abstract class TransactionRepository {
     Transaction transaction,
     List<TransactionItem> items,
   );
-  Future<Either<String, List<Transaction>>> getTransactions();
+  Future<Either<String, List<Transaction>>> getTransactions({String? cashierId});
   Future<Either<String, List<Transaction>>> getTransactionsByRange(
     DateTime startDate,
-    DateTime endDate,
-  );
+    DateTime endDate, {
+    String? cashierId,
+  });
   Future<Either<String, Transaction>> getTransactionById(String id);
   Future<Either<String, List<TransactionItem>>> getTransactionItems(
     String transactionId,

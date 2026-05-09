@@ -71,21 +71,19 @@ class BradHeader extends StatelessWidget {
               children: [
                 Text(
                   subtitle.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                    letterSpacing: 0.5,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
+                        letterSpacing: 1.0,
+                      ),
                 ),
                 Text(
                   title,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF0F172A),
-                  ),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF0F172A),
+                      ),
                 ),
               ],
             ),
@@ -94,10 +92,11 @@ class BradHeader extends StatelessWidget {
           if (showSettings)
             IconButton(
               onPressed: onSettingsTap ?? () => _showSettingsMenu(context),
+              tooltip: 'Settings',
               icon: const Icon(
                 Icons.settings_outlined,
                 color: Color(0xFF64748B),
-                size: 22,
+                size: 24,
               ),
             ),
         ],

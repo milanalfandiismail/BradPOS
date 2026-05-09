@@ -13,12 +13,13 @@ abstract class TransactionLocalDataSource {
     ent.Transaction transaction,
     List<TransactionItem> items,
   );
-  Future<List<TransactionModel>> getTransactions(String userId);
+  Future<List<TransactionModel>> getTransactions(String userId, {String? cashierId});
   Future<List<TransactionModel>> getTransactionsByRange(
     String userId,
     DateTime start,
-    DateTime end,
-  );
+    DateTime end, {
+    String? cashierId,
+  });
   Future<List<Map<String, dynamic>>> getUnsyncedTransactions();
   Future<List<Map<String, dynamic>>> getTransactionItems(String transactionId);
   Future<void> updateSyncStatus(String id, String status);
@@ -126,12 +127,21 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
   }
 
   @override
-  Future<List<TransactionModel>> getTransactions(String userId) async {
+  Future<List<TransactionModel>> getTransactions(String userId, {String? cashierId}) async {
     final db = await dbHelper.database;
+    
+    String whereClause = 'owner_id = ? AND status != ?';
+    List<dynamic> whereArgs = [userId, 'deleted'];
+    
+    if (cashierId != null) {
+      whereClause += ' AND karyawan_id = ?';
+      whereArgs.add(cashierId);
+    }
+
     final List<Map<String, dynamic>> maps = await db.query(
       'transactions',
-      where: 'owner_id = ? AND status != ?',
-      whereArgs: [userId, 'deleted'],
+      where: whereClause,
+      whereArgs: whereArgs,
       orderBy: 'created_at DESC',
     );
 
@@ -142,18 +152,28 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
   Future<List<TransactionModel>> getTransactionsByRange(
     String userId,
     DateTime start,
-    DateTime end,
-  ) async {
+    DateTime end, {
+    String? cashierId,
+  }) async {
     final db = await dbHelper.database;
+    
+    String whereClause = 'owner_id = ? AND status != ? AND created_at BETWEEN ? AND ?';
+    List<dynamic> whereArgs = [
+      userId,
+      'deleted',
+      start.toIso8601String(),
+      end.toIso8601String(),
+    ];
+
+    if (cashierId != null) {
+      whereClause += ' AND karyawan_id = ?';
+      whereArgs.add(cashierId);
+    }
+
     final List<Map<String, dynamic>> maps = await db.query(
       'transactions',
-      where: 'owner_id = ? AND status != ? AND created_at BETWEEN ? AND ?',
-      whereArgs: [
-        userId,
-        'deleted',
-        start.toIso8601String(),
-        end.toIso8601String(),
-      ],
+      where: whereClause,
+      whereArgs: whereArgs,
       orderBy: 'created_at DESC',
     );
 

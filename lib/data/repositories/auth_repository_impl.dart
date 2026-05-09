@@ -42,7 +42,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = response.user;
       if (user != null) {
         // Fetch profile immediately
-        final profile = await profileRemoteDataSource.getProfile(user.id);
+        final profile = await profileRemoteDataSource.getProfile(user.id, isStaff: false);
         
         final userEntity = UserEntity(
           id: user.id,
@@ -86,7 +86,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = response.user;
       if (user != null) {
         // Fetch profile (might be empty but good for consistency)
-        final profile = await profileRemoteDataSource.getProfile(user.id);
+        final profile = await profileRemoteDataSource.getProfile(user.id, isStaff: false);
 
         final userEntity = UserEntity(
           id: user.id,
@@ -128,7 +128,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = response.user;
       if (user != null) {
         // Fetch profile immediately
-        final profile = await profileRemoteDataSource.getProfile(user.id);
+        final profile = await profileRemoteDataSource.getProfile(user.id, isStaff: false);
 
         final userEntity = UserEntity(
           id: user.id,
@@ -293,7 +293,11 @@ class AuthRepositoryImpl implements AuthRepository {
         if (user.remoteImage != null) {
           await profileRemoteDataSource.deleteProfileImage(user.remoteImage!);
         }
-        finalRemoteUrl = await profileRemoteDataSource.uploadProfileImage(localImage, user.id);
+        finalRemoteUrl = await profileRemoteDataSource.uploadProfileImage(
+          localImage, 
+          user.id, 
+          isStaff: user.role == 'karyawan',
+        );
       }
 
       final updatedUser = UserEntity(

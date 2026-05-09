@@ -9,7 +9,7 @@ import 'package:bradpos/presentation/widgets/karyawan_card.dart';
 import 'package:bradpos/domain/entities/karyawan.dart';
 import 'package:bradpos/presentation/screens/karyawan_form_screen.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
-import 'package:bradpos/presentation/widgets/settings_modal.dart';
+
 
 /// Halaman Daftar Karyawan.
 /// Menampilkan semua karyawan yang terdaftar dan menyediakan akses ke Tambah/Edit/Hapus.
@@ -78,7 +78,6 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
   }
 
   /// Bagian Header Halaman yang berisi Judul, Pencarian, dan Tombol Tambah.
-  /// Bagian Header Halaman yang berisi Judul, Pencarian, dan Tombol Tambah.
   Widget _buildAppBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -97,7 +96,7 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
                 subtitle: shopName,
                 showBackButton: true,
                 leadingIcon: Icons.people_rounded,
-                onSettingsTap: () => SettingsModal.show(context),
+                showSettings: false,
               );
             },
           ),

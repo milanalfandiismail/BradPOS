@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/domain/entities/karyawan.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
+import 'dart:ui';
 
 /// Widget Card untuk menampilkan ringkasan data Karyawan.
 /// Digunakan di KaryawanListScreen.
@@ -21,15 +21,14 @@ class KaryawanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade50, width: 1.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.shade900.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -39,86 +38,95 @@ class KaryawanCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Avatar placeholder
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  color: Colors.grey.shade200,
-                  child: _buildImage(),
+              GestureDetector(
+                onTap: () => _showFullScreenImage(context),
+                child: Hero(
+                  tag: 'karyawan_avatar_${karyawan.id}',
+                  child: ClipOval(
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      color: const Color(0xFFF1F5F9),
+                      child: _buildImage(),
+                    ),
+                  ),
                 ),
               ),
-              _buildStatusBadge(karyawan.isActive),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'ID: ${karyawan.id}',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            karyawan.name,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.shield_outlined, size: 14, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(
-                karyawan.isActive ? 'Status: Aktif' : 'Status: Nonaktif',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'ID: #${karyawan.id.substring(0, 8)}',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: const Color(0xFF94A3B8),
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        _buildStatusBadge(karyawan.isActive),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      karyawan.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.badge_outlined,
+                          size: 14,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Karyawan Aktif',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: const Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          // Tombol aksi untuk Edit dan Delete
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
+                child: FilledButton.tonalIcon(
                   onPressed: onEdit,
-                  icon: const Icon(Icons.edit, size: 16),
+                  icon: const Icon(Icons.edit_rounded, size: 18),
                   label: const Text('Ubah'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: BorderSide(color: Colors.blue.shade100),
-                    backgroundColor: Colors.blue.shade50.withValues(alpha: 0.3),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    foregroundColor: const Color(0xFF475569),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete, size: 16),
-                  label: const Text('Hapus'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: BorderSide(color: Colors.red.shade100),
-                    backgroundColor: Colors.red.shade50,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+              IconButton.filledTonal(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFFFEF2F2),
+                  foregroundColor: const Color(0xFFEF4444),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
@@ -162,14 +170,87 @@ class KaryawanCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImage() {
+  void _showFullScreenImage(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: true,
+      barrierLabel: karyawan.name,
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+          title: Text(
+            karyawan.name,
+            style: const TextStyle(color: Colors.white),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.edit_rounded),
+              onPressed: () {
+                Navigator.pop(context);
+                onEdit();
+              },
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Center(
+              child: Hero(
+                tag: 'karyawan_avatar_${karyawan.id}',
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: ClipOval(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      height: MediaQuery.of(context).size.width * 0.8,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                      ),
+                      child: _buildImage(isFullScreen: true),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImage({bool isFullScreen = false}) {
     if (karyawan.localImage != null && karyawan.localImage!.isNotEmpty) {
       final file = File(karyawan.localImage!);
       if (file.existsSync()) {
-        return Image.file(file, fit: BoxFit.cover);
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              _buildRemoteOrPlaceholder(isFullScreen),
+        );
       }
     }
 
+    return _buildRemoteOrPlaceholder(isFullScreen);
+  }
+
+  Widget _buildRemoteOrPlaceholder(bool isFullScreen) {
     if (karyawan.remoteImage != null && karyawan.remoteImage!.isNotEmpty) {
       return CachedNetworkImage(
         imageUrl: karyawan.remoteImage!,
@@ -181,10 +262,18 @@ class KaryawanCard extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        errorWidget: (context, url, error) => const Icon(Icons.person, color: Colors.grey),
+        errorWidget: (context, url, error) => Icon(
+          Icons.person,
+          size: isFullScreen ? 100 : 20,
+          color: Colors.grey,
+        ),
       );
     }
 
-    return const Icon(Icons.person, color: Colors.grey);
+    return Icon(
+      Icons.person,
+      size: isFullScreen ? 100 : 20,
+      color: Colors.grey,
+    );
   }
 }

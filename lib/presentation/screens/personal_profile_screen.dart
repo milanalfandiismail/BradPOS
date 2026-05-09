@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
@@ -49,10 +50,139 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickAndUploadImage() async {
+  void _showFullScreenImage(
+    String? remoteUrl,
+    String? localPath,
+    bool isOwner,
+    bool isEditable,
+  ) {
+    showGeneralDialog(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: true,
+      barrierLabel: 'Profile Picture',
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+          actions: [
+            if (!isOwner && isEditable)
+              IconButton(
+                icon: const Icon(Icons.edit_rounded),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showPickerPopup();
+                },
+              ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Center(
+              child: Hero(
+                tag: 'profile_avatar',
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: ClipOval(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      height: MediaQuery.of(context).size.width * 0.8,
+                      decoration: const BoxDecoration(shape: BoxShape.circle),
+                      child: (localPath != null && File(localPath).existsSync())
+                          ? Image.file(
+                              File(localPath),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  _buildAvatarFallback(),
+                            )
+                          : remoteUrl != null && remoteUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: remoteUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (_, _) => _buildAvatarPlaceholder(),
+                              errorWidget: (context, url, error) =>
+                                  _buildAvatarFallback(),
+                            )
+                          : _buildAvatarFallback(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showPickerPopup() {
+    return showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Ganti Foto Profil',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 24),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Ambil dari Kamera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.image_rounded),
+              title: const Text('Pilih dari Galeri'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadImage(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadImage(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 50,
       );
       if (image == null) return;
@@ -143,101 +273,116 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                                 localPath = state.user.localImage;
                               }
 
-                              return InkWell(
-                                onTap: isOwner && !_isUploadingImage
-                                    ? _pickAndUploadImage
-                                    : null,
-                                borderRadius: BorderRadius.circular(50),
-                                child: Stack(
-                                  children: [
-                                    ClipOval(
-                                      child: SizedBox(
-                                        width: 100,
-                                        height: 100,
-                                        child:
-                                            (localPath != null &&
-                                                File(localPath).existsSync())
-                                            ? Image.file(
-                                                File(localPath),
-                                                fit: BoxFit.cover,
-                                              )
-                                            : remoteUrl != null &&
-                                                  remoteUrl.isNotEmpty
-                                            ? CachedNetworkImage(
-                                                imageUrl: remoteUrl,
-                                                fit: BoxFit.cover,
-                                                placeholder: (_, _) =>
-                                                    _buildAvatarPlaceholder(),
-                                                errorWidget: (_, _, _) =>
-                                                    _buildAvatarFallback(),
-                                              )
-                                            : _buildAvatarFallback(),
+                              return Stack(
+                                children: [
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => _showFullScreenImage(
+                                        remoteUrl,
+                                        localPath,
+                                        isOwner,
+                                        false,
+                                      ),
+                                      borderRadius: BorderRadius.circular(60),
+                                      child: Hero(
+                                        tag: 'profile_avatar',
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.05,
+                                                ),
+                                                blurRadius: 10,
+                                                spreadRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          child: ClipOval(
+                                            child: SizedBox(
+                                              width: 120,
+                                              height: 120,
+                                              child:
+                                                  (localPath != null &&
+                                                      File(
+                                                        localPath,
+                                                      ).existsSync())
+                                                  ? Image.file(
+                                                      File(localPath),
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder:
+                                                          (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) =>
+                                                              _buildAvatarFallback(),
+                                                    )
+                                                  : remoteUrl != null &&
+                                                        remoteUrl.isNotEmpty
+                                                  ? CachedNetworkImage(
+                                                      imageUrl: remoteUrl,
+                                                      fit: BoxFit.cover,
+                                                      placeholder: (_, _) =>
+                                                          _buildAvatarPlaceholder(),
+                                                      errorWidget:
+                                                          (
+                                                            context,
+                                                            url,
+                                                            error,
+                                                          ) =>
+                                                              _buildAvatarFallback(),
+                                                    )
+                                                  : _buildAvatarFallback(),
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    if (_isUploadingImage)
-                                      Positioned.fill(
-                                        child: Container(
-                                          decoration: const BoxDecoration(
-                                            color: Colors.black26,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Center(
-                                            child: CircularProgressIndicator(
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                    Colors.white,
-                                                  ),
-                                              strokeWidth: 3,
-                                            ),
+                                  ),
+                                  if (_isUploadingImage)
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black26,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Center(
+                                          child: CircularProgressIndicator(
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
+                                            strokeWidth: 3,
                                           ),
                                         ),
                                       ),
-                                    if (isOwner)
-                                      Positioned(
-                                        bottom: 0,
-                                        right: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF006D44),
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: Colors.white,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.camera_alt_rounded,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
+                                    ),
+                                ],
                               );
                             },
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        const Center(
+                        const SizedBox(height: 16),
+                        Center(
                           child: Text(
                             'Foto Profil',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF64748B),
-                            ),
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: const Color(0xFF64748B),
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                         ),
                         const SizedBox(height: 32),
                       ],
-                      const Text(
-                        'Personal Settings',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
+                      Text(
+                        'Informasi Akun',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF0F172A),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -308,7 +453,9 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                                 );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Profil berhasil diperbarui!'),
+                                    content: Text(
+                                      'Profil berhasil diperbarui!',
+                                    ),
                                     backgroundColor: Color(0xFF006D44),
                                   ),
                                 );
@@ -363,13 +510,12 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
 
   Widget _buildFieldLabel(String label) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
       child: Text(
         label,
-        style: const TextStyle(
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
           fontWeight: FontWeight.w800,
-          fontSize: 14,
-          color: Color(0xFF475569),
+          color: const Color(0xFF475569),
         ),
       ),
     );
@@ -383,33 +529,53 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     bool readOnly = false,
     bool obscureText = false,
   }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      readOnly: readOnly,
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: icon != null
-            ? Icon(icon, size: 20, color: Colors.grey)
-            : null,
-        filled: true,
-        fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          if (!readOnly)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        readOnly: readOnly,
+        obscureText: obscureText,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: readOnly ? const Color(0xFF64748B) : const Color(0xFF0F172A),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF006D44), width: 2),
+        decoration: InputDecoration(
+          hintText: hint,
+          prefixIcon: icon != null
+              ? Icon(icon, size: 22, color: const Color(0xFF94A3B8))
+              : null,
+          filled: true,
+          fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF006D44), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.red, width: 1),
+          ),
         ),
       ),
     );

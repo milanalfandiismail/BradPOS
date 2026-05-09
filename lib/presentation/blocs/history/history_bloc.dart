@@ -11,7 +11,7 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
   HistoryBloc({required this.repository, required this.syncService}) : super(HistoryInitial()) {
     on<LoadHistoryEvent>((event, emit) async {
       emit(HistoryLoading());
-      final result = await repository.getTransactions();
+      final result = await repository.getTransactions(cashierId: event.cashierId);
       result.fold((failure) => emit(HistoryError(failure)), (transactions) {
         final total = transactions.fold(0.0, (sum, item) => sum + item.total);
         emit(HistoryLoaded(transactions, total));
@@ -23,6 +23,7 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
       final result = await repository.getTransactionsByRange(
         event.startDate,
         event.endDate,
+        cashierId: event.cashierId,
       );
       result.fold((failure) => emit(HistoryError(failure)), (transactions) {
         final total = transactions.fold(0.0, (sum, item) => sum + item.total);

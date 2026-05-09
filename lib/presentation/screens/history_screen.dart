@@ -10,6 +10,9 @@ import 'package:bradpos/presentation/screens/report/transaction_detail_screen.da
 import 'package:bradpos/core/widgets/main_bottom_nav_bar.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
+import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
+import 'package:bradpos/presentation/blocs/karyawan_event.dart';
+import 'package:bradpos/presentation/blocs/karyawan_state.dart';
 
 
 class HistoryScreen extends StatefulWidget {
@@ -26,11 +29,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     decimalDigits: 0,
   );
   DateTimeRange? _selectedDateRange;
+  String? _selectedCashierId;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    // Load karyawan list for filter
+    context.read<KaryawanBloc>().add(LoadKaryawanList());
   }
 
   void _loadData() {
@@ -51,9 +57,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         59,
         59,
       );
-      context.read<HistoryBloc>().add(LoadHistoryByRangeEvent(start, end));
+      context.read<HistoryBloc>().add(LoadHistoryByRangeEvent(start, end, cashierId: _selectedCashierId));
     } else {
-      context.read<HistoryBloc>().add(LoadHistoryEvent());
+      context.read<HistoryBloc>().add(LoadHistoryEvent(cashierId: _selectedCashierId));
     }
   }
 
@@ -274,6 +280,73 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Cashier Filter
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, authState) {
+                      final bool isOwner = authState is AuthAuthenticated && authState.user.role == 'owner';
+                      if (!isOwner) return const SizedBox.shrink();
+
+                      return BlocBuilder<KaryawanBloc, KaryawanState>(
+                        builder: (context, state) {
+                          if (state is KaryawanListLoaded) {
+                            return SizedBox(
+                              height: 40,
+                              child: ListView(
+                                scrollDirection: Axis.horizontal,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: ChoiceChip(
+                                      label: Text(
+                                        'Semua Kasir',
+                                        style: TextStyle(
+                                          color: _selectedCashierId == null ? Colors.white : Colors.black87,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      selected: _selectedCashierId == null,
+                                      selectedColor: AppColors.primary,
+                                      onSelected: (selected) {
+                                        if (selected) {
+                                          setState(() => _selectedCashierId = null);
+                                          _loadData();
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  ...state.karyawanList.map((k) {
+                                    final isSelected = _selectedCashierId == k.id;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8.0),
+                                      child: ChoiceChip(
+                                        label: Text(
+                                          k.name,
+                                          style: TextStyle(
+                                            color: isSelected ? Colors.white : Colors.black87,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        selected: isSelected,
+                                        selectedColor: AppColors.primary,
+                                        onSelected: (selected) {
+                                          if (selected) {
+                                            setState(() => _selectedCashierId = k.id);
+                                            _loadData();
+                                          }
+                                        },
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                 ],
