@@ -4,6 +4,7 @@ import 'package:bradpos/core/sync/category_sync_manager.dart';
 import 'package:bradpos/core/sync/product_sync_manager.dart';
 import 'package:bradpos/core/sync/transaction_sync_manager.dart';
 import 'package:bradpos/core/sync/profile_sync_manager.dart';
+import 'package:bradpos/core/sync/karyawan_sync_manager.dart';
 import 'package:bradpos/domain/entities/user_entity.dart';
 
 class SyncService {
@@ -12,6 +13,7 @@ class SyncService {
   final ProductSyncManager productSync;
   final TransactionSyncManager transactionSync;
   final ProfileSyncManager profileSync;
+  final KaryawanSyncManager karyawanSync;
 
   bool _isSyncing = false;
 
@@ -21,6 +23,7 @@ class SyncService {
     required this.productSync,
     required this.transactionSync,
     required this.profileSync,
+    required this.karyawanSync,
   });
 
   Future<void> syncAll({UserEntity? user, int? limit, int? offset}) async {
@@ -53,6 +56,13 @@ class SyncService {
         await profileSync.sync(activeUser);
       } catch (e) {
         debugPrint("SyncService: ProfileSync failed: $e");
+      }
+
+      // 1.1 Karyawan Sync (Pull only for now)
+      try {
+        await karyawanSync.pull(effectiveUserId);
+      } catch (e) {
+        debugPrint("SyncService: KaryawanSync failed: $e");
       }
 
       // 2. PUSH PHASE

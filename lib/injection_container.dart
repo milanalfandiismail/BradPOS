@@ -19,6 +19,8 @@ import 'package:bradpos/data/repositories/karyawan_repository_impl.dart';
 import 'package:bradpos/data/repositories/transaction_repository_impl.dart';
 import 'package:bradpos/data/data_sources/transaction_local_data_source.dart';
 import 'package:bradpos/data/data_sources/transaction_remote_data_source.dart';
+import 'package:bradpos/data/data_sources/karyawan_local_data_source.dart';
+import 'package:bradpos/data/data_sources/karyawan_remote_data_source.dart';
 
 // Domain Layer
 import 'package:bradpos/domain/repositories/auth_repository.dart';
@@ -45,6 +47,7 @@ import 'package:bradpos/core/sync/category_sync_manager.dart';
 import 'package:bradpos/core/sync/product_sync_manager.dart';
 import 'package:bradpos/core/sync/transaction_sync_manager.dart';
 import 'package:bradpos/core/sync/profile_sync_manager.dart';
+import 'package:bradpos/core/sync/karyawan_sync_manager.dart';
 import 'package:bradpos/core/services/stock_alert_service.dart';
 
 /// Service Locator global menggunakan GetIt.
@@ -83,7 +86,11 @@ Future<void> init() async {
     () => DashboardRepositoryImpl(transactionRepository: sl()),
   );
   sl.registerLazySingleton<KaryawanRepository>(
-    () => KaryawanRepositoryImpl(sl(), sl()),
+    () => KaryawanRepositoryImpl(
+      supabase: sl(),
+      localDataSource: sl(),
+      remoteDataSource: sl(),
+    ),
   );
   sl.registerLazySingleton<InventoryRepository>(
     () => InventoryRepositoryImpl(
@@ -138,6 +145,12 @@ Future<void> init() async {
   sl.registerLazySingleton<TransactionRemoteDataSource>(
     () => TransactionRemoteDataSourceImpl(supabase: sl()),
   );
+  sl.registerLazySingleton<KaryawanLocalDataSource>(
+    () => KaryawanLocalDataSourceImpl(dbHelper: sl()),
+  );
+  sl.registerLazySingleton<KaryawanRemoteDataSource>(
+    () => KaryawanRemoteDataSourceImpl(supabase: sl()),
+  );
 
   // Services
   sl.registerLazySingleton(() => StockAlertService(
@@ -170,6 +183,12 @@ Future<void> init() async {
       prefs: sl(),
     ),
   );
+  sl.registerLazySingleton<KaryawanSyncManager>(
+    () => KaryawanSyncManager(
+      localDataSource: sl(),
+      remoteDataSource: sl(),
+    ),
+  );
 
   // Sync Service
   sl.registerLazySingleton<SyncService>(
@@ -179,6 +198,7 @@ Future<void> init() async {
       productSync: sl(),
       transactionSync: sl(),
       profileSync: sl(),
+      karyawanSync: sl(),
     ),
   );
 

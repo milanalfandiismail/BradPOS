@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/domain/entities/karyawan.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:io';
 
 /// Widget Card untuk menampilkan ringkasan data Karyawan.
 /// Digunakan di KaryawanListScreen.
@@ -40,14 +42,14 @@ class KaryawanCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Avatar placeholder
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 48,
+                  height: 48,
                   color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(8),
+                  child: _buildImage(),
                 ),
-                child: const Icon(Icons.person, color: Colors.grey),
               ),
               _buildStatusBadge(karyawan.isActive),
             ],
@@ -158,5 +160,31 @@ class KaryawanCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildImage() {
+    if (karyawan.localImage != null && karyawan.localImage!.isNotEmpty) {
+      final file = File(karyawan.localImage!);
+      if (file.existsSync()) {
+        return Image.file(file, fit: BoxFit.cover);
+      }
+    }
+
+    if (karyawan.remoteImage != null && karyawan.remoteImage!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: karyawan.remoteImage!,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        errorWidget: (context, url, error) => const Icon(Icons.person, color: Colors.grey),
+      );
+    }
+
+    return const Icon(Icons.person, color: Colors.grey);
   }
 }

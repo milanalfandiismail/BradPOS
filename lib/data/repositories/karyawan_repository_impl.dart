@@ -3,46 +3,45 @@ import 'package:bradpos/domain/entities/karyawan.dart';
 import 'package:bradpos/domain/repositories/karyawan_repository.dart';
 import 'package:bradpos/data/models/karyawan_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
+import 'package:bradpos/data/data_sources/karyawan_local_data_source.dart';
+import 'package:bradpos/data/data_sources/karyawan_remote_data_source.dart';
 
-/// Implementasi Manajemen Data Karyawan.
-/// Melayani operasi CRUD (Create, Read, Update, Delete) untuk data karyawan.
 class KaryawanRepositoryImpl implements KaryawanRepository {
   final SupabaseClient supabase;
-  final SharedPreferences prefs;
+  final KaryawanLocalDataSource localDataSource;
+  final KaryawanRemoteDataSource remoteDataSource;
 
-  KaryawanRepositoryImpl(this.supabase, this.prefs);
-
-  static const String _karyawanSessionKey = 'karyawan_session';
-
-  /// Mengecek apakah pengguna saat ini masuk sebagai Karyawan (bukan Owner).
-  bool _isKaryawanSession() {
-    return prefs.containsKey(_karyawanSessionKey);
-  }
+  KaryawanRepositoryImpl({
+    required this.supabase,
+    required this.localDataSource,
+    required this.remoteDataSource,
+  });
 
   @override
   Future<Either<String, List<Karyawan>>> getKaryawans() async {
     try {
       final userId = supabase.auth.currentUser?.id;
+      if (userId == null) return const Left("Anda harus login.");
 
-      // Jika yang login adalah Karyawan, mereka tidak boleh melihat daftar karyawan lain.
-      if (_isKaryawanSession()) {
-        return const Right([]);
+      // Offline-first: Ambil dari local SQLite
+      final localData = await localDataSource.getKaryawans(userId);
+      final list = localData.map((e) => KaryawanModel.fromMap(e)).toList();
+      
+      // Jika lokal kosong, coba tarik dari remote sekali (Initial PULL)
+      if (list.isEmpty) {
+        try {
+          final remoteData = await remoteDataSource.getKaryawans(userId);
+          await localDataSource.saveKaryawans(remoteData);
+          final updatedList = remoteData.map((e) => KaryawanModel.fromMap(e)).toList();
+          return Right(updatedList);
+        } catch (e) {
+          return Right(list); // Tetap kembalikan list kosong jika remote gagal
+        }
       }
 
-      if (userId == null) return const Left("Anda harus login sebagai Owner.");
-
-      // Ambil data dari tabel 'karyawan' yang dimiliki oleh Owner ini
-      final response = await supabase
-          .from("karyawan")
-          .select("*")
-          .eq("owner_id", userId)
-          .order('created_at', ascending: false);
-
-      final karyawanList = response
-          .map((row) => KaryawanModel.fromMap(row))
-          .toList();
-      return Right(karyawanList);
+      return Right(list);
     } catch (e) {
       return Left("Gagal memuat data: $e");
     }
@@ -50,76 +49,104 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
 
   @override
   Future<Either<String, Karyawan>> addKaryawan(Karyawan karyawan) async {
-    // Larang Karyawan menambah karyawan lain (RBAC)
-    if (_isKaryawanSession()) {
-      return const Left(
-        "Maaf, Karyawan tidak memiliki akses untuk menambah data karyawan baru.",
-      );
-    }
-
     try {
-      // Gunakan RPC agar pembuatan akun karyawan tersentralisasi di server
-      final response = await supabase.rpc(
-        "create_karyawan_v2",
-        params: {
-          "p_full_name": karyawan.name,
-          "p_password": karyawan.password,
-        },
-      );
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) return const Left("Akses ditolak.");
 
-      final newKaryawan = karyawan.copyWith(
-        id: response.toString(),
-        ownerId: supabase.auth.currentUser?.id ?? '',
-        createdAt: DateTime.now(),
-      );
+      final hashedPassword = _hashPassword(karyawan.password);
+      
+      // 1. Simpan ke Remote (Supabase)
+      final remoteResult = await remoteDataSource.createKaryawan({
+        'owner_id': userId,
+        'full_name': karyawan.name,
+        'password_hash': hashedPassword,
+        'is_active': karyawan.isActive,
+      });
 
-      return Right(newKaryawan);
-    } catch (e) {
-      // Fallback jika RPC gagal, coba insert langsung (pastikan kebijakan RLS mengizinkan)
-      try {
-        final userId = supabase.auth.currentUser?.id;
-        final response = await supabase
-            .from("karyawan")
-            .insert(karyawan.toMap()..['owner_id'] = userId)
-            .select()
-            .single();
+      Karyawan resultKaryawan = KaryawanModel.fromMap(remoteResult);
 
-        return Right(KaryawanModel.fromMap(response));
-      } catch (innerError) {
-        return Left("Gagal menambah karyawan: $e");
+      // 2. Jika ada gambar lokal, upload
+      if (karyawan.localImage != null && karyawan.localImage!.isNotEmpty) {
+        final remoteImageUrl = await remoteDataSource.uploadImage(
+          karyawan.localImage!,
+          resultKaryawan.id,
+        );
+        if (remoteImageUrl != null) {
+          // Update remote_image URL di DB
+          await remoteDataSource.updateKaryawan(resultKaryawan.id, {
+            'remote_image': remoteImageUrl,
+            'local_image': karyawan.localImage,
+          });
+          resultKaryawan = resultKaryawan.copyWith(
+            remoteImage: remoteImageUrl,
+            localImage: karyawan.localImage,
+          );
+        }
       }
+
+      // 3. Simpan ke Local SQLite (Cache)
+      await localDataSource.saveKaryawan(KaryawanModel.fromEntity(resultKaryawan).toMap());
+
+      return Right(resultKaryawan);
+    } catch (e) {
+      return Left("Gagal menambah karyawan: $e");
     }
   }
 
   @override
   Future<Either<String, Karyawan>> updateKaryawan(Karyawan karyawan) async {
-    // Larang Karyawan mengedit data karyawan lain (RBAC)
-    if (_isKaryawanSession()) {
-      return const Left(
-        "Maaf, Karyawan tidak memiliki akses untuk mengubah data karyawan.",
-      );
-    }
-
     try {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) return const Left("User tidak terautentikasi.");
 
+      String? remoteImageUrl = karyawan.remoteImage;
+
+      // 1. Jika gambar lokal baru dipilih
+      if (karyawan.localImage != null && 
+          karyawan.localImage!.isNotEmpty && 
+          !karyawan.localImage!.startsWith('http')) {
+        
+        // Hapus image lama di storage jika ada
+        if (karyawan.remoteImage != null) {
+          await remoteDataSource.deleteImage(karyawan.remoteImage!);
+        }
+
+        // Upload baru
+        remoteImageUrl = await remoteDataSource.uploadImage(
+          karyawan.localImage!,
+          karyawan.id,
+        );
+      }
+
       final Map<String, dynamic> updateData = {
         "full_name": karyawan.name,
         "is_active": karyawan.isActive,
+        "remote_image": remoteImageUrl,
+        "local_image": karyawan.localImage,
       };
 
       if (karyawan.password.isNotEmpty) {
-        updateData["password_hash"] = karyawan.password;
+        updateData["password_hash"] = _hashPassword(karyawan.password);
       }
 
-      await supabase
-          .from("karyawan")
-          .update(updateData)
-          .eq("id", karyawan.id)
-          .eq("owner_id", userId);
+      // 2. Update Remote
+      await remoteDataSource.updateKaryawan(karyawan.id, updateData);
 
-      return Right(karyawan);
+      // 3. Update Local
+      final updatedKaryawan = karyawan.copyWith(remoteImage: remoteImageUrl);
+      final localMap = KaryawanModel.fromEntity(updatedKaryawan).toMap();
+      
+      if (karyawan.password.isNotEmpty) {
+        localMap['password_hash'] = _hashPassword(karyawan.password);
+      } else {
+        final allLocal = await localDataSource.getKaryawans(userId);
+        final existing = allLocal.firstWhere((e) => e['id'] == karyawan.id);
+        localMap['password_hash'] = existing['password_hash'];
+      }
+      
+      await localDataSource.saveKaryawan(localMap);
+
+      return Right(updatedKaryawan);
     } catch (e) {
       return Left("Gagal memperbarui karyawan: $e");
     }
@@ -127,26 +154,31 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
 
   @override
   Future<Either<String, void>> deleteKaryawan(String id) async {
-    // Larang Karyawan menghapus data (RBAC)
-    if (_isKaryawanSession()) {
-      return const Left(
-        "Maaf, Karyawan tidak memiliki akses untuk menghapus data karyawan.",
-      );
-    }
-
     try {
+      // 1. Ambil data untuk hapus image di storage
       final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return const Left("User tidak terautentikasi.");
+      if (userId != null) {
+        final allLocal = await localDataSource.getKaryawans(userId);
+        final existing = allLocal.firstWhere((e) => e['id'] == id);
+        final imageUrl = existing['remote_image'] as String?;
+        if (imageUrl != null) {
+          await remoteDataSource.deleteImage(imageUrl);
+        }
+      }
 
-      await supabase
-          .from("karyawan")
-          .delete()
-          .eq("id", id)
-          .eq("owner_id", userId);
+      // 2. Delete Remote & Local
+      await remoteDataSource.deleteKaryawan(id);
+      await localDataSource.deleteKaryawan(id);
 
       return const Right(null);
     } catch (e) {
       return Left("Gagal menghapus karyawan: $e");
     }
+  }
+
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 }

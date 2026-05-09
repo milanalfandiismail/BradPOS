@@ -8,6 +8,7 @@ class BradHeader extends StatelessWidget {
   final bool showBackButton;
   final VoidCallback? onSettingsTap;
   final IconData leadingIcon;
+  final bool showSettings;
 
   const BradHeader({
     super.key,
@@ -17,6 +18,7 @@ class BradHeader extends StatelessWidget {
     this.showBackButton = false,
     this.onSettingsTap,
     this.leadingIcon = Icons.storefront_rounded,
+    this.showSettings = true,
   });
 
   @override
@@ -89,14 +91,15 @@ class BradHeader extends StatelessWidget {
             ),
           ),
           if (actions != null) ...actions!,
-          IconButton(
-            onPressed: onSettingsTap ?? () => _showSettingsMenu(context),
-            icon: const Icon(
-              Icons.settings_outlined,
-              color: Color(0xFF64748B),
-              size: 22,
+          if (showSettings)
+            IconButton(
+              onPressed: onSettingsTap ?? () => _showSettingsMenu(context),
+              icon: const Icon(
+                Icons.settings_outlined,
+                color: Color(0xFF64748B),
+                size: 22,
+              ),
             ),
-          ),
         ],
       ),
     );

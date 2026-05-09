@@ -70,15 +70,18 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
           : null;
 
       setState(() => _isUploadingImage = true);
-      authBloc.add(UpdateProfileEvent(
-        localImage: localPath,
-        fullName: _fullNameController.text,
-      ));
+      authBloc.add(
+        UpdateProfileEvent(
+          localImage: localPath,
+          fullName: _fullNameController.text,
+        ),
+      );
 
       authBloc.stream
-          .firstWhere((s) =>
-              s is AuthAuthenticated &&
-              s.user.remoteImage != oldRemoteImage)
+          .firstWhere(
+            (s) =>
+                s is AuthAuthenticated && s.user.remoteImage != oldRemoteImage,
+          )
           .timeout(const Duration(seconds: 15))
           .then((_) {
             if (mounted) setState(() => _isUploadingImage = false);
@@ -90,9 +93,9 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
       debugPrint("PersonalProfileScreen: Error: $e");
       if (mounted) {
         setState(() => _isUploadingImage = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengambil gambar: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal mengambil gambar: $e')));
       }
     }
   }
@@ -100,8 +103,10 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    final bool isOwner = authState is AuthAuthenticated && authState.user.isOwner;
-    final bool isGuest = authState is AuthAuthenticated && authState.user.isGuest;
+    final bool isOwner =
+        authState is AuthAuthenticated && authState.user.isOwner;
+    final bool isGuest =
+        authState is AuthAuthenticated && authState.user.isGuest;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -116,6 +121,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                 subtitle: 'Kelola informasi pribadi Anda',
                 showBackButton: true,
                 leadingIcon: Icons.person_rounded,
+                showSettings: false,
               ),
             ),
             Expanded(
@@ -138,9 +144,9 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                               }
 
                               return InkWell(
-                                onTap: _isUploadingImage
-                                    ? null
-                                    : _pickAndUploadImage,
+                                onTap: isOwner && !_isUploadingImage
+                                    ? _pickAndUploadImage
+                                    : null,
                                 borderRadius: BorderRadius.circular(50),
                                 child: Stack(
                                   children: [
@@ -148,21 +154,24 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                                       child: SizedBox(
                                         width: 100,
                                         height: 100,
-                                        child: (localPath != null &&
+                                        child:
+                                            (localPath != null &&
                                                 File(localPath).existsSync())
-                                            ? Image.file(File(localPath),
-                                                fit: BoxFit.cover)
+                                            ? Image.file(
+                                                File(localPath),
+                                                fit: BoxFit.cover,
+                                              )
                                             : remoteUrl != null &&
-                                                    remoteUrl.isNotEmpty
-                                                ? CachedNetworkImage(
-                                                    imageUrl: remoteUrl,
-                                                    fit: BoxFit.cover,
-                                                    placeholder: (_, _) =>
-                                                        _buildAvatarPlaceholder(),
-                                                    errorWidget: (_, _, _) =>
-                                                        _buildAvatarFallback(),
-                                                  )
-                                                : _buildAvatarFallback(),
+                                                  remoteUrl.isNotEmpty
+                                            ? CachedNetworkImage(
+                                                imageUrl: remoteUrl,
+                                                fit: BoxFit.cover,
+                                                placeholder: (_, _) =>
+                                                    _buildAvatarPlaceholder(),
+                                                errorWidget: (_, _, _) =>
+                                                    _buildAvatarFallback(),
+                                              )
+                                            : _buildAvatarFallback(),
                                       ),
                                     ),
                                     if (_isUploadingImage)
@@ -176,29 +185,34 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                                             child: CircularProgressIndicator(
                                               valueColor:
                                                   AlwaysStoppedAnimation<Color>(
-                                                      Colors.white),
+                                                    Colors.white,
+                                                  ),
                                               strokeWidth: 3,
                                             ),
                                           ),
                                         ),
                                       ),
-                                    Positioned(
-                                      bottom: 0,
-                                      right: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF006D44),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                              color: Colors.white, width: 2),
-                                        ),
-                                        child: const Icon(
+                                    if (isOwner)
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF006D44),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: const Icon(
                                             Icons.camera_alt_rounded,
                                             color: Colors.white,
-                                            size: 16),
+                                            size: 16,
+                                          ),
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               );
@@ -210,16 +224,21 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                           child: Text(
                             'Foto Profil',
                             style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF64748B)),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 32),
                       ],
                       const Text(
                         'Personal Settings',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Divider(),
@@ -227,57 +246,91 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                       if (!isGuest) ...[
                         if (!isOwner) ...[
                           _buildFieldLabel('Shop ID'),
-                          _buildTextField(_shopIdController, 'SHOP123', icon: Icons.store_outlined, readOnly: true),
+                          _buildTextField(
+                            _shopIdController,
+                            'SHOP123',
+                            icon: Icons.store_outlined,
+                            readOnly: true,
+                          ),
                           const SizedBox(height: 20),
                         ],
                         _buildFieldLabel('Full Name'),
-                        _buildTextField(_fullNameController, 'Alexander Sterling', icon: Icons.person_outline_rounded),
+                        _buildTextField(
+                          _fullNameController,
+                          'Alexander Sterling',
+                          icon: Icons.person_outline_rounded,
+                          readOnly: !isOwner,
+                        ),
                         const SizedBox(height: 20),
                         if (isOwner) ...[
                           _buildFieldLabel('Email Address'),
-                          _buildTextField(_emailController, 'email@example.com', icon: Icons.mail_outline_rounded, readOnly: true),
-                        ] else ...[
-                          _buildFieldLabel('Password Baru'),
-                          _buildTextField(_passwordController, 'Kosongkan jika tidak diubah', icon: Icons.lock_outline_rounded, obscureText: true),
+                          _buildTextField(
+                            _emailController,
+                            'email@example.com',
+                            icon: Icons.mail_outline_rounded,
+                            readOnly: true,
+                          ),
                         ],
                       ] else ...[
                         // Logika untuk Guest
                         _buildFieldLabel('Nama Anda (Offline Mode)'),
-                        _buildTextField(_fullNameController, 'Guest User', icon: Icons.person_outline_rounded),
+                        _buildTextField(
+                          _fullNameController,
+                          'Guest User',
+                          icon: Icons.person_outline_rounded,
+                          readOnly: true,
+                        ),
                         const SizedBox(height: 8),
                         const Text(
                           'Nama ini akan digunakan pada struk transaksi Anda.',
-                          style: TextStyle(fontSize: 12, color: Colors.blueGrey, fontStyle: FontStyle.italic),
-                        ),
-                      ],
-                      const SizedBox(height: 40),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              context.read<AuthBloc>().add(
-                                UpdateProfileEvent(
-                                  fullName: _fullNameController.text,
-                                  newPassword: _passwordController.text.isNotEmpty ? _passwordController.text : null,
-                                ),
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Profil berhasil diperbarui!'), backgroundColor: Color(0xFF006D44)),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.save_rounded),
-                          label: const Text('Save Changes'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF006D44),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blueGrey,
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
-                      ),
+                      ],
+                      if (isOwner) ...[
+                        const SizedBox(height: 40),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                context.read<AuthBloc>().add(
+                                  UpdateProfileEvent(
+                                    fullName: _fullNameController.text,
+                                    newPassword:
+                                        _passwordController.text.isNotEmpty
+                                        ? _passwordController.text
+                                        : null,
+                                  ),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Profil berhasil diperbarui!'),
+                                    backgroundColor: Color(0xFF006D44),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.save_rounded),
+                            label: const Text('Save Changes'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF006D44),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -290,7 +343,10 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
   }
 
   Widget _buildAvatarPlaceholder() {
-    return Container(color: Colors.grey.shade200, child: const Center(child: CircularProgressIndicator(strokeWidth: 2)));
+    return Container(
+      color: Colors.grey.shade200,
+      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    );
   }
 
   Widget _buildAvatarFallback() {
@@ -299,7 +355,8 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
       child: Image.network(
         'https://ui-avatars.com/api/?name=${_fullNameController.text}&background=random',
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => const Icon(Icons.person, color: Color(0xFF94A3B8)),
+        errorBuilder: (_, _, _) =>
+            const Icon(Icons.person, color: Color(0xFF94A3B8)),
       ),
     );
   }
@@ -307,11 +364,25 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
   Widget _buildFieldLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF475569))),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 14,
+          color: Color(0xFF475569),
+        ),
+      ),
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, {int maxLines = 1, IconData? icon, bool readOnly = false, bool obscureText = false}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint, {
+    int maxLines = 1,
+    IconData? icon,
+    bool readOnly = false,
+    bool obscureText = false,
+  }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
@@ -319,13 +390,27 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
       obscureText: obscureText,
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: icon != null ? Icon(icon, size: 20, color: Colors.grey) : null,
+        prefixIcon: icon != null
+            ? Icon(icon, size: 20, color: Colors.grey)
+            : null,
         filled: true,
         fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF006D44), width: 2)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF006D44), width: 2),
+        ),
       ),
     );
   }

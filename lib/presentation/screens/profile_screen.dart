@@ -122,6 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
+    final bool isOwner = authState is AuthAuthenticated && authState.user.isOwner;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -141,6 +142,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     : 'BradPOS',
                 showBackButton: true,
                 leadingIcon: Icons.store_rounded,
+                showSettings: false,
               ),
             ),
             Expanded(
@@ -266,7 +268,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 8),
                         const Divider(),
                         const SizedBox(height: 24),
-                        if (authState is AuthAuthenticated && authState.user.isGuest) ...[
+                        if (authState is AuthAuthenticated &&
+                            authState.user.isGuest) ...[
                           _buildFieldLabel('Shop ID (Offline Mode)'),
                           _buildTextField(
                             _shopIdController,
@@ -288,6 +291,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildTextField(
                           _nameController,
                           'Sterling Gourmet Coffee',
+                          readOnly: !isOwner,
                         ),
                         const SizedBox(height: 20),
                         _buildFieldLabel('Business Address'),
@@ -295,6 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _addressController,
                           'Enter address...',
                           maxLines: 3,
+                          readOnly: !isOwner,
                         ),
                         const SizedBox(height: 20),
                         _buildFieldLabel('Phone Number'),
@@ -302,8 +307,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _phoneController,
                           '',
                           icon: Icons.phone_outlined,
+                          readOnly: !isOwner,
                         ),
-                        if (authState is AuthAuthenticated && !authState.user.isGuest) ...[
+                        if (authState is AuthAuthenticated &&
+                            !authState.user.isGuest) ...[
                           const SizedBox(height: 20),
                           _buildFieldLabel('Email Address'),
                           _buildTextField(
@@ -367,66 +374,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 40),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                final authState = context
-                                    .read<AuthBloc>()
-                                    .state;
-                                String finalShopId = _shopIdController.text;
+                        if (isOwner) ...[
+                          const SizedBox(height: 40),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                if (_formKey.currentState!.validate()) {
+                                  final authState = context
+                                      .read<AuthBloc>()
+                                      .state;
+                                  String finalShopId = _shopIdController.text;
 
-                                if (authState is AuthAuthenticated) {
-                                  final oldName =
-                                      authState.user.shopName?.trim() ?? '';
-                                  final newName = _nameController.text.trim();
+                                  if (authState is AuthAuthenticated) {
+                                    final oldName =
+                                        authState.user.shopName?.trim() ?? '';
+                                    final newName = _nameController.text.trim();
 
-                                  if (newName != oldName ||
-                                      finalShopId.isEmpty) {
-                                    finalShopId = _generateShopId(newName);
+                                    if (newName != oldName ||
+                                        finalShopId.isEmpty) {
+                                      finalShopId = _generateShopId(newName);
+                                    }
                                   }
-                                }
 
-                                context.read<AuthBloc>().add(
-                                  UpdateProfileEvent(
-                                    shopName: _nameController.text,
-                                    shopId: finalShopId,
-                                    address: _addressController.text,
-                                    phone: _phoneController.text,
-                                  ),
-                                );
-
-                                setState(() {
-                                  _shopIdController.text = finalShopId;
-                                });
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Profil berhasil diperbarui!',
+                                  context.read<AuthBloc>().add(
+                                    UpdateProfileEvent(
+                                      shopName: _nameController.text,
+                                      shopId: finalShopId,
+                                      address: _addressController.text,
+                                      phone: _phoneController.text,
                                     ),
-                                    backgroundColor: Color(0xFF006D44),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.save_rounded),
-                            label: const Text('Save Changes'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF006D44),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
+                                  );
+
+                                  setState(() {
+                                    _shopIdController.text = finalShopId;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Profil berhasil diperbarui!',
+                                      ),
+                                      backgroundColor: Color(0xFF006D44),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.save_rounded),
+                              label: const Text('Save Changes'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF006D44),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

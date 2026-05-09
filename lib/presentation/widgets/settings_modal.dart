@@ -81,7 +81,7 @@ class SettingsModal {
                           );
                         },
                       ),
-                    if (isOwner || isGuest)
+                    if (state is AuthAuthenticated)
                       ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),

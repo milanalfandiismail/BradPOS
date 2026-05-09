@@ -7,6 +7,8 @@ import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
 import 'package:bradpos/presentation/blocs/karyawan_event.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 /// Halaman Formulir untuk Tambah/Ubah data Karyawan.
 class KaryawanFormScreen extends StatefulWidget {
@@ -25,6 +27,8 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
   late TextEditingController _passwordController;
   bool _obscurePassword = true;
   bool _isActive = true;
+  String? _localImagePath;
+  String? _remoteImageUrl;
 
   bool get isEditing => widget.karyawan != null;
 
@@ -35,6 +39,8 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
     _nameController = TextEditingController(text: widget.karyawan?.name ?? '');
     _passwordController = TextEditingController();
     _isActive = widget.karyawan?.isActive ?? true;
+    _localImagePath = widget.karyawan?.localImage;
+    _remoteImageUrl = widget.karyawan?.remoteImage;
   }
 
   @override
@@ -62,6 +68,8 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
         password: password,
         isActive: _isActive,
         createdAt: widget.karyawan?.createdAt ?? DateTime.now(),
+        localImage: _localImagePath,
+        remoteImage: _remoteImageUrl,
       );
 
       // Trigger event BLoC sesuai mode (Add atau Edit)
@@ -72,6 +80,44 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
       }
 
       Navigator.pop(context);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Galeri'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Kamera'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source != null) {
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _localImagePath = pickedFile.path;
+        });
+      }
     }
   }
 
@@ -106,6 +152,51 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(20),
                   children: [
+                    // Avatar Selection
+                    Center(
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 10,
+                                )
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: _localImagePath != null
+                                  ? Image.file(File(_localImagePath!), fit: BoxFit.cover)
+                                  : (_remoteImageUrl != null
+                                      ? Image.network(_remoteImageUrl!, fit: BoxFit.cover)
+                                      : const Icon(Icons.person, size: 50, color: Colors.grey)),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: _pickImage,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
                     // Input Nama
                     TextFormField(
                       controller: _nameController,

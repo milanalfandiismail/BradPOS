@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
-  static const int _databaseVersion = 14;
+  static const int _databaseVersion = 16;
   static Database? _database;
 
   DatabaseHelper._init();
@@ -114,6 +114,30 @@ class DatabaseHelper {
         debugPrint(e.toString());
       }
     }
+    if (oldVersion < 15) {
+      try {
+        await db.execute('ALTER TABLE karyawan ADD COLUMN remote_image TEXT');
+        await db.execute('ALTER TABLE karyawan ADD COLUMN local_image TEXT');
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+    }
+    if (oldVersion < 16) {
+      try {
+        // SQLite tidak dukung DROP COLUMN dengan mudah. 
+        // Cara amannya: Rename table lama -> Create table baru -> Copy data -> Drop table lama.
+        await db.execute('ALTER TABLE karyawan RENAME TO karyawan_old');
+        await _createKaryawanTable(db);
+        await db.execute('''
+          INSERT INTO karyawan (id, owner_id, full_name, password_hash, is_active, remote_image, local_image, created_at, sync_status, updated_at)
+          SELECT id, owner_id, full_name, password_hash, is_active, remote_image, local_image, created_at, sync_status, updated_at
+          FROM karyawan_old
+        ''');
+        await db.execute('DROP TABLE karyawan_old');
+      } catch (e) {
+        debugPrint("Migration to v16 failed: $e");
+      }
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -171,9 +195,10 @@ CREATE TABLE karyawan (
   id $idType,
   owner_id $textType,
   full_name $textType,
-  email $textType,
   password_hash $textType,
   is_active $boolType DEFAULT 1,
+  remote_image $textNullable,
+  local_image $textNullable,
   created_at $textNullable,
   sync_status $textType DEFAULT 'synced',
   updated_at $textNullable

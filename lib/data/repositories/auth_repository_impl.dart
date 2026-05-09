@@ -8,6 +8,7 @@ import 'package:bradpos/domain/entities/user_entity.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
 import 'package:bradpos/data/data_sources/profile_local_data_source.dart';
 import 'package:bradpos/data/data_sources/profile_remote_data_source.dart';
+import 'package:crypto/crypto.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final SupabaseClient supabase;
@@ -231,10 +232,21 @@ class AuthRepositoryImpl implements AuthRepository {
       final karyawanJson = prefs.getString(_karyawanSessionKey);
       if (karyawanJson != null) {
         final karyawanMap = jsonDecode(karyawanJson);
-        final profile = await profileLocalDataSource.getProfile(karyawanMap['owner_id'] ?? '');
-        final shopName = profile?['shop_name'] ?? 'BradPOS';
+        final ownerProfile = await profileLocalDataSource.getProfile(karyawanMap['owner_id'] ?? '');
+        final personalProfile = await profileLocalDataSource.getProfile(karyawanMap['id'] ?? '');
+        
+        final shopName = ownerProfile?['shop_name'] ?? 'BradPOS';
+        final shopId = ownerProfile?['shop_id'];
+        
         return Right(
-          UserEntity.fromMap({...karyawanMap, 'shop_name': shopName}),
+          UserEntity.fromMap({
+            ...karyawanMap, 
+            'shop_name': shopName,
+            'shop_id': shopId,
+            'remote_image': personalProfile?['remote_image'] ?? karyawanMap['remote_image'],
+            'local_image': personalProfile?['local_image'] ?? karyawanMap['local_image'],
+            'name': personalProfile?['full_name'] ?? karyawanMap['name'],
+          }),
         );
       }
 
@@ -301,21 +313,29 @@ class AuthRepositoryImpl implements AuthRepository {
       // Handle Password Change
       if (newPassword != null && newPassword.isNotEmpty) {
         if (user.role == 'karyawan') {
+          final hashedPassword = _hashPassword(newPassword);
           await supabase
               .from('karyawan')
-              .update({'password_hash': newPassword})
+              .update({'password_hash': hashedPassword})
               .eq('id', user.id);
         } else if (user.role == 'owner') {
           await supabase.auth.updateUser(UserAttributes(password: newPassword));
         }
       }
 
-      // Sync Karyawan Table if name changes
-      if (user.role == 'karyawan' && fullName != null) {
-        await supabase
-            .from('karyawan')
-            .update({'full_name': fullName})
-            .eq('id', user.id);
+      // Sync Karyawan Table if info changes
+      if (user.role == 'karyawan') {
+        final Map<String, dynamic> updateKaryawan = {};
+        if (fullName != null) updateKaryawan['full_name'] = fullName;
+        if (finalRemoteUrl != null) updateKaryawan['remote_image'] = finalRemoteUrl;
+        if (localImage != null) updateKaryawan['local_image'] = localImage;
+
+        if (updateKaryawan.isNotEmpty) {
+          await supabase
+              .from('karyawan')
+              .update(updateKaryawan)
+              .eq('id', user.id);
+        }
       }
 
       await _saveLocalProfile(updatedUser);
@@ -408,7 +428,7 @@ class AuthRepositoryImpl implements AuthRepository {
         params: {
           'p_shop_id': shopId,
           'p_full_name': name,
-          'p_password': password
+          'p_password': _hashPassword(password)
         },
       );
 
@@ -438,6 +458,8 @@ class AuthRepositoryImpl implements AuthRepository {
         shopId: dbShopId ?? shopId,
         role: 'karyawan',
         ownerId: karyawanData['owner_id'],
+        remoteImage: karyawanData['remote_image'],
+        localImage: karyawanData['local_image'],
       );
 
       await _saveLocalProfile(user);
@@ -459,7 +481,7 @@ class AuthRepositoryImpl implements AuthRepository {
         'create_karyawan_v2',
         params: {
           'p_full_name': fullName,
-          'p_password': password,
+          'p_password': _hashPassword(password),
         },
       );
       return Right(response.toString());
@@ -473,7 +495,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   Future<void> _saveLocalProfile(UserEntity user) async {
     await profileLocalDataSource.saveProfile({
-      'id': user.role == 'karyawan' ? user.ownerId : user.id,
+      'id': user.id,
       'shop_name': user.shopName,
       'shop_id': user.shopId,
       'full_name': user.name,
@@ -481,5 +503,11 @@ class AuthRepositoryImpl implements AuthRepository {
       'local_image': user.localImage,
       'updated_at': DateTime.now().toIso8601String(),
     });
+  }
+
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 }
