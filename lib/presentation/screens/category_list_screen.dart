@@ -94,10 +94,15 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                         child: categories.isEmpty
                             ? ListView(
                                 children: [
-                                  SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                                  SizedBox(
+                                    height:
+                                        MediaQuery.of(context).size.height *
+                                        0.2,
+                                  ),
                                   Center(
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Container(
                                           padding: const EdgeInsets.all(24),
@@ -105,74 +110,73 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                                             color: Colors.white,
                                             shape: BoxShape.circle,
                                             boxShadow: [
-                                              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20),
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.05,
+                                                ),
+                                                blurRadius: 20,
+                                              ),
                                             ],
                                           ),
-                                          child: Icon(Icons.category_outlined, size: 64, color: Colors.grey.shade300),
+                                          child: Icon(
+                                            Icons.category_outlined,
+                                            size: 64,
+                                            color: Colors.grey.shade300,
+                                          ),
                                         ),
                                         const SizedBox(height: 24),
                                         Text(
                                           'Belum ada kategori',
-                                          style: TextStyle(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w500),
+                                          style: TextStyle(
+                                            color: Colors.grey.shade500,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ),
                                 ],
                               )
-                            : ListView.separated(
-                                padding: const EdgeInsets.all(20),
-                                itemCount: categories.length,
-                                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                                itemBuilder: (context, index) {
-                          final category = categories[index];
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                              leading: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.category, color: AppColors.primary, size: 20),
+                            : LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isLandscape =
+                                      constraints.maxWidth > 600;
+                                  if (isLandscape) {
+                                    return GridView.builder(
+                                      padding: const EdgeInsets.all(20),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: 4,
+                                            crossAxisSpacing: 12,
+                                            mainAxisSpacing: 12,
+                                            mainAxisExtent: 125,
+                                          ),
+                                      itemCount: categories.length,
+                                      itemBuilder: (context, index) {
+                                        final category = categories[index];
+                                        return _buildCategoryItem(
+                                          category,
+                                          isCompact: true,
+                                        );
+                                      },
+                                    );
+                                  }
+                                  return ListView.separated(
+                                    padding: const EdgeInsets.all(20),
+                                    itemCount: categories.length,
+                                    separatorBuilder: (context, index) =>
+                                        const SizedBox(height: 12),
+                                    itemBuilder: (context, index) {
+                                      final category = categories[index];
+                                      return _buildCategoryItem(
+                                        category,
+                                        isCompact: false,
+                                      );
+                                    },
+                                  );
+                                },
                               ),
-                              title: Text(
-                                category.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 22),
-                                    onPressed: () => _navigateToForm(category: category),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 22),
-                                    onPressed: () => _confirmDelete(category),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            );
-                          },
-                        ),
                       );
                     },
                   ),
@@ -182,12 +186,143 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => _navigateToForm(),
-            label: const Text('Tambah Kategori', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: const Text(
+              'Tambah Kategori',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             icon: const Icon(Icons.add),
             backgroundColor: const Color(0xFF065F46),
             foregroundColor: Colors.white,
             elevation: 4,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryItem(Category category, {required bool isCompact}) {
+    if (isCompact) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.category,
+                    color: AppColors.primary,
+                    size: 14,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    category.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.blue,
+                    size: 18,
+                  ),
+                  onPressed: () => _navigateToForm(category: category),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                    size: 18,
+                  ),
+                  onPressed: () => _confirmDelete(category),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.category, color: AppColors.primary, size: 20),
+        ),
+        title: Text(
+          category.name,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.edit_outlined,
+                color: Colors.blue,
+                size: 22,
+              ),
+              onPressed: () => _navigateToForm(category: category),
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.delete_outline,
+                color: Colors.red,
+                size: 22,
+              ),
+              onPressed: () => _confirmDelete(category),
+            ),
+          ],
         ),
       ),
     );
@@ -211,7 +346,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Hapus Kategori'),
-        content: Text('Hapus kategori "${category.name}"?\nProduk di dalamnya akan menjadi "Tanpa Kategori".'),
+        content: Text(
+          'Hapus kategori "${category.name}"?\nProduk di dalamnya akan menjadi "Tanpa Kategori".',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
@@ -219,12 +356,16 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              sl<CategoryBloc>().add(DeleteCategoryEvent(category.id, category.name));
+              sl<CategoryBloc>().add(
+                DeleteCategoryEvent(category.id, category.name),
+              );
               Navigator.pop(dialogCtx);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const Text('HAPUS', style: TextStyle(color: Colors.white)),
           ),
@@ -289,64 +430,88 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
               ),
               Expanded(
                 child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'NAMA KATEGORI',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 1.2),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    hintText: 'Contoh: Minuman, Makanan Ringan',
-                    hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                    prefixIcon: const Icon(Icons.category_outlined, color: AppColors.primary),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  textCapitalization: TextCapitalization.words,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Nama kategori tidak boleh kosong';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 2,
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'NAMA KATEGORI',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            hintText: 'Contoh: Minuman, Makanan Ringan',
+                            hintStyle: const TextStyle(
+                              color: Color(0xFF94A3B8),
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.category_outlined,
+                              color: AppColors.primary,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 16,
+                            ),
+                          ),
+                          textCapitalization: TextCapitalization.words,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Nama kategori tidak boleh kosong';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: _save,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: Text(
+                              isEditing
+                                  ? 'PERBARUI KATEGORI'
+                                  : 'SIMPAN KATEGORI',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      isEditing ? 'PERBARUI KATEGORI' : 'SIMPAN KATEGORI',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1, color: Colors.white),
-                    ),
-                  ),
-                ),
-                    ],
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _save() {
     if (_formKey.currentState!.validate()) {

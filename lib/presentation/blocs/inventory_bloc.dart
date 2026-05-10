@@ -53,6 +53,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
             categories: categoriesResult.getOrElse(() => []),
             totalItems: countResult.getOrElse(() => 0),
             currentPage: page,
+            limit: limit,
             searchQuery: event.searchQuery,
             category: event.category,
             stockStatus: event.stockStatus,
@@ -63,8 +64,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
 
     on<LoadCategoriesEvent>((event, emit) async {
       final result = await categoryRepository.getCategories();
-      result.fold((failure) {
-      }, (categories) {
+      result.fold((failure) {}, (categories) {
         final currentState = state;
         if (currentState is InventoryLoaded) {
           emit(
@@ -99,16 +99,18 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
         String? searchQuery;
         String? category;
         String? stockStatus;
+        int limit = 5;
 
         if (currentState is InventoryLoaded) {
           searchQuery = currentState.searchQuery;
           category = currentState.category;
           stockStatus = currentState.stockStatus;
+          limit = currentState.limit;
         }
 
         final results = await Future.wait([
           repository.getInventory(
-            limit: 5,
+            limit: limit,
             offset: 0,
             searchQuery: searchQuery,
             category: category,
@@ -121,9 +123,12 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
             stockStatus: stockStatus,
           ),
         ]);
-        
-        final items = (results[0] as Either<String, List<InventoryItem>>).getOrElse(() => []);
-        final cats = (results[1] as Either<String, List<Category>>).getOrElse(() => []);
+
+        final items = (results[0] as Either<String, List<InventoryItem>>)
+            .getOrElse(() => []);
+        final cats = (results[1] as Either<String, List<Category>>).getOrElse(
+          () => [],
+        );
         final total = (results[2] as Either<String, int>).getOrElse(() => 0);
 
         emit(
@@ -132,13 +137,14 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
             categories: cats,
             totalItems: total,
             currentPage: 1,
+            limit: limit,
             searchQuery: searchQuery,
             category: category,
             stockStatus: stockStatus,
           ),
         );
 
-        syncService.syncAll(limit: 5, offset: 0);
+        syncService.syncAll(limit: limit, offset: 0);
       });
     });
 
@@ -149,12 +155,14 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       ) async {
         final currentState = state;
         int page = 1;
+        int limit = 5;
         String? searchQuery;
         String? category;
         String? stockStatus;
 
         if (currentState is InventoryLoaded) {
           page = currentState.currentPage;
+          limit = currentState.limit;
           searchQuery = currentState.searchQuery;
           category = currentState.category;
           stockStatus = currentState.stockStatus;
@@ -162,8 +170,8 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
 
         final results = await Future.wait([
           repository.getInventory(
-            limit: 5,
-            offset: (page - 1) * 5,
+            limit: limit,
+            offset: (page - 1) * limit,
             searchQuery: searchQuery,
             category: category,
             stockStatus: stockStatus,
@@ -176,8 +184,11 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
           ),
         ]);
 
-        final items = (results[0] as Either<String, List<InventoryItem>>).getOrElse(() => []);
-        final cats = (results[1] as Either<String, List<Category>>).getOrElse(() => []);
+        final items = (results[0] as Either<String, List<InventoryItem>>)
+            .getOrElse(() => []);
+        final cats = (results[1] as Either<String, List<Category>>).getOrElse(
+          () => [],
+        );
         final total = (results[2] as Either<String, int>).getOrElse(() => 0);
 
         emit(
@@ -186,13 +197,14 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
             categories: cats,
             totalItems: total,
             currentPage: page,
+            limit: limit,
             searchQuery: searchQuery,
             category: category,
             stockStatus: stockStatus,
           ),
         );
 
-        syncService.syncAll(limit: 5, offset: 0);
+        syncService.syncAll(limit: limit, offset: (page - 1) * limit);
       });
     });
 
@@ -205,16 +217,18 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
         String? searchQuery;
         String? category;
         String? stockStatus;
+        int limit = 5;
 
         if (currentState is InventoryLoaded) {
           searchQuery = currentState.searchQuery;
           category = currentState.category;
           stockStatus = currentState.stockStatus;
+          limit = currentState.limit;
         }
 
         final results = await Future.wait([
           repository.getInventory(
-            limit: 5,
+            limit: limit,
             offset: 0,
             searchQuery: searchQuery,
             category: category,
@@ -228,8 +242,11 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
           ),
         ]);
 
-        final items = (results[0] as Either<String, List<InventoryItem>>).getOrElse(() => []);
-        final cats = (results[1] as Either<String, List<Category>>).getOrElse(() => []);
+        final items = (results[0] as Either<String, List<InventoryItem>>)
+            .getOrElse(() => []);
+        final cats = (results[1] as Either<String, List<Category>>).getOrElse(
+          () => [],
+        );
         final total = (results[2] as Either<String, int>).getOrElse(() => 0);
 
         emit(
@@ -238,31 +255,33 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
             categories: cats,
             totalItems: total,
             currentPage: 1,
+            limit: limit,
             searchQuery: searchQuery,
             category: category,
             stockStatus: stockStatus,
           ),
         );
 
-        syncService.syncAll(limit: 5, offset: 0);
+        syncService.syncAll(limit: limit, offset: 0);
       });
     });
 
     on<RefreshAfterSyncEvent>((event, emit) async {
       final currentState = state;
       int page = 1;
+      int limit = 5;
       String? searchQuery;
       String? category;
       String? stockStatus;
 
       if (currentState is InventoryLoaded) {
         page = currentState.currentPage;
+        limit = currentState.limit;
         searchQuery = currentState.searchQuery;
         category = currentState.category;
         stockStatus = currentState.stockStatus;
       }
 
-      int limit = 5;
       int offset = (page - 1) * limit;
 
       final results = await Future.wait([
@@ -292,6 +311,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
             categories: categoriesResult.getOrElse(() => []),
             totalItems: countResult.getOrElse(() => 0),
             currentPage: page,
+            limit: limit,
             searchQuery: searchQuery,
             category: category,
             stockStatus: stockStatus,
@@ -309,8 +329,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
             "Data offline berhasil disinkronkan ke akun",
           ),
         );
-        syncService.syncAll(limit: 5, offset: 0);
-        add(const LoadInventory(page: 1, limit: 5));
+        add(const SyncAllEvent());
       });
     });
 
@@ -324,6 +343,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
 
       if (currentState is InventoryLoaded) {
         page = currentState.currentPage;
+        limit = currentState.limit;
         searchQuery = currentState.searchQuery;
         category = currentState.category;
         stockStatus = currentState.stockStatus;

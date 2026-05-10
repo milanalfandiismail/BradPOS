@@ -18,6 +18,7 @@ class InventoryLoaded extends InventoryState {
   final List<Category> categories;
   final int totalItems;
   final int currentPage;
+  final int limit;
   final String? searchQuery;
   final String? category;
   final String? stockStatus;
@@ -27,6 +28,7 @@ class InventoryLoaded extends InventoryState {
     this.categories = const [],
     this.totalItems = 0,
     this.currentPage = 1,
+    this.limit = 5,
     this.searchQuery,
     this.category,
     this.stockStatus,
@@ -38,6 +40,7 @@ class InventoryLoaded extends InventoryState {
     categories,
     totalItems,
     currentPage,
+    limit,
     searchQuery,
     category,
     stockStatus,

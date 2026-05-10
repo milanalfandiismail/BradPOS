@@ -63,500 +63,405 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: _buildAppBar(),
+      backgroundColor: const Color(0xFFF1F5F9),
+      appBar: _buildAppBar(isLandscape: isLandscape),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              _buildPaymentMethods(),
-              const SizedBox(height: 20),
-              _buildNumpadSection(),
-              const SizedBox(height: 20),
-              if (_selectedMethod == 'QRIS')
-                _buildInfoCard(
-                  'QRIS Dynamic',
-                  'Ready to scan',
-                  Icons.qr_code_scanner_rounded,
-                ),
-
-              const SizedBox(height: 20),
-              _buildOrderSummary(),
-              const SizedBox(height: 100),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomActions(),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: IconButton(
-        icon: const Icon(
-          Icons.arrow_back_ios_new_rounded,
-          color: Colors.black,
-          size: 20,
-        ),
-        onPressed: () => Navigator.pop(context),
-      ),
-      title: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          String shopName = 'BradPOS';
-          if (state is AuthAuthenticated) {
-            shopName = state.user.shopName ?? 'BradPOS';
-          }
-          return Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF1F5F9),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.storefront_rounded,
-                    color: AppColors.primary,
-                    size: 16,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: isLandscape
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    shopName,
-                    style: const TextStyle(
-                      color: Color(0xFF0F172A),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
+                  Expanded(
+                    flex: 5,
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Column(
+                        children: [
+                          _buildPaymentMethods(isCompact: true),
+                          const SizedBox(height: 4),
+                          Expanded(child: _buildNumpadSection(isCompact: true)),
+                        ],
+                      ),
                     ),
                   ),
-                  Text(
-                    'TRX-#${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                  const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
+                  Expanded(
+                    flex: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Column(
+                        children: [
+                          _buildCustomerCard(isCompact: true),
+                          const SizedBox(height: 4),
+                          Expanded(
+                            child: _buildOrderSummaryListCard(isCompact: true),
+                          ),
+                          const SizedBox(height: 4),
+                          _buildCheckoutCard(isCompact: true),
+                        ],
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ],
-          );
-        },
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.settings_outlined, color: Color(0xFF64748B)),
-          onPressed: () {},
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPaymentMethods() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Payment Methods',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF64748B),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _methodCard('Cash', Icons.payments_outlined),
-              const SizedBox(width: 12),
-              _methodCard('QRIS', Icons.qr_code_rounded),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _methodCard(String label, IconData icon) {
-    final isSelected = _selectedMethod == label;
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedMethod = label;
-            if (label == 'QRIS') {
-              _amountReceivedStr = widget.cashierState.total.toInt().toString();
-            }
-          });
-        },
-        child: Container(
-          height: 100,
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFECFDF5) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected
-                  ? const Color(0xFF10B981)
-                  : const Color(0xFFE2E8F0),
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: isSelected
-                    ? const Color(0xFF059669)
-                    : const Color(0xFF475569),
-                size: 28,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: isSelected
-                      ? const Color(0xFF065F46)
-                      : const Color(0xFF475569),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNumpadSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Amount Received',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: _onClear,
-                icon: const Icon(
-                  Icons.cancel,
-                  size: 16,
-                  color: Color(0xFFEF4444),
-                ),
-                label: const Text(
-                  'Clear',
-                  style: TextStyle(
-                    color: Color(0xFFEF4444),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            currencyFormatter.format(_amountReceived),
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF059669),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 3,
-                child: GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 1.5,
-                  children: [
-                    '1',
-                    '2',
-                    '3',
-                    '4',
-                    '5',
-                    '6',
-                    '7',
-                    '8',
-                    '9',
-                    '0',
-                    '00',
-                    'DEL',
-                  ].map((e) => _numBtn(e)).toList(),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 1,
+              )
+            : Padding(
+                padding: const EdgeInsets.all(12.0),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _shortcutBtn('Pas', _balanceDue),
-                    const SizedBox(height: 10),
-                    _shortcutBtn('20k', 20000),
-                    const SizedBox(height: 10),
-                    _shortcutBtn('50k', 50000),
-                    const SizedBox(height: 10),
-                    _shortcutBtn('100k', 100000),
+                    _buildCustomerCard(isCompact: false),
+                    const SizedBox(height: 8),
+                    _buildPaymentMethods(isCompact: false),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      flex: 5,
+                      child: _buildNumpadSection(isCompact: false),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      flex: 4,
+                      child: _buildCombinedSummaryCard(isCompact: false),
+                    ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ],
       ),
+      bottomNavigationBar: !isLandscape ? _buildBottomActionsPortrait() : null,
     );
   }
 
-  Widget _numBtn(String val) => InkWell(
-    onTap: () => val == 'DEL' ? _onBackspace() : _onNumberPressed(val),
-    borderRadius: BorderRadius.circular(12),
-    child: Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: val == 'DEL'
-          ? const Icon(
-              Icons.backspace_rounded,
-              size: 20,
-              color: Color(0xFF1E293B),
-            )
-          : Text(
-              val,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF1E293B),
-              ),
-            ),
-    ),
-  );
-
-  Widget _shortcutBtn(String label, double amount) => InkWell(
-    onTap: () => _onShortcutPressed(amount),
-    borderRadius: BorderRadius.circular(12),
-    child: Container(
-      height: 54,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEEF2FF),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w900,
-          color: Color(0xFF4338CA),
-        ),
-      ),
-    ),
-  );
-
-  Widget _buildInfoCard(String title, String subtitle, IconData icon) {
+  Widget _buildOrderSummaryListCard({bool isCompact = false}) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEEF2FF),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: const Color(0xFF4338CA), size: 20),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderSummary() {
-    return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Order Summary',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEEF2FF),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${widget.cashierState.cartItems.length} Items',
-                  style: const TextStyle(
-                    color: Color(0xFF4338CA),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 6 : 10,
+              vertical: isCompact ? 3 : 8,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Order Summary',
+                  style: TextStyle(
+                    fontSize: isCompact ? 9 : 12,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF475569),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: TextField(
-              controller: _customerController,
-              decoration: const InputDecoration(
-                hintText: 'Customer Name (Optional)',
-                hintStyle: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                border: InputBorder.none,
-                icon: Icon(
-                  Icons.person_outline_rounded,
-                  size: 18,
-                  color: Color(0xFF64748B),
+                Text(
+                  '${widget.cashierState.cartItems.length} Items',
+                  style: TextStyle(
+                    color: const Color(0xFF4338CA),
+                    fontSize: isCompact ? 8 : 11,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          ...widget.cashierState.cartItems
-              .take(3)
-              .map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
+          Flexible(
+            fit: FlexFit.loose,
+            child: ListView.builder(
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 6 : 10,
+                vertical: isCompact ? 1 : 4,
+              ),
+              itemCount: widget.cashierState.cartItems.length,
+              itemBuilder: (context, index) {
+                final item = widget.cashierState.cartItems[index];
+                return Padding(
+                  padding: EdgeInsets.only(bottom: isCompact ? 1 : 6),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
                             Text(
-                              item.productName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: Color(0xFF1E293B),
+                              '${item.quantity}x',
+                              style: TextStyle(
+                                fontSize: isCompact ? 9 : 10,
+                                fontWeight: FontWeight.w900,
+                                color: const Color(0xFF4338CA),
                               ),
                             ),
-                            Text(
-                              'Qty: ${item.quantity}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF94A3B8),
+                            SizedBox(width: isCompact ? 4 : 8),
+                            Expanded(
+                              child: Text(
+                                item.productName,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: isCompact ? 9 : 11,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 4),
                       Text(
                         currencyFormatter.format(item.subtotal),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          color: Color(0xFF1E293B),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: isCompact ? 9 : 11,
+                          color: const Color(0xFF0F172A),
                         ),
                       ),
                     ],
                   ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCheckoutCard({bool isCompact = false}) {
+    final canConfirm =
+        _amountReceived >= _balanceDue || _selectedMethod != 'Cash';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(isCompact ? 4 : 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tagihan',
+                style: TextStyle(
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w800,
+                  fontSize: isCompact ? 9 : 10,
                 ),
               ),
-          if (widget.cashierState.cartItems.length > 3)
-            const Center(child: Icon(Icons.more_horiz, color: Colors.grey)),
-          const Divider(height: 32),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(16),
+              Text(
+                currencyFormatter.format(_balanceDue),
+                style: TextStyle(
+                  fontSize: isCompact ? 11 : 13,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          if (isCompact)
+            const SizedBox(height: 0)
+          else
+            const SizedBox(height: 2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _change >= 0 ? 'Kembalian' : 'Kurang',
+                style: TextStyle(
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w800,
+                  fontSize: isCompact ? 9 : 10,
+                ),
+              ),
+              Text(
+                currencyFormatter.format(_change.abs()),
+                style: TextStyle(
+                  fontSize: isCompact ? 11 : 13,
+                  fontWeight: FontWeight.w900,
+                  color: _change >= 0
+                      ? const Color(0xFF059669)
+                      : const Color(0xFFEF4444),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isCompact ? 2 : 6),
+          SizedBox(
+            width: double.infinity,
+            height: isCompact ? 24 : 36,
+            child: ElevatedButton(
+              onPressed: canConfirm ? _processPayment : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF059669),
+                elevation: 0,
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(isCompact ? 3 : 8),
+                ),
+              ),
+              child: Text(
+                'Confirm',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: isCompact ? 9 : 12,
+                ),
+              ),
             ),
+          ),
+          SizedBox(height: isCompact ? 2 : 4),
+          SizedBox(
+            width: double.infinity,
+            height: isCompact ? 20 : 28,
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(isCompact ? 3 : 8),
+                ),
+              ),
+              child: Text(
+                'Cancel Order',
+                style: TextStyle(
+                  color: const Color(0xFFEF4444),
+                  fontWeight: FontWeight.w800,
+                  fontSize: isCompact ? 8 : 11,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCombinedSummaryCard({bool isCompact = false}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Order Summary',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+                Text(
+                  '${widget.cashierState.cartItems.length} Items',
+                  style: const TextStyle(
+                    color: Color(0xFF4338CA),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              itemCount: widget.cashierState.cartItems.length,
+              itemBuilder: (context, index) {
+                final item = widget.cashierState.cartItems[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${item.quantity}x',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF4338CA),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item.productName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: Color(0xFF1E293B),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        currencyFormatter.format(item.subtotal),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          Padding(
+            padding: const EdgeInsets.all(12),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Total Amount',
+                      'Tagihan',
                       style: TextStyle(
                         color: Color(0xFF64748B),
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
                       ),
                     ),
                     Text(
@@ -564,20 +469,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF059669),
+                        color: Color(0xFF0F172A),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _change >= 0 ? 'Change' : 'Balance Due',
+                      _change >= 0 ? 'Kembalian' : 'Kurang',
                       style: const TextStyle(
                         color: Color(0xFF64748B),
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
                       ),
                     ),
                     Text(
@@ -586,7 +492,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                         color: _change >= 0
-                            ? const Color(0xFF1E293B)
+                            ? const Color(0xFF059669)
                             : const Color(0xFFEF4444),
                       ),
                     ),
@@ -600,63 +506,425 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildBottomActions() {
+  PreferredSizeWidget _buildAppBar({bool isLandscape = false}) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      toolbarHeight: isLandscape ? 36 : 48,
+      leading: IconButton(
+        icon: Icon(
+          Icons.arrow_back_ios_new_rounded,
+          color: Colors.black,
+          size: isLandscape ? 14 : 18,
+        ),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          String shopName = 'BradPOS';
+          if (state is AuthAuthenticated) {
+            shopName = state.user.shopName ?? 'BradPOS';
+          }
+          return Text(
+            shopName,
+            style: TextStyle(
+              color: const Color(0xFF0F172A),
+              fontSize: isLandscape ? 11 : 14,
+              fontWeight: FontWeight.w900,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethods({bool isCompact = false}) {
+    return Container(
+      padding: EdgeInsets.all(isCompact ? 4 : 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          _methodCard('Cash', Icons.payments_outlined, isCompact: isCompact),
+          SizedBox(width: isCompact ? 4 : 8),
+          _methodCard('QRIS', Icons.qr_code_rounded, isCompact: isCompact),
+        ],
+      ),
+    );
+  }
+
+  Widget _methodCard(String label, IconData icon, {bool isCompact = false}) {
+    final isSelected = _selectedMethod == label;
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedMethod = label;
+            if (label == 'QRIS') {
+              _amountReceivedStr = widget.cashierState.total.toInt().toString();
+            }
+          });
+        },
+        child: Container(
+          height: isCompact ? 28 : 36,
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFECFDF5) : Colors.white,
+            borderRadius: BorderRadius.circular(isCompact ? 4 : 8),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF10B981)
+                  : const Color(0xFFE2E8F0),
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected
+                    ? const Color(0xFF059669)
+                    : const Color(0xFF475569),
+                size: isCompact ? 12 : 16,
+              ),
+              SizedBox(width: isCompact ? 3 : 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: isCompact ? 9 : 13,
+                  fontWeight: FontWeight.w900,
+                  color: isSelected
+                      ? const Color(0xFF065F46)
+                      : const Color(0xFF475569),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumpadSection({bool isCompact = false}) {
+    return Container(
+      padding: EdgeInsets.all(isCompact ? 4 : 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: isCompact ? MainAxisSize.max : MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    children: [
+                      Text(
+                        'Uang Diterima : ',
+                        style: TextStyle(
+                          fontSize: isCompact ? 11 : 14,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                      Text(
+                        currencyFormatter.format(_amountReceived),
+                        style: TextStyle(
+                          fontSize: isCompact ? 14 : 20,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF059669),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: _onClear,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                ),
+                child: Text(
+                  'Clear',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w900,
+                    fontSize: isCompact ? 9 : 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isCompact ? 2 : 6),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(child: _numBtn('1', isCompact: isCompact)),
+                            SizedBox(width: isCompact ? 3 : 6),
+                            Expanded(child: _numBtn('2', isCompact: isCompact)),
+                            SizedBox(width: isCompact ? 3 : 6),
+                            Expanded(child: _numBtn('3', isCompact: isCompact)),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 3 : 6),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(child: _numBtn('4', isCompact: isCompact)),
+                            SizedBox(width: isCompact ? 3 : 6),
+                            Expanded(child: _numBtn('5', isCompact: isCompact)),
+                            SizedBox(width: isCompact ? 3 : 6),
+                            Expanded(child: _numBtn('6', isCompact: isCompact)),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 3 : 6),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(child: _numBtn('7', isCompact: isCompact)),
+                            SizedBox(width: isCompact ? 3 : 6),
+                            Expanded(child: _numBtn('8', isCompact: isCompact)),
+                            SizedBox(width: isCompact ? 3 : 6),
+                            Expanded(child: _numBtn('9', isCompact: isCompact)),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 3 : 6),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(child: _numBtn('0', isCompact: isCompact)),
+                            SizedBox(width: isCompact ? 3 : 6),
+                            Expanded(
+                              child: _numBtn('00', isCompact: isCompact),
+                            ),
+                            SizedBox(width: isCompact ? 3 : 6),
+                            Expanded(
+                              child: _numBtn('DEL', isCompact: isCompact),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: isCompact ? 3 : 6),
+                Expanded(
+                  flex: 1,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: _shortcutBtn(
+                          'Pas',
+                          _balanceDue,
+                          isCompact: isCompact,
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 3 : 6),
+                      Expanded(
+                        child: _shortcutBtn('20k', 20000, isCompact: isCompact),
+                      ),
+                      SizedBox(height: isCompact ? 3 : 6),
+                      Expanded(
+                        child: _shortcutBtn('50k', 50000, isCompact: isCompact),
+                      ),
+                      SizedBox(height: isCompact ? 3 : 6),
+                      Expanded(
+                        child: _shortcutBtn(
+                          '100k',
+                          100000,
+                          isCompact: isCompact,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _numBtn(String val, {bool isCompact = false}) => InkWell(
+    onTap: () => val == 'DEL' ? _onBackspace() : _onNumberPressed(val),
+    borderRadius: BorderRadius.circular(isCompact ? 3 : 6),
+    child: Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(isCompact ? 3 : 6),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: val == 'DEL'
+          ? Icon(
+              Icons.backspace_rounded,
+              size: isCompact ? 12 : 18,
+              color: const Color(0xFF1E293B),
+            )
+          : FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                val,
+                style: TextStyle(
+                  fontSize: isCompact ? 11 : 16,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+    ),
+  );
+
+  Widget _shortcutBtn(String label, double amount, {bool isCompact = false}) =>
+      InkWell(
+        onTap: () => _onShortcutPressed(amount),
+        borderRadius: BorderRadius.circular(isCompact ? 3 : 6),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEEF2FF),
+            borderRadius: BorderRadius.circular(isCompact ? 3 : 6),
+            border: Border.all(color: const Color(0xFFC7D2FE)),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: isCompact ? 8 : 11,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF4338CA),
+              ),
+            ),
+          ),
+        ),
+      );
+
+  Widget _buildCustomerCard({bool isCompact = false}) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 6 : 12,
+        vertical: isCompact ? 3 : 12,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.person_outline_rounded,
+            size: isCompact ? 14 : 22,
+            color: const Color(0xFF64748B),
+          ),
+          SizedBox(width: isCompact ? 4 : 8),
+          Expanded(
+            child: TextField(
+              controller: _customerController,
+              decoration: InputDecoration(
+                hintText: 'Nama Pelanggan',
+                hintStyle: TextStyle(
+                  fontSize: isCompact ? 9 : 13,
+                  color: const Color(0xFF94A3B8),
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              style: TextStyle(
+                fontSize: isCompact ? 10 : 14,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActionsPortrait() {
     final canConfirm =
         _amountReceived >= _balanceDue || _selectedMethod != 'Cash';
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(12),
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 48,
               child: ElevatedButton(
                 onPressed: canConfirm ? _processPayment : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF059669),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Confirm Payment',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(
-                      Icons.check_circle_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ],
+                child: const Text(
+                  'Confirm Payment',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 32,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
                 child: const Text(
                   'Cancel Order',
                   style: TextStyle(
-                    color: Color(0xFF94A3B8),
+                    color: Color(0xFFEF4444),
                     fontWeight: FontWeight.w800,
+                    fontSize: 13,
                   ),
                 ),
               ),
@@ -730,7 +998,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(ctx); // Close dialog
+              Navigator.pop(ctx);
               _executePayment();
             },
             style: ElevatedButton.styleFrom(
@@ -762,7 +1030,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             : _customerController.text.trim(),
       ),
     );
-    Navigator.pop(context); // Close PaymentScreen
+    Navigator.pop(context);
     _showSuccessDialog();
   }
 
@@ -772,85 +1040,92 @@ class _PaymentScreenState extends State<PaymentScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 20),
-            const Icon(
-              Icons.check_circle_rounded,
-              color: Color(0xFF059669),
-              size: 80,
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Payment Successful',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF0F172A),
+        contentPadding: const EdgeInsets.all(16),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF059669),
+                size: 60,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Transaction has been recorded.',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
+              const SizedBox(height: 16),
+              const Text(
+                'Payment Successful',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF0F172A),
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close Dialog
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 4),
+              Text(
+                'Transaction has been recorded.',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'DONE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-                child: const Text(
-                  'DONE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  // TODO: Implement Print Logic
-                  _printReceipt();
-                },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.primary),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: _printReceipt,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                ),
-                icon: const Icon(Icons.print_rounded, color: AppColors.primary),
-                label: const Text(
-                  'PRINT RECEIPT',
-                  style: TextStyle(
+                  icon: const Icon(
+                    Icons.print_rounded,
                     color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'PRINT RECEIPT',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
   void _printReceipt() {
     final state = context.read<AuthBloc>().state;
     String shopName = 'BradPOS';
@@ -866,18 +1141,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
       context: context,
       builder: (ctx) => ReceiptDialog(
         items: widget.cashierState.cartItems
-            .map((e) => ReceiptItem(
-                  productName: e.productName,
-                  quantity: e.quantity,
-                  unitPrice: e.unitPrice,
-                  subtotal: e.subtotal,
-                ))
+            .map(
+              (e) => ReceiptItem(
+                productName: e.productName,
+                quantity: e.quantity,
+                unitPrice: e.unitPrice,
+                subtotal: e.subtotal,
+              ),
+            )
             .toList(),
         shopName: shopName,
         customerName: _customerController.text.trim().isEmpty
             ? 'Pelanggan Umum'
             : _customerController.text.trim(),
-        cashierName: state is AuthAuthenticated ? (state.user.name ?? 'System') : 'System',
+        cashierName: state is AuthAuthenticated
+            ? (state.user.name ?? 'System')
+            : 'System',
         amountReceived: _amountReceived,
         change: _change,
         paymentMethod: _selectedMethod,

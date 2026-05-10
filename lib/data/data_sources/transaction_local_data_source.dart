@@ -57,9 +57,9 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
               .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
               .toUpperCase();
 
-      final prefix = shopBase.length >= 3
-          ? shopBase.substring(0, 3)
-          : shopBase.padRight(3, 'X');
+      final prefix = shopBase.length >= 2
+          ? shopBase.substring(0, 2)
+          : shopBase.padRight(2, 'X');
 
       final randomStr = transactionId.substring(0, 4).toUpperCase();
       trxNumber = '$prefix-$yearStr-$monthStr-$dayStr-$randomStr';

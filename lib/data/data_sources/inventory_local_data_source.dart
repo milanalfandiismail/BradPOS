@@ -210,9 +210,10 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     String? excludeId,
   }) async {
     final db = await dbHelper.database;
+    // Gunakan LOWER untuk pengecekan case-insensitive
     String whereClause =
-        'name = ? AND owner_id = ? AND is_active = 1 AND sync_status != ?';
-    List<dynamic> whereArgs = [name, userId, 'deleted'];
+        'LOWER(name) = LOWER(?) AND owner_id = ? AND sync_status NOT LIKE ?';
+    List<dynamic> whereArgs = [name, userId, 'deleted%'];
 
     if (excludeId != null) {
       whereClause += ' AND id != ?';

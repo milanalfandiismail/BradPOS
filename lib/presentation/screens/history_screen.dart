@@ -50,8 +50,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _loadData() {
     _currentPage = 0;
-    _searchController.clear();
-    _searchQuery = '';
     if (_selectedDateRange != null) {
       final start = DateTime(
         _selectedDateRange!.start.year,
@@ -132,24 +130,393 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  void _showFilterModal() {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(isLandscape ? 16 : 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Filter Transaksi',
+                              style: TextStyle(
+                                fontSize: isLandscape ? 16 : 20,
+                                fontWeight: FontWeight.w900,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setSheetState(() {});
+                                setState(() {
+                                  _selectedDateRange = null;
+                                  _selectedCashierId = null;
+                                });
+                                _searchController.clear();
+                                _searchQuery = '';
+                                _loadData();
+                                Navigator.pop(context);
+                              },
+                              child: const Text(
+                                'Reset',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: isLandscape ? 12 : 24),
+                        Text(
+                          'Rentang Waktu',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: isLandscape ? 12 : 15,
+                            color: const Color(0xFF475569),
+                          ),
+                        ),
+                        SizedBox(height: isLandscape ? 8 : 12),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            _buildFilterChip(
+                              'Semua',
+                              null,
+                              isCompact: isLandscape,
+                              overrideSelected: _selectedDateRange == null,
+                              onTap: () {
+                                setSheetState(() {});
+                                setState(() => _selectedDateRange = null);
+                                _loadData();
+                              },
+                            ),
+                            _buildFilterChip(
+                              'Hari Ini',
+                              DateTimeRange(
+                                start: DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                  DateTime.now().day,
+                                ),
+                                end: DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                  DateTime.now().day,
+                                ),
+                              ),
+                              isCompact: isLandscape,
+                              overrideSelected: _selectedDateRange != null &&
+                                  _isSameDay(
+                                    _selectedDateRange!.start,
+                                    DateTime.now(),
+                                  ),
+                              onTap: () {
+                                setSheetState(() {});
+                                setState(
+                                  () => _selectedDateRange = DateTimeRange(
+                                    start: DateTime(
+                                      DateTime.now().year,
+                                      DateTime.now().month,
+                                      DateTime.now().day,
+                                    ),
+                                    end: DateTime(
+                                      DateTime.now().year,
+                                      DateTime.now().month,
+                                      DateTime.now().day,
+                                    ),
+                                  ),
+                                );
+                                _loadData();
+                              },
+                            ),
+                            _buildFilterChip(
+                              'Kemarin',
+                              DateTimeRange(
+                                start: DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                  DateTime.now().day,
+                                ).subtract(const Duration(days: 1)),
+                                end: DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                  DateTime.now().day,
+                                ).subtract(const Duration(days: 1)),
+                              ),
+                              isCompact: isLandscape,
+                              overrideSelected: _selectedDateRange != null &&
+                                  _isSameDay(
+                                    _selectedDateRange!.start,
+                                    DateTime.now().subtract(
+                                      const Duration(days: 1),
+                                    ),
+                                  ),
+                              onTap: () {
+                                setSheetState(() {});
+                                setState(
+                                  () => _selectedDateRange = DateTimeRange(
+                                    start: DateTime(
+                                      DateTime.now().year,
+                                      DateTime.now().month,
+                                      DateTime.now().day,
+                                    ).subtract(const Duration(days: 1)),
+                                    end: DateTime(
+                                      DateTime.now().year,
+                                      DateTime.now().month,
+                                      DateTime.now().day,
+                                    ).subtract(const Duration(days: 1)),
+                                  ),
+                                );
+                                _loadData();
+                              },
+                            ),
+                            _buildFilterChip(
+                              '7 Hari',
+                              DateTimeRange(
+                                start: DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                  DateTime.now().day,
+                                ).subtract(const Duration(days: 6)),
+                                end: DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                  DateTime.now().day,
+                                ),
+                              ),
+                              isCompact: isLandscape,
+                              overrideSelected: _selectedDateRange != null &&
+                                  _isSameDay(
+                                    _selectedDateRange!.start,
+                                    DateTime.now().subtract(
+                                      const Duration(days: 6),
+                                    ),
+                                  ),
+                              onTap: () {
+                                setSheetState(() {});
+                                setState(
+                                  () => _selectedDateRange = DateTimeRange(
+                                    start: DateTime(
+                                      DateTime.now().year,
+                                      DateTime.now().month,
+                                      DateTime.now().day,
+                                    ).subtract(const Duration(days: 6)),
+                                    end: DateTime(
+                                      DateTime.now().year,
+                                      DateTime.now().month,
+                                      DateTime.now().day,
+                                    ),
+                                  ),
+                                );
+                                _loadData();
+                              },
+                            ),
+                            _buildFilterChip(
+                              _selectedDateRange != null &&
+                                      !_isQuickRange(_selectedDateRange!)
+                                  ? '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM').format(_selectedDateRange!.end)}'
+                                  : 'Pilih Tanggal',
+                              null,
+                              isCompact: isLandscape,
+                              isDatePicker: true,
+                              overrideSelected: false,
+                              onTap: () async {
+                                final picked = await showDateRangePicker(
+                                  context: context,
+                                  firstDate: DateTime(2023),
+                                  lastDate: DateTime.now(),
+                                  initialDateRange: _selectedDateRange,
+                                  builder: (context, child) {
+                                    return Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.light(
+                                          primary: AppColors.primary,
+                                          onPrimary: Colors.white,
+                                          onSurface: AppColors.primary,
+                                        ),
+                                      ),
+                                      child: child!,
+                                    );
+                                  },
+                                );
+                                if (picked != null) {
+                                  setSheetState(() {});
+                                  setState(() => _selectedDateRange = picked);
+                                  _loadData();
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        BlocBuilder<AuthBloc, AuthState>(
+                          builder: (ctx, authState) {
+                            final bool isOwner =
+                                authState is AuthAuthenticated &&
+                                authState.user.role == 'owner';
+                            if (!isOwner) return const SizedBox.shrink();
+
+                            return BlocBuilder<KaryawanBloc, KaryawanState>(
+                              builder: (ctx, state) {
+                                if (state is! KaryawanListLoaded) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      height: isLandscape ? 12 : 24,
+                                    ),
+                                    Text(
+                                      'Kasir',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: isLandscape ? 12 : 15,
+                                        color: const Color(0xFF475569),
+                                      ),
+                                    ),
+                                    SizedBox(height: isLandscape ? 8 : 12),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 6,
+                                      children: [
+                                        _buildFilterChip(
+                                          'Semua Kasir',
+                                          null,
+                                          isCompact: isLandscape,
+                                          isCashier: true,
+                                          cashierId: null,
+                                          overrideSelected:
+                                              _selectedCashierId == null,
+                                          onTap: () {
+                                            setSheetState(() {});
+                                            setState(
+                                              () => _selectedCashierId = null,
+                                            );
+                                            _loadData();
+                                          },
+                                        ),
+                                        ...state.karyawanList.map((k) {
+                                          return _buildFilterChip(
+                                            k.name,
+                                            null,
+                                            isCompact: isLandscape,
+                                            isCashier: true,
+                                            cashierId: k.id,
+                                            overrideSelected:
+                                                _selectedCashierId == k.id,
+                                            onTap: () {
+                                              setSheetState(() {});
+                                              setState(
+                                                () => _selectedCashierId = k.id,
+                                              );
+                                              _loadData();
+                                            },
+                                          );
+                                        }),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        SizedBox(height: isLandscape ? 16 : 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: isLandscape ? 40 : 56,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  isLandscape ? 10 : 16,
+                                ),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Terapkan Filter',
+                              style: TextStyle(
+                                fontSize: isLandscape ? 13 : 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildFilterChip(
     String label,
     DateTimeRange? range, {
     bool isCompact = false,
     bool isDatePicker = false,
+    bool isCashier = false,
+    String? cashierId,
+    bool? overrideSelected,
+    VoidCallback? onTap,
   }) {
-    final bool isSelected;
-    if (isDatePicker) {
-      isSelected =
-          _selectedDateRange != null && !_isQuickRange(_selectedDateRange!);
-    } else {
-      isSelected =
-          (_selectedDateRange == null && range == null) ||
-          (_selectedDateRange != null &&
-              range != null &&
-              _isSameDay(_selectedDateRange!.start, range.start) &&
-              _isSameDay(_selectedDateRange!.end, range.end));
-    }
+    final bool isSelected = overrideSelected ??
+        (isCashier
+            ? _selectedCashierId == cashierId
+            : isDatePicker
+                ? _selectedDateRange != null &&
+                    !_isQuickRange(_selectedDateRange!)
+                : (_selectedDateRange == null && range == null) ||
+                    (_selectedDateRange != null &&
+                        range != null &&
+                        _isSameDay(_selectedDateRange!.start, range.start) &&
+                        _isSameDay(_selectedDateRange!.end, range.end)));
 
     return Padding(
       padding: EdgeInsets.only(right: isCompact ? 4 : 8),
@@ -189,16 +556,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ),
         elevation: 0,
-        onSelected: isDatePicker
-            ? (_) => _selectDateRange()
-            : (selected) {
-                if (selected) {
-                  setState(() {
-                    _selectedDateRange = range;
-                  });
-                  _loadData();
-                }
-              },
+        onSelected: onTap != null
+            ? (_) => onTap()
+            : isDatePicker
+                ? (_) => _selectDateRange()
+                : isCashier
+                    ? (selected) {
+                        if (selected) {
+                          setState(() => _selectedCashierId = cashierId);
+                          _loadData();
+                        }
+                      }
+                    : (selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedDateRange = range;
+                          });
+                          _loadData();
+                        }
+                      },
       ),
     );
   }
@@ -239,11 +615,128 @@ class _HistoryScreenState extends State<HistoryScreen> {
             _isSameDay(range.end, last7Days.end);
   }
 
-  Widget _buildTransactionCard(Transaction trx, BuildContext ctx) {
+  Widget _buildTransactionCard(
+    Transaction trx,
+    bool isLandscape,
+    BuildContext ctx,
+  ) {
+    if (isLandscape) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => Navigator.push(
+              ctx,
+              MaterialPageRoute(
+                builder: (context) =>
+                    TransactionDetailScreen(transaction: trx),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.receipt_long,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          trx.transactionNumber,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 9,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        DateFormat('dd MMM yyyy, HH:mm').format(trx.createdAt),
+                        style: const TextStyle(fontSize: 9),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    trx.cashierName ?? 'System',
+                    style: const TextStyle(fontSize: 9, color: Colors.grey),
+                  ),
+                  Text(
+                    trx.customerName != null && trx.customerName!.isNotEmpty
+                        ? trx.customerName!
+                        : '-',
+                    style: const TextStyle(fontSize: 9, color: Colors.grey),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Spacer(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        currencyFormatter.format(trx.total),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                      BlocBuilder<AuthBloc, AuthState>(
+                        builder: (context, authState) {
+                          if (authState is AuthAuthenticated &&
+                              authState.user.role == 'owner') {
+                            return InkWell(
+                              onTap: () => _confirmDelete(context, trx.id),
+                              child: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.redAccent,
+                                size: 16,
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -255,76 +748,103 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
           onTap: () => Navigator.push(
             ctx,
             MaterialPageRoute(
-              builder: (context) => TransactionDetailScreen(transaction: trx),
+              builder: (context) =>
+                  TransactionDetailScreen(transaction: trx),
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.receipt_long,
-                      size: 14,
-                      color: AppColors.primary,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.receipt_long,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         trx.transactionNumber,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: 16,
                         ),
+                        softWrap: false,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  DateFormat('dd MMM HH:mm').format(trx.createdAt),
-                  style: const TextStyle(fontSize: 9, color: Colors.grey),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    currencyFormatter.format(trx.total),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
-                Text(
-                  '${trx.cashierName ?? 'System'}',
-                  style: const TextStyle(fontSize: 9, color: Colors.grey),
-                ),
-                Text(
-                  trx.customerName != null && trx.customerName!.isNotEmpty
-                      ? trx.customerName!
-                      : '-',
-                  style: const TextStyle(fontSize: 9, color: Colors.grey),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const Spacer(),
+                const SizedBox(height: 8),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      currencyFormatter.format(trx.total),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Kasir: ${trx.cashierName ?? 'System'}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 12,
+                                color: Colors.grey.shade500,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                DateFormat('dd MMM yyyy, HH:mm')
+                                    .format(trx.createdAt),
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                     BlocBuilder<AuthBloc, AuthState>(
                       builder: (context, authState) {
                         if (authState is AuthAuthenticated &&
                             authState.user.role == 'owner') {
-                          return InkWell(
-                            onTap: () => _confirmDelete(context, trx.id),
-                            child: const Icon(
+                          return IconButton(
+                            icon: const Icon(
                               Icons.delete_outline,
                               color: Colors.redAccent,
-                              size: 16,
+                              size: 20,
                             ),
+                            onPressed: () =>
+                                _confirmDelete(context, trx.id),
                           );
                         }
                         return const SizedBox.shrink();
@@ -334,112 +854,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTransactionListTile(
-    Transaction trx,
-    bool isLandscape,
-    BuildContext ctx,
-  ) {
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: isLandscape ? 0 : 16,
-        vertical: isLandscape ? 3 : 6,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(isLandscape ? 8 : 16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: EdgeInsets.all(isLandscape ? 8 : 16),
-        leading: Container(
-          padding: EdgeInsets.all(isLandscape ? 6 : 10),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.receipt_long,
-            color: AppColors.primary,
-            size: isLandscape ? 16 : 20,
-          ),
-        ),
-        title: Text(
-          trx.transactionNumber,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: isLandscape ? 12 : 16,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: isLandscape ? 2 : 2),
-            Text(
-              DateFormat('dd MMM yyyy, HH:mm').format(trx.createdAt),
-              style: TextStyle(fontSize: isLandscape ? 10 : 11),
-            ),
-            Text(
-              'Kasir: ${trx.cashierName ?? 'System'}',
-              style: TextStyle(
-                fontSize: isLandscape ? 9 : 10,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                currencyFormatter.format(trx.total),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isLandscape ? 12 : 16,
-                ),
-              ),
-            ),
-            SizedBox(width: isLandscape ? 2 : 8),
-            BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, authState) {
-                if (authState is AuthAuthenticated &&
-                    authState.user.role == 'owner') {
-                  return IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.redAccent,
-                      size: 20,
-                    ),
-                    onPressed: () => _confirmDelete(context, trx.id),
-                    padding: isLandscape ? EdgeInsets.zero : null,
-                    constraints: isLandscape
-                        ? const BoxConstraints(minWidth: 28, minHeight: 28)
-                        : null,
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ],
-        ),
-        onTap: () => Navigator.push(
-          ctx,
-          MaterialPageRoute(
-            builder: (context) => TransactionDetailScreen(transaction: trx),
           ),
         ),
       ),
@@ -599,360 +1013,139 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                         Padding(
                           padding: EdgeInsets.fromLTRB(
-                            isLandscape ? 12 : 16,
+                            isLandscape ? 8 : 16,
                             8,
-                            isLandscape ? 12 : 16,
+                            isLandscape ? 8 : 16,
                             isLandscape ? 4 : 8,
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                          child: Row(
                             children: [
+                              Expanded(
+                                child: SizedBox(
+                                  height: isLandscape ? 22 : 56,
+                                  child: TextField(
+                                    textAlignVertical: TextAlignVertical.center,
+                                    controller: _searchController,
+                                    style: TextStyle(
+                                      fontSize: isLandscape ? 8 : 14,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Cari nomor transaksi...',
+                                      hintStyle: TextStyle(
+                                        fontSize: isLandscape ? 8 : 13,
+                                        color: Colors.grey,
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search_rounded,
+                                        color: Colors.grey,
+                                        size: isLandscape ? 12 : 20,
+                                      ),
+                                      prefixIconConstraints: isLandscape
+                                          ? const BoxConstraints(
+                                              minWidth: 24,
+                                              minHeight: 22,
+                                            )
+                                          : null,
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: Icon(
+                                                Icons.clear,
+                                                size: isLandscape ? 12 : 18,
+                                                color: Colors.grey,
+                                              ),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(
+                                                  () => _searchQuery = '',
+                                                );
+                                              },
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(
+                                                minWidth: 24,
+                                                minHeight: 24,
+                                              ),
+                                            )
+                                          : null,
+                                      filled: true,
+                                      fillColor: const Color(0xFFF1F5F9),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          isLandscape ? 8 : 16,
+                                        ),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFE2E8F0),
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          isLandscape ? 8 : 16,
+                                        ),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFE2E8F0),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          isLandscape ? 8 : 16,
+                                        ),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFCBD5E1),
+                                        ),
+                                      ),
+                                      isDense: isLandscape,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        vertical: isLandscape ? 0 : 16,
+                                      ),
+                                    ),
+                                    onChanged: (v) {
+                                      setState(() {
+                                        _searchQuery = v;
+                                        _currentPage = 0;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: isLandscape ? 6 : 8),
                               SizedBox(
                                 height: isLandscape ? 22 : 56,
-                                child: TextField(
-                                  textAlignVertical: TextAlignVertical.center,
-                                  controller: _searchController,
-                                  style: TextStyle(
-                                    fontSize: isLandscape ? 8 : 14,
+                                child: Material(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(
+                                    isLandscape ? 8 : 16,
                                   ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Cari nomor transaksi...',
-                                    hintStyle: TextStyle(
-                                      fontSize: isLandscape ? 8 : 13,
-                                      color: Colors.grey,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(
+                                      isLandscape ? 8 : 16,
                                     ),
-                                    prefixIcon: Icon(
-                                      Icons.search_rounded,
-                                      color: Colors.grey,
-                                      size: isLandscape ? 12 : 20,
-                                    ),
-                                    prefixIconConstraints: isLandscape
-                                        ? const BoxConstraints(
-                                            minWidth: 24,
-                                            minHeight: 22,
-                                          )
-                                        : null,
-                                    suffixIcon: _searchQuery.isNotEmpty
-                                        ? IconButton(
-                                            icon: Icon(
-                                              Icons.clear,
-                                              size: isLandscape ? 12 : 18,
-                                              color: Colors.grey,
+                                    onTap: _showFilterModal,
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isLandscape ? 8 : 16,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.tune,
+                                            color: const Color(0xFF64748B),
+                                            size: isLandscape ? 14 : 24,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Filter',
+                                            style: TextStyle(
+                                              color: const Color(0xFF64748B),
+                                              fontSize: isLandscape ? 8 : 13,
+                                              fontWeight: FontWeight.w500,
                                             ),
-                                            onPressed: () {
-                                              _searchController.clear();
-                                              setState(() => _searchQuery = '');
-                                            },
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(
-                                              minWidth: 24,
-                                              minHeight: 24,
-                                            ),
-                                          )
-                                        : null,
-                                    filled: true,
-                                    fillColor: const Color(0xFFF1F5F9),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        isLandscape ? 8 : 16,
-                                      ),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFFE2E8F0),
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        isLandscape ? 8 : 16,
-                                      ),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFFE2E8F0),
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        isLandscape ? 8 : 16,
-                                      ),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFFCBD5E1),
-                                      ),
-                                    ),
-                                    isDense: isLandscape,
-                                    contentPadding: EdgeInsets.symmetric(
-                                      vertical: isLandscape ? 0 : 16,
-                                    ),
-                                  ),
-                                  onChanged: (v) {
-                                    setState(() {
-                                      _searchQuery = v;
-                                      _currentPage = 0;
-                                    });
-                                  },
-                                ),
-                              ),
-                              SizedBox(height: isLandscape ? 6 : 16),
-                              Container(
-                                height: isLandscape ? 22 : 44,
-                                alignment: Alignment.centerLeft,
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: [
-                                      _buildFilterChip(
-                                        'Semua',
-                                        null,
-                                        isCompact: isLandscape,
-                                      ),
-                                      _buildFilterChip(
-                                        'Hari Ini',
-                                        DateTimeRange(
-                                          start: DateTime(
-                                            DateTime.now().year,
-                                            DateTime.now().month,
-                                            DateTime.now().day,
                                           ),
-                                          end: DateTime(
-                                            DateTime.now().year,
-                                            DateTime.now().month,
-                                            DateTime.now().day,
-                                          ),
-                                        ),
-                                        isCompact: isLandscape,
+                                        ],
                                       ),
-                                      _buildFilterChip(
-                                        'Kemarin',
-                                        DateTimeRange(
-                                          start: DateTime(
-                                            DateTime.now().year,
-                                            DateTime.now().month,
-                                            DateTime.now().day,
-                                          ).subtract(const Duration(days: 1)),
-                                          end: DateTime(
-                                            DateTime.now().year,
-                                            DateTime.now().month,
-                                            DateTime.now().day,
-                                          ).subtract(const Duration(days: 1)),
-                                        ),
-                                        isCompact: isLandscape,
-                                      ),
-                                      _buildFilterChip(
-                                        '7 Hari',
-                                        DateTimeRange(
-                                          start: DateTime(
-                                            DateTime.now().year,
-                                            DateTime.now().month,
-                                            DateTime.now().day,
-                                          ).subtract(const Duration(days: 6)),
-                                          end: DateTime(
-                                            DateTime.now().year,
-                                            DateTime.now().month,
-                                            DateTime.now().day,
-                                          ),
-                                        ),
-                                        isCompact: isLandscape,
-                                      ),
-                                      _buildFilterChip(
-                                        _selectedDateRange != null &&
-                                                !_isQuickRange(
-                                                  _selectedDateRange!,
-                                                )
-                                            ? '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM').format(_selectedDateRange!.end)}'
-                                            : 'Pilih Tanggal',
-                                        null,
-                                        isCompact: isLandscape,
-                                        isDatePicker: true,
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                              BlocBuilder<AuthBloc, AuthState>(
-                                builder: (context, authState) {
-                                  final bool isOwner =
-                                      authState is AuthAuthenticated &&
-                                      authState.user.role == 'owner';
-                                  if (!isOwner) {
-                                    return const SizedBox.shrink();
-                                  }
-
-                                  return BlocBuilder<
-                                    KaryawanBloc,
-                                    KaryawanState
-                                  >(
-                                    builder: (context, state) {
-                                      if (state is KaryawanListLoaded) {
-                                        return Container(
-                                          height: isLandscape ? 22 : 44,
-                                          alignment: Alignment.centerLeft,
-                                          child: SingleChildScrollView(
-                                            scrollDirection: Axis.horizontal,
-                                            child: Row(
-                                              children: [
-                                                Padding(
-                                                  padding: EdgeInsets.only(
-                                                    right: isLandscape ? 4 : 8,
-                                                  ),
-                                                  child: ChoiceChip(
-                                                    showCheckmark: false,
-                                                    label: Text(
-                                                      'Semua Kasir',
-                                                      style: TextStyle(
-                                                        color:
-                                                            _selectedCashierId ==
-                                                                null
-                                                            ? Colors.white
-                                                            : const Color(
-                                                                0xFF1E293B,
-                                                              ),
-                                                        fontSize: isLandscape
-                                                            ? 8
-                                                            : 13,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    labelPadding:
-                                                        EdgeInsets.zero,
-                                                    selected:
-                                                        _selectedCashierId ==
-                                                        null,
-                                                    selectedColor: const Color(
-                                                      0xFF065F46,
-                                                    ),
-                                                    backgroundColor:
-                                                        Colors.white,
-                                                    visualDensity: isLandscape
-                                                        ? const VisualDensity(
-                                                            horizontal: -4,
-                                                            vertical: -4,
-                                                          )
-                                                        : null,
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                          horizontal:
-                                                              isLandscape
-                                                              ? 6
-                                                              : 10,
-                                                          vertical: 0,
-                                                        ),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            isLandscape
-                                                                ? 6
-                                                                : 12,
-                                                          ),
-                                                      side: BorderSide(
-                                                        color:
-                                                            _selectedCashierId ==
-                                                                null
-                                                            ? Colors.transparent
-                                                            : const Color(
-                                                                0xFFCBD5E1,
-                                                              ),
-                                                      ),
-                                                    ),
-                                                    elevation: 0,
-                                                    onSelected: (selected) {
-                                                      if (selected) {
-                                                        setState(
-                                                          () =>
-                                                              _selectedCashierId =
-                                                                  null,
-                                                        );
-                                                        _loadData();
-                                                      }
-                                                    },
-                                                  ),
-                                                ),
-                                                ...state.karyawanList.map((k) {
-                                                  final isSelected =
-                                                      _selectedCashierId ==
-                                                      k.id;
-                                                  return Padding(
-                                                    padding: EdgeInsets.only(
-                                                      right: isLandscape
-                                                          ? 4
-                                                          : 8,
-                                                    ),
-                                                    child: ChoiceChip(
-                                                      showCheckmark: false,
-                                                      label: Text(
-                                                        k.name,
-                                                        style: TextStyle(
-                                                          color: isSelected
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                  0xFF1E293B,
-                                                                ),
-                                                          fontSize: isLandscape
-                                                              ? 8
-                                                              : 13,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      labelPadding:
-                                                          EdgeInsets.zero,
-                                                      selected: isSelected,
-                                                      selectedColor:
-                                                          const Color(
-                                                            0xFF065F46,
-                                                          ),
-                                                      backgroundColor:
-                                                          Colors.white,
-                                                      visualDensity: isLandscape
-                                                          ? const VisualDensity(
-                                                              horizontal: -4,
-                                                              vertical: -4,
-                                                            )
-                                                          : null,
-                                                      padding:
-                                                          EdgeInsets.symmetric(
-                                                            horizontal:
-                                                                isLandscape
-                                                                ? 6
-                                                                : 10,
-                                                            vertical: 0,
-                                                          ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              isLandscape
-                                                                  ? 6
-                                                                  : 12,
-                                                            ),
-                                                        side: BorderSide(
-                                                          color: isSelected
-                                                              ? Colors
-                                                                    .transparent
-                                                              : const Color(
-                                                                  0xFFCBD5E1,
-                                                                ),
-                                                        ),
-                                                      ),
-                                                      elevation: 0,
-                                                      onSelected: (selected) {
-                                                        if (selected) {
-                                                          setState(
-                                                            () =>
-                                                                _selectedCashierId =
-                                                                    k.id,
-                                                          );
-                                                          _loadData();
-                                                        }
-                                                      },
-                                                    ),
-                                                  );
-                                                }),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    },
-                                  );
-                                },
                               ),
                             ],
                           ),
@@ -1031,10 +1224,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               if (state.transactions.isNotEmpty)
                                 Padding(
                                   padding: EdgeInsets.symmetric(
-                                    horizontal: isLandscape ? 12 : 16,
+                                    horizontal: isLandscape ? 8 : 16,
                                     vertical: isLandscape ? 4 : 8,
                                   ),
-                                  child: Row(
+                                  child: IntrinsicHeight(
+                                    child: Row(
                                     children: [
                                       _buildMiniStatCard(
                                         icon: Icons.account_balance_wallet,
@@ -1068,6 +1262,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                       ),
                                     ],
                                   ),
+                                ),
                                 ),
                               Expanded(
                                 child: RefreshIndicator(
@@ -1154,6 +1349,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                           itemBuilder: (context, index) {
                                             return _buildTransactionCard(
                                               displayed[index],
+                                              isLandscape,
                                               context,
                                             );
                                           },
@@ -1167,7 +1363,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                           children: displayed
                                               .map(
                                                 (trx) =>
-                                                    _buildTransactionListTile(
+                                                    _buildTransactionCard(
                                                       trx,
                                                       isLandscape,
                                                       context,

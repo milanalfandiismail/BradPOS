@@ -10,7 +10,6 @@ import 'package:bradpos/domain/entities/karyawan.dart';
 import 'package:bradpos/presentation/screens/karyawan_form_screen.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 
-
 /// Halaman Daftar Karyawan.
 /// Menampilkan semua karyawan yang terdaftar dan menyediakan akses ke Tambah/Edit/Hapus.
 class KaryawanListScreen extends StatefulWidget {

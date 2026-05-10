@@ -172,7 +172,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     children: [
                       _buildHeader(),
                       _buildSearchBar(),
-                      _buildCategoryTabs(state),
+                      if (!isLandscape) _buildFilterActions(),
                       Expanded(child: _buildContent(state)),
                     ],
                   ),
@@ -199,7 +199,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         final isLandscape =
             MediaQuery.of(context).orientation == Orientation.landscape;
         return BradHeader(
-          title: 'Inventory',
+          title: 'Produk | Inventory',
           subtitle: shopName,
           leadingIcon: Icons.inventory_2_rounded,
           showBottomBorder: true,
@@ -243,7 +243,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (isLandscape) {
       return Container(
         color: Colors.white,
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
         child: Row(
           children: [
             Expanded(
@@ -313,7 +313,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () => _openForm(),
                   icon: const Icon(Icons.add, size: 10),
-                  label: const Text('New', style: TextStyle(fontSize: 8)),
+                  label: const Text(
+                    'Tambah Produk',
+                    style: TextStyle(fontSize: 8),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF065F46),
                     foregroundColor: Colors.white,
@@ -331,48 +334,53 @@ class _InventoryScreenState extends State<InventoryScreen> {
       );
     }
 
-    // Portrait
+    // Portrait — search bar full-width, filter/new buttons below
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: SizedBox(
+        height: 56,
+        child: TextField(
+          textAlignVertical: TextAlignVertical.center,
+          controller: _searchController,
+          style: const TextStyle(fontSize: 14),
+          decoration: InputDecoration(
+            hintText: 'Cari produk...',
+            hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: Colors.grey,
+              size: 20,
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF1F5F9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+            ),
+            isDense: false,
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Filter + New buttons row (portrait only) ───────────────────────────────
+  Widget _buildFilterActions() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Row(
         children: [
-          Expanded(
-            child: SizedBox(
-              height: 56,
-              child: TextField(
-                textAlignVertical: TextAlignVertical.center,
-                controller: _searchController,
-                style: const TextStyle(fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'Cari produk...',
-                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: Colors.grey,
-                    size: 20,
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFFF1F5F9),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                  ),
-                  isDense: false,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
           SizedBox(
             height: 46,
             child: OutlinedButton.icon(
@@ -392,95 +400,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
           if (!_isKaryawan) ...[
             const SizedBox(width: 8),
-            SizedBox(
-              height: 46,
-              child: ElevatedButton.icon(
-                onPressed: () => _openForm(),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('New', style: TextStyle(fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF065F46),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            Expanded(
+              child: SizedBox(
+                height: 46,
+                child: ElevatedButton.icon(
+                  onPressed: () => _openForm(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text(
+                    'Tambah Produk',
+                    style: TextStyle(fontSize: 13),
                   ),
-                  elevation: 0,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF065F46),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
                 ),
               ),
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  // ── Category pill tabs ──────────────────────────────────────────────────────
-  Widget _buildCategoryTabs(InventoryState state) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-
-    List<String> categories = ['All'];
-    if (state is InventoryLoaded) {
-      categories.addAll(
-        state.categories.map((c) => c.name).where((n) => n != 'Tanpa Kategori'),
-      );
-    }
-    if (!categories.contains('Tanpa Kategori')) {
-      categories.add('Tanpa Kategori');
-    }
-
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.only(
-        top: isLandscape ? 3 : 10,
-        bottom: isLandscape ? 4 : 12,
-      ),
-      child: SizedBox(
-        height: isLandscape ? 26 : 44,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: categories.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 4),
-          itemBuilder: (context, i) {
-            final cat = categories[i];
-            final isSel = _selectedCategory == cat;
-            return ChoiceChip(
-              label: Text(cat),
-              labelStyle: TextStyle(
-                fontSize: isLandscape ? 8 : 13,
-                fontWeight: FontWeight.bold,
-                color: isSel ? Colors.white : const Color(0xFF1E293B),
-              ),
-              selected: isSel,
-              onSelected: (_) {
-                setState(() {
-                  _selectedCategory = cat;
-                  _currentPage = 1;
-                });
-                _loadPage();
-              },
-              selectedColor: const Color(0xFF065F46),
-              backgroundColor: Colors.white,
-              showCheckmark: false,
-              elevation: 0,
-              padding: EdgeInsets.zero,
-              labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-              visualDensity: isLandscape
-                  ? const VisualDensity(horizontal: -4, vertical: -4)
-                  : const VisualDensity(horizontal: -2, vertical: -2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(isLandscape ? 6 : 12),
-                side: BorderSide(
-                  color: isSel
-                      ? const Color(0xFF065F46)
-                      : const Color(0xFFCBD5E1),
-                ),
-              ),
-            );
-          },
-        ),
       ),
     );
   }
@@ -719,7 +662,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
     ),
   );
 
+  List<String> _getFilterCategories() {
+    final inventoryState = context.read<InventoryBloc>().state;
+    final cats = ['All', 'Tanpa Kategori'];
+    if (inventoryState is InventoryLoaded) {
+      cats.addAll(
+        inventoryState.categories
+            .map((c) => c.name)
+            .where((name) => name != 'Tanpa Kategori'),
+      );
+    }
+    return cats;
+  }
+
   void _showFilterSheet() {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      _showFilterSidePanel();
+      return;
+    }
+
+    final modalCategories = _getFilterCategories();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -756,132 +722,161 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                 ),
                 Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Filter Produk',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                setSheetState(() {
-                                  _selectedCategory = 'All';
-                                  _stockFilter = 'All';
-                                });
-                                setState(() {
-                                  _selectedCategory = 'All';
-                                  _stockFilter = 'All';
-                                });
-                              },
-                              child: const Text(
-                                'Reset',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.redAccent,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        const _FilterSectionTitle(title: 'Kategori Produk'),
-                        const SizedBox(height: 12),
-                        BlocBuilder<InventoryBloc, InventoryState>(
-                          builder: (context, state) {
-                            List<String> categories = ['All', 'Tanpa Kategori'];
-                            if (state is InventoryLoaded) {
-                              categories.addAll(
-                                state.categories
-                                    .map((c) => c.name)
-                                    .where((name) => name != 'Tanpa Kategori'),
-                              );
-                            }
-                            return Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: categories.map((c) {
-                                final isSel = _selectedCategory == c;
-                                return _CustomFilterChip(
-                                  label: c,
-                                  isSelected: isSel,
-                                  onSelected: (val) {
-                                    setSheetState(() => _selectedCategory = c);
-                                    setState(() => _selectedCategory = c);
-                                  },
-                                );
-                              }).toList(),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        const _FilterSectionTitle(title: 'Status Stok'),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children:
-                              [
-                                'All',
-                                'Low Stock',
-                                'Out of Stock',
-                                'Unlimited',
-                              ].map((s) {
-                                final isSel = _stockFilter == s;
-                                return _CustomFilterChip(
-                                  label: s,
-                                  isSelected: isSel,
-                                  onSelected: (val) {
-                                    setSheetState(() => _stockFilter = s);
-                                    setState(() => _stockFilter = s);
-                                  },
-                                );
-                              }).toList(),
-                        ),
-                        const SizedBox(height: 32),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              _currentPage = 1;
-                              _loadPage();
-                              Navigator.pop(context);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: const Text(
-                              'Terapkan Filter',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: _buildFilterContent(setSheetState, onApply: () {
+                    _currentPage = 1;
+                    _loadPage();
+                    Navigator.pop(context);
+                  }, categories: modalCategories),
                 ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showFilterSidePanel() {
+    final modalCategories = _getFilterCategories();
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: StatefulBuilder(
+          builder: (context, setSheetState) {
+            return _buildFilterContent(setSheetState, onApply: () {
+              _currentPage = 1;
+              _loadPage();
+              Navigator.pop(context);
+            }, isCompact: true, categories: modalCategories);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterContent(
+    StateSetter setSheetState, {
+    VoidCallback? onApply,
+    bool isCompact = false,
+    List<String>? categories,
+  }) {
+    final cats = categories ??
+        ['All', 'Tanpa Kategori', 'Makanan', 'Minuman'];
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isCompact ? 16 : 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Filter Produk',
+                style: TextStyle(
+                  fontSize: isCompact ? 16 : 20,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setSheetState(() {
+                    _selectedCategory = 'All';
+                    _stockFilter = 'All';
+                  });
+                  setState(() {
+                    _selectedCategory = 'All';
+                    _stockFilter = 'All';
+                  });
+                },
+                child: const Text(
+                  'Reset',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.redAccent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isCompact ? 12 : 24),
+          _FilterSectionTitle(
+            title: 'Kategori Produk',
+            isCompact: isCompact,
+          ),
+          SizedBox(height: isCompact ? 8 : 12),
+          Wrap(
+              spacing: isCompact ? 6 : 8,
+              runSpacing: isCompact ? 6 : 8,
+              children: cats.map((c) {
+                final isSel = _selectedCategory == c;
+                return _CustomFilterChip(
+                  label: c,
+                  isSelected: isSel,
+                  isCompact: isCompact,
+                  onSelected: (val) {
+                    setSheetState(() => _selectedCategory = c);
+                    _selectedCategory = c;
+                    _currentPage = 1;
+                    _loadPage();
+                  },
+                );
+              }).toList(),
+            ),
+          SizedBox(height: isCompact ? 12 : 24),
+          _FilterSectionTitle(
+            title: 'Status Stok',
+            isCompact: isCompact,
+          ),
+          SizedBox(height: isCompact ? 8 : 12),
+          Wrap(
+            spacing: isCompact ? 6 : 8,
+            runSpacing: isCompact ? 6 : 8,
+            children: ['All', 'Low Stock', 'Out of Stock', 'Unlimited'].map((
+              s,
+            ) {
+              final isSel = _stockFilter == s;
+              return _CustomFilterChip(
+                label: s,
+                isSelected: isSel,
+                isCompact: isCompact,
+                onSelected: (val) {
+                  setSheetState(() => _stockFilter = s);
+                  _stockFilter = s;
+                  _currentPage = 1;
+                  _loadPage();
+                },
+              );
+            }).toList(),
+          ),
+          SizedBox(height: isCompact ? 16 : 32),
+          SizedBox(
+            width: double.infinity,
+            height: isCompact ? 40 : 56,
+            child: ElevatedButton(
+              onPressed: onApply,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(isCompact ? 10 : 16),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Terapkan Filter',
+                style: TextStyle(
+                  fontSize: isCompact ? 13 : 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1038,16 +1033,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
 class _FilterSectionTitle extends StatelessWidget {
   final String title;
-  const _FilterSectionTitle({required this.title});
+  final bool isCompact;
+
+  const _FilterSectionTitle({
+    required this.title,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.w700,
-        fontSize: 15,
-        color: Color(0xFF475569),
+        fontSize: isCompact ? 12 : 15,
+        color: const Color(0xFF475569),
       ),
     );
   }
@@ -1056,12 +1056,14 @@ class _FilterSectionTitle extends StatelessWidget {
 class _CustomFilterChip extends StatelessWidget {
   final String label;
   final bool isSelected;
+  final bool isCompact;
   final Function(bool) onSelected;
 
   const _CustomFilterChip({
     required this.label,
     required this.isSelected,
     required this.onSelected,
+    this.isCompact = false,
   });
 
   @override
@@ -1069,7 +1071,7 @@ class _CustomFilterChip extends StatelessWidget {
     return ChoiceChip(
       label: Text(label),
       labelStyle: TextStyle(
-        fontSize: 13,
+        fontSize: isCompact ? 11 : 13,
         fontWeight: FontWeight.bold,
         color: isSelected ? Colors.white : const Color(0xFF1E293B),
       ),
@@ -1079,10 +1081,12 @@ class _CustomFilterChip extends StatelessWidget {
       backgroundColor: Colors.white,
       showCheckmark: false,
       elevation: 0,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+      padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
+      visualDensity: isCompact
+          ? const VisualDensity(horizontal: -4, vertical: -4)
+          : const VisualDensity(horizontal: -2, vertical: -2),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isCompact ? 8 : 12),
         side: BorderSide(
           color: isSelected ? const Color(0xFF065F46) : const Color(0xFFCBD5E1),
         ),
