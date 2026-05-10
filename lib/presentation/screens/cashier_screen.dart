@@ -12,10 +12,10 @@ import 'package:bradpos/domain/entities/category.dart' as ent;
 import 'package:intl/intl.dart';
 import 'package:bradpos/presentation/screens/payment_screen.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
-import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
 
+import 'package:bradpos/core/widgets/main_navigation_rail.dart';
 
 class CashierScreen extends StatefulWidget {
   const CashierScreen({super.key});
@@ -41,106 +41,237 @@ class _CashierScreenState extends State<CashierScreen> {
   }
 
   void _loadInitialData() {
-    context.read<InventoryBloc>().add(const LoadInventory(page: 1, limit: 10, skipSync: true));
+    context.read<InventoryBloc>().add(
+      const LoadInventory(page: 1, limit: 10, skipSync: true),
+    );
     context.read<InventoryBloc>().add(LoadCategoriesEvent());
   }
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              color: Colors.white,
-              child: BlocBuilder<AuthBloc, AuthState>(
-                builder: (context, state) {
-                  String shopName = 'BradPOS';
-                  if (state is AuthAuthenticated) {
-                    shopName = state.user.shopName ?? 'BradPOS';
-                  }
-                  return BradHeader(
-                    title: 'Kasir',
-                    subtitle: shopName,
-                    leadingIcon: Icons.point_of_sale_rounded,
-                    onSettingsTap: () => SettingsModal.show(context),
-                  );
-                },
-              ),
-            ),
-            Expanded(
-              child: BlocListener<InventoryBloc, InventoryState>(
-                listener: (context, state) {
-                  if (state is InventoryLoaded) {
-                    setState(() {
-                      _categories = state.categories;
-                    });
-                  }
-                },
-                child: BlocListener<CashierBloc, CashierState>(
-                  listener: (context, state) {
-                    if (state.isSuccess) {
-                      context.read<InventoryBloc>().add(
-                        const LoadInventory(page: 1, limit: 5, skipSync: true),
-                      );
-                      context.read<InventoryBloc>().add(LoadCategoriesEvent());
-                    }
-                    if (state.error != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(state.error!),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                    }
-                  },
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool showSidebar = isLandscape && constraints.maxWidth > 550;
+            final double sidebarWidth = isLandscape ? 220.0 : 350.0;
+            const double railWidth = 64.0;
+
+            return Row(
+              children: [
+                if (isLandscape)
+                  const MainNavigationRail(activeLabel: 'CASHIER'),
+                if (isLandscape)
+                  const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
+                Expanded(
                   child: Column(
                     children: [
-                      _buildSearchBar(),
-                      _buildCategories(),
-                      _buildProductGrid(),
+                      BlocBuilder<AuthBloc, AuthState>(
+                        builder: (context, state) {
+                          String shopName = 'BradPOS';
+                          if (state is AuthAuthenticated) {
+                            shopName = state.user.shopName ?? 'BradPOS';
+                          }
+                          return BradHeader(
+                            title: 'Kasir',
+                            subtitle: shopName,
+                            leadingIcon: Icons.point_of_sale_rounded,
+                            showBottomBorder: true,
+                            showSettings: !isLandscape,
+                            onSettingsTap: () => SettingsModal.show(context),
+                            actions: isLandscape
+                                ? [
+                                    IconButton(
+                                      onPressed: () {
+                                        context.read<InventoryBloc>().add(
+                                          const LoadInventory(
+                                            page: 1,
+                                            limit: 10,
+                                            skipSync: true,
+                                          ),
+                                        );
+                                        context
+                                            .read<InventoryBloc>()
+                                            .add(LoadCategoriesEvent());
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Menyingkronkan data...',
+                                            ),
+                                            duration: Duration(seconds: 1),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(
+                                        Icons.sync_rounded,
+                                        color: Color(0xFF64748B),
+                                        size: 18,
+                                      ),
+                                      tooltip: 'Sync',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 32,
+                                        minHeight: 32,
+                                      ),
+                                    ),
+                                  ]
+                                : null,
+                          );
+                        },
+                      ),
+                      Expanded(
+                        child: BlocListener<InventoryBloc, InventoryState>(
+                          listener: (context, state) {
+                            if (state is InventoryLoaded) {
+                              setState(() {
+                                _categories = state.categories;
+                              });
+                            }
+                          },
+                          child: BlocListener<CashierBloc, CashierState>(
+                            listener: (context, state) {
+                              if (state.isSuccess) {
+                                context.read<InventoryBloc>().add(
+                                  const LoadInventory(
+                                    page: 1,
+                                    limit: 10,
+                                    skipSync: true,
+                                  ),
+                                );
+                                context.read<InventoryBloc>().add(
+                                  LoadCategoriesEvent(),
+                                );
+                              }
+                              if (state.error != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(state.error!),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
+                              }
+                            },
+                            child: Column(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.05,
+                                        ),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      _buildSearchBar(isCompact: isLandscape),
+                                      _buildCategories(isCompact: isLandscape),
+                                      const SizedBox(height: 12),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                _buildProductGrid(
+                                  constraints.maxWidth -
+                                      (showSidebar ? sidebarWidth : 0) -
+                                      (isLandscape ? railWidth : 0),
+                                  isLandscape: isLandscape,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ),
-          ],
+                if (showSidebar) ...[
+                  const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
+                  Container(
+                    width: sidebarWidth,
+                    color: Colors.white,
+                    child: BlocBuilder<CashierBloc, CashierState>(
+                      builder: (context, state) {
+                        return CartSummaryView(state: state, isSidebar: true);
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
-      floatingActionButton: _buildFAB(),
-      bottomNavigationBar: const MainBottomNavBar(activeLabel: 'CASHIER'),
+      floatingActionButton: LayoutBuilder(
+        builder: (context, constraints) {
+          final showSidebar = isLandscape && mediaQuery.size.width > 550;
+          if (showSidebar) return const SizedBox();
+          return _buildFAB();
+        },
+      ),
+      bottomNavigationBar: isLandscape
+          ? null
+          : const MainBottomNavBar(activeLabel: 'CASHIER'),
     );
   }
 
-
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar({bool isCompact = false}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
-        ),
+      padding: isCompact
+          ? const EdgeInsets.fromLTRB(8, 2, 8, 4)
+          : const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: SizedBox(
+        height: isCompact ? 22 : 56,
         child: TextField(
+          textAlignVertical: TextAlignVertical.center,
           controller: _searchController,
-          decoration: const InputDecoration(
-            hintText: 'Search products, SKUs, or barcodes.',
-            hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+          style: TextStyle(fontSize: isCompact ? 8 : 14),
+          decoration: InputDecoration(
+            hintText: 'Cari produk...',
+            hintStyle: TextStyle(
+              color: Colors.grey,
+              fontSize: isCompact ? 8 : 13,
+            ),
             prefixIcon: Icon(
               Icons.search_rounded,
-              color: Color(0xFF64748B),
-              size: 20,
+              color: Colors.grey,
+              size: isCompact ? 12 : 20,
             ),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(vertical: 16),
+            prefixIconConstraints: isCompact
+                ? const BoxConstraints(minWidth: 24, minHeight: 22)
+                : null,
+            filled: true,
+            fillColor: const Color(0xFFF1F5F9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isCompact ? 8 : 16),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isCompact ? 8 : 16),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isCompact ? 8 : 16),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+            ),
+            isDense: isCompact,
+            contentPadding: EdgeInsets.symmetric(vertical: isCompact ? 0 : 16),
           ),
           onChanged: (val) => context.read<InventoryBloc>().add(
             LoadInventory(
-              searchQuery: val,
+              page: 1,
+              limit: 10,
+              skipSync: true,
+              searchQuery: val.isEmpty ? null : val,
               category: _activeCategory == 'All Items' ? null : _activeCategory,
             ),
           ),
@@ -149,33 +280,36 @@ class _CashierScreenState extends State<CashierScreen> {
     );
   }
 
-  Widget _buildCategories() {
+  Widget _buildCategories({bool isCompact = false}) {
     final List<String> catNames = [
       'All Items',
       ..._categories.map((c) => c.name),
     ];
     return SizedBox(
-      height: 44,
+      height: isCompact ? 22 : 44,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 12),
         scrollDirection: Axis.horizontal,
         itemCount: catNames.length,
         itemBuilder: (context, index) {
           final cat = catNames[index];
           final isActive = _activeCategory == cat;
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 6),
             child: ChoiceChip(
-              label: Text(cat),
+              label: Text(cat, style: TextStyle(fontSize: isCompact ? 8 : 13)),
               selected: isActive,
+              visualDensity: isCompact
+                  ? const VisualDensity(horizontal: -4, vertical: -4)
+                  : null,
               onSelected: (val) {
                 setState(() => _activeCategory = cat);
                 context.read<InventoryBloc>().add(
                   LoadInventory(
+                    page: 1,
+                    limit: 10,
+                    skipSync: true,
                     category: cat == 'All Items' ? null : cat,
-                    searchQuery: _searchController.text.isEmpty
-                        ? null
-                        : _searchController.text,
                   ),
                 );
               },
@@ -184,16 +318,18 @@ class _CashierScreenState extends State<CashierScreen> {
               labelStyle: TextStyle(
                 color: isActive ? Colors.white : const Color(0xFF1E293B),
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
                 side: BorderSide(
-                  color: isActive ? Colors.transparent : Colors.grey.shade200,
+                  color: isActive
+                      ? Colors.transparent
+                      : const Color(0xFFCBD5E1),
                 ),
               ),
               showCheckmark: false,
               elevation: 0,
+              padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 12),
             ),
           );
         },
@@ -201,7 +337,31 @@ class _CashierScreenState extends State<CashierScreen> {
     );
   }
 
-  Widget _buildProductGrid() {
+  Widget _buildProductGrid(double availableWidth, {bool isLandscape = false}) {
+    int crossAxisCount = 2;
+    double aspectRatio = 0.65;
+
+    if (isLandscape) {
+      if (availableWidth > 450) {
+        crossAxisCount = 4;
+        aspectRatio = 0.85;
+      } else if (availableWidth > 300) {
+        crossAxisCount = 3;
+        aspectRatio = 0.8;
+      } else {
+        crossAxisCount = 2;
+        aspectRatio = 0.75;
+      }
+    } else {
+      if (availableWidth > 600) {
+        crossAxisCount = 3;
+        aspectRatio = 0.7;
+      } else {
+        crossAxisCount = 2;
+        aspectRatio = 0.65;
+      }
+    }
+
     return Expanded(
       child: BlocBuilder<InventoryBloc, InventoryState>(
         builder: (context, invState) {
@@ -216,18 +376,20 @@ class _CashierScreenState extends State<CashierScreen> {
                 return RefreshIndicator(
                   onRefresh: () async {
                     context.read<AuthBloc>().syncService.syncAll();
-                    context.read<InventoryBloc>().add(const LoadInventory(page: 1, limit: 10, skipSync: true));
+                    context.read<InventoryBloc>().add(
+                      const LoadInventory(page: 1, limit: 10, skipSync: true),
+                    );
                     context.read<InventoryBloc>().add(LoadCategoriesEvent());
                     await Future.delayed(const Duration(seconds: 1));
                   },
                   child: GridView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(20),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.6,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
+                    padding: EdgeInsets.all(isLandscape ? 4 : 20),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      childAspectRatio: aspectRatio,
+                      crossAxisSpacing: isLandscape ? 4 : 16,
+                      mainAxisSpacing: isLandscape ? 4 : 16,
                     ),
                     itemCount: invState.items.length,
                     itemBuilder: (context, index) {
@@ -239,8 +401,15 @@ class _CashierScreenState extends State<CashierScreen> {
                           ? cashierState.cartItems[cartIdx].quantity
                           : 0;
                       final authState = context.read<AuthBloc>().state;
-                      final isGuest = authState is AuthAuthenticated && authState.user.isGuest;
-                      return _buildProductCard(product, qty, isGuest);
+                      final isGuest =
+                          authState is AuthAuthenticated &&
+                          authState.user.isGuest;
+                      return _buildProductCard(
+                        product,
+                        qty,
+                        isGuest,
+                        isCompact: isLandscape,
+                      );
                     },
                   ),
                 );
@@ -253,27 +422,40 @@ class _CashierScreenState extends State<CashierScreen> {
     );
   }
 
-  Widget _buildProductCard(InventoryItem product, int qty, bool isGuest) {
+  Widget _buildProductCard(
+    InventoryItem product,
+    int qty,
+    bool isGuest, {
+    bool isCompact = false,
+  }) {
     final trackStock = product.stock != -1;
     final isOutOfStock = trackStock && product.stock <= 0;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(isCompact ? 8 : 20),
         border: Border.all(
-          color: qty > 0 ? const Color(0xFF065F46) : const Color(0xFFE2E8F0),
-          width: qty > 0 ? 2 : 1,
+          color: qty > 0 ? const Color(0xFF065F46) : const Color(0xFFCBD5E1),
+          width: qty > 0 ? 1.5 : 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
+            flex: isCompact ? 3 : 5,
             child: Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(18),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(isCompact ? 7 : 18),
                   ),
                   child: ColorFiltered(
                     colorFilter: isOutOfStock
@@ -285,24 +467,24 @@ class _CashierScreenState extends State<CashierScreen> {
                             Colors.transparent,
                             BlendMode.multiply,
                           ),
-                    child: _buildImage(product, isGuest),
+                    child: _buildImage(product, isGuest, isCompact: isCompact),
                   ),
                 ),
                 if (qty > 0)
                   Positioned(
-                    top: 8,
-                    left: 8,
+                    top: isCompact ? 3 : 8,
+                    left: isCompact ? 3 : 8,
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(isCompact ? 3 : 8),
                       decoration: const BoxDecoration(
                         color: Color(0xFF065F46),
                         shape: BoxShape.circle,
                       ),
                       child: Text(
                         '$qty',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: isCompact ? 8 : 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -310,26 +492,24 @@ class _CashierScreenState extends State<CashierScreen> {
                   ),
                 if (trackStock)
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: isCompact ? 3 : 8,
+                    right: isCompact ? 3 : 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 4,
+                        vertical: 1,
                       ),
                       decoration: BoxDecoration(
                         color: isOutOfStock
                             ? Colors.red.withValues(alpha: 0.9)
                             : Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(isCompact ? 4 : 10),
                       ),
                       child: Text(
-                        isOutOfStock
-                            ? 'OUT OF STOCK'
-                            : 'STOK: ${product.stock}',
-                        style: const TextStyle(
+                        isOutOfStock ? 'HABIS' : 'STOK: ${product.stock}',
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: isCompact ? 6 : 9,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -339,30 +519,31 @@ class _CashierScreenState extends State<CashierScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: EdgeInsets.all(isCompact ? 4.0 : 12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   product.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: Color(0xFF1E293B),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: isCompact ? 8 : 13,
+                    color: const Color(0xFF1E293B),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   currencyFormatter.format(product.sellingPrice),
-                  style: const TextStyle(
-                    color: Color(0xFF059669),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
+                  style: TextStyle(
+                    color: const Color(0xFF059669),
+                    fontWeight: FontWeight.w900,
+                    fontSize: isCompact ? 9 : 14,
                   ),
                 ),
-                const SizedBox(height: 12),
-                _buildQuantityBar(product, qty),
+                if (!isCompact) const SizedBox(height: 12),
+                if (isCompact) const SizedBox(height: 4),
+                _buildQuantityBar(product, qty, isCompact: isCompact),
               ],
             ),
           ),
@@ -371,29 +552,34 @@ class _CashierScreenState extends State<CashierScreen> {
     );
   }
 
-  Widget _buildQuantityBar(InventoryItem product, int qty) {
+  Widget _buildQuantityBar(
+    InventoryItem product,
+    int qty, {
+    bool isCompact = false,
+  }) {
     final trackStock = product.stock != -1;
     if (qty == 0) {
       final canAdd = !trackStock || product.stock > 0;
       return SizedBox(
         width: double.infinity,
-        height: 36,
+        height: isCompact ? 20 : 36,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF065F46),
             elevation: 0,
+            padding: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(isCompact ? 4 : 10),
             ),
           ),
           onPressed: canAdd
               ? () => context.read<CashierBloc>().add(AddToCart(product))
               : null,
           child: Text(
-            canAdd ? 'ADD TO CART' : 'OUT OF STOCK',
-            style: const TextStyle(
+            canAdd ? 'TAMBAH' : 'OUT',
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 11,
+              fontSize: isCompact ? 7 : 11,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -401,10 +587,10 @@ class _CashierScreenState extends State<CashierScreen> {
       );
     }
     return Container(
-      height: 36,
+      height: isCompact ? 20 : 36,
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(isCompact ? 4 : 10),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -415,36 +601,50 @@ class _CashierScreenState extends State<CashierScreen> {
               UpdateCartQuantity(product.id, -1),
             ),
             Colors.redAccent,
+            isCompact: isCompact,
           ),
           Text(
             '$qty',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isCompact ? 9 : 14,
+            ),
           ),
-          _qBtn(Icons.add, () {
-            if (!trackStock || qty < product.stock) {
-              context.read<CashierBloc>().add(AddToCart(product));
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Stok tidak mencukupi!'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            }
-          }, const Color(0xFF065F46)),
+          _qBtn(
+            Icons.add,
+            () {
+              if (!trackStock || qty < product.stock) {
+                context.read<CashierBloc>().add(AddToCart(product));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Stok tidak mencukupi!'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              }
+            },
+            const Color(0xFF065F46),
+            isCompact: isCompact,
+          ),
         ],
       ),
     );
   }
 
-  Widget _qBtn(IconData icon, VoidCallback onTap, Color color) => InkWell(
+  Widget _qBtn(
+    IconData icon,
+    VoidCallback onTap,
+    Color color, {
+    bool isCompact = false,
+  }) => InkWell(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(10),
+    borderRadius: BorderRadius.circular(isCompact ? 4 : 10),
     child: Container(
-      width: 40,
-      height: 36,
+      width: isCompact ? 20 : 40,
+      height: isCompact ? 20 : 36,
       alignment: Alignment.center,
-      child: Icon(icon, size: 18, color: color),
+      child: Icon(icon, size: isCompact ? 10 : 18, color: color),
     ),
   );
 
@@ -493,11 +693,15 @@ class _CashierScreenState extends State<CashierScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _CartBottomSheet(state: state),
+      builder: (context) => CartSummaryView(state: state),
     );
   }
 
-  Widget _buildImage(InventoryItem product, bool isGuest) {
+  Widget _buildImage(
+    InventoryItem product,
+    bool isGuest, {
+    bool isCompact = false,
+  }) {
     final imageUrl = _getImg(product.name, product.imageUrl, isGuest);
 
     if (imageUrl.startsWith('http')) {
@@ -508,50 +712,10 @@ class _CashierScreenState extends State<CashierScreen> {
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
           color: const Color(0xFFF1F5F9),
-          child: Center(
-            child: Icon(
-              Icons.fastfood,
-              size: 40,
-              color: AppColors.primary.withValues(alpha: 0.2),
-            ),
-          ),
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         ),
-        errorWidget: (context, url, error) => Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFFF1F5F9),
-                const Color(0xFFE2E8F0),
-              ],
-            ),
-          ),
-          child: Center(
-            child: Opacity(
-              opacity: 0.5,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.fastfood_rounded,
-                    color: Color(0xFF64748B),
-                    size: 40,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    product.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 24,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        errorWidget: (context, url, error) =>
+            _buildFallbackImage(product, isCompact),
       );
     } else if (imageUrl.isNotEmpty) {
       final file = io.File(imageUrl);
@@ -565,18 +729,18 @@ class _CashierScreenState extends State<CashierScreen> {
       }
     }
 
-    // Fallback if empty or file doesn't exist
+    return _buildFallbackImage(product, isCompact);
+  }
+
+  Widget _buildFallbackImage(InventoryItem product, bool isCompact) {
     return Container(
       width: double.infinity,
       height: double.infinity,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFF1F5F9),
-            const Color(0xFFE2E8F0),
-          ],
+          colors: [Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
         ),
       ),
       child: Center(
@@ -588,17 +752,19 @@ class _CashierScreenState extends State<CashierScreen> {
               Icon(
                 Icons.fastfood_rounded,
                 color: const Color(0xFF64748B),
-                size: 40,
+                size: isCompact ? 16 : 40,
               ),
-              const SizedBox(height: 8),
-              Text(
-                product.name.substring(0, 1).toUpperCase(),
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontWeight: FontWeight.w900,
-                  fontSize: 24,
+              if (!isCompact) ...[
+                const SizedBox(height: 8),
+                Text(
+                  product.name.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 24,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -608,13 +774,18 @@ class _CashierScreenState extends State<CashierScreen> {
 
   String _getImg(String name, String? url, bool isGuest) {
     if (url != null && url.isNotEmpty) return url;
-    return ''; // No fallback to online images, will use local icon in _buildImage
+    return '';
   }
 }
 
-class _CartBottomSheet extends StatelessWidget {
+class CartSummaryView extends StatelessWidget {
   final CashierState state;
-  const _CartBottomSheet({required this.state});
+  final bool isSidebar;
+  const CartSummaryView({
+    super.key,
+    required this.state,
+    this.isSidebar = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -624,79 +795,254 @@ class _CartBottomSheet extends StatelessWidget {
       decimalDigits: 0,
     );
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.all(isSidebar ? 12 : 24),
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        borderRadius: isSidebar
+            ? null
+            : const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: isSidebar ? MainAxisSize.max : MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              const Text(
-                'Order Summary',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () {
-                  context.read<CashierBloc>().add(ClearCart());
-                  Navigator.pop(context);
-                },
-                child: const Text(
-                  'CLEAR',
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          if (!isSidebar) ...[
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
+            ),
+          ],
+          Row(
+            children: [
+              Text(
+                'Ringkasan',
+                style: TextStyle(
+                  fontSize: isSidebar ? 15 : 20,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF1E293B),
+                ),
               ),
-            ],
-          ),
-          const Divider(),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: state.cartItems.length,
-              itemBuilder: (context, index) {
-                final item = state.cartItems[index];
-                return ListTile(
-                  title: Text(
-                    item.productName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    '${item.quantity} x ${currency.format(item.unitPrice)}',
-                  ),
-                  trailing: Text(
-                    currency.format(item.subtotal),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF065F46),
+              const Spacer(),
+              if (state.cartItems.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    context.read<CashierBloc>().add(ClearCart());
+                    if (!isSidebar) Navigator.pop(context);
+                  },
+                  child: const Text(
+                    'HAPUS',
+                    style: TextStyle(
+                      color: Color(0xFFEF4444),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 11,
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              if (!isSidebar)
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+            ],
           ),
-          const Divider(),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          if (isSidebar) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TextField(
+                onChanged: (val) => context
+                    .read<CashierBloc>()
+                    .add(UpdateCustomerName(val)),
+                style: const TextStyle(fontSize: 11),
+                decoration: InputDecoration(
+                  hintText: 'Nama Pelanggan',
+                  hintStyle: const TextStyle(fontSize: 10),
+                  prefixIcon: const Icon(Icons.person_outline, size: 14),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 24,
+                    minHeight: 14,
+                  ),
+                  isDense: true,
+                  filled: true,
+                  fillColor: const Color(0xFFF1F5F9),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const SizedBox(height: 8),
+          if (state.cartItems.isEmpty)
+            SizedBox(
+              height: isSidebar ? null : 200,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.shopping_basket_outlined,
+                      size: isSidebar ? 48 : 64,
+                      color: const Color(0xFFE2E8F0),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Keranjang Kosong',
+                      style: TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: state.cartItems.length,
+                itemBuilder: (context, index) {
+                  final item = state.cartItems[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${item.quantity}x',
+                          style: TextStyle(
+                            fontSize: isSidebar ? 11 : 13,
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF4338CA),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.productName,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: isSidebar ? 11 : 13,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                currency.format(item.unitPrice),
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          currency.format(item.subtotal),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: isSidebar ? 11 : 13,
+                            color: const Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (isSidebar) ...[
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Total Qty',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    Text(
+                      '${state.cartItems.fold<int>(0, (s, i) => s + i.quantity)} item',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Rata-rata',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    Text(
+                      currency.format(
+                        state.total / state.cartItems.length,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Total Amount',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  'Total Tagihan',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
                 Text(
                   currency.format(state.total),
-                  style: const TextStyle(
-                    fontSize: 22,
+                  style: TextStyle(
+                    fontSize: isSidebar ? 18 : 24,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF065F46),
+                    color: const Color(0xFF059669),
                   ),
                 ),
               ],
@@ -704,32 +1050,37 @@ class _CartBottomSheet extends StatelessWidget {
           ),
           SizedBox(
             width: double.infinity,
-            height: 56,
+            height: isSidebar ? 44 : 56,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF065F46),
+                backgroundColor: const Color(0xFF059669),
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                elevation: 0,
               ),
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => PaymentScreen(cashierState: state),
-                  ),
-                );
-              },
-              child: const Text(
+              onPressed: state.cartItems.isEmpty
+                  ? null
+                  : () {
+                      if (!isSidebar) Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => PaymentScreen(cashierState: state),
+                        ),
+                      );
+                    },
+              child: Text(
                 'CHECKOUT',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w900,
+                  fontSize: isSidebar ? 13 : 15,
+                  letterSpacing: 1,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          if (!isSidebar) const SizedBox(height: 20),
         ],
       ),
     );

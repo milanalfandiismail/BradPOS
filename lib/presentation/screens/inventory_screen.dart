@@ -9,12 +9,12 @@ import 'package:bradpos/presentation/widgets/inventory_item_card.dart';
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
 import 'package:bradpos/presentation/screens/inventory_form_screen.dart';
-import 'package:bradpos/presentation/screens/category_list_screen.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
 import 'package:bradpos/injection_container.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/utils/app_navigator.dart';
+import 'package:bradpos/core/widgets/main_navigation_rail.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -28,21 +28,42 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final ScrollController _scrollController = ScrollController();
   List<InventoryItem> _lastItems = [];
   int _currentPage = 1;
-  static const int _itemsPerPage = 5;
+  int _itemsPerPage = 5;
+  int _lastItemsPerPage = 0;
   String _selectedCategory = 'All';
   String _stockFilter = 'All';
   bool _isKaryawan = false;
+  bool _isInit = false;
 
   @override
   void initState() {
     super.initState();
     _checkUserRole();
-    _loadPage();
     _searchController.addListener(() {
       _currentPage = 1;
       _loadPage();
       setState(() {});
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    final currentLimit = isLandscape ? 20 : 5;
+
+    if (!_isInit) {
+      _itemsPerPage = currentLimit;
+      _lastItemsPerPage = currentLimit;
+      _loadPage();
+      _isInit = true;
+    } else if (_lastItemsPerPage != currentLimit) {
+      _itemsPerPage = currentLimit;
+      _lastItemsPerPage = currentLimit;
+      _currentPage = 1;
+      _loadPage();
+    }
   }
 
   Future<void> _checkUserRole() async {
@@ -111,6 +132,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
     return BlocListener<InventoryBloc, InventoryState>(
       listener: (context, state) {
         if (state is InventoryOperationSuccess) {
@@ -136,16 +160,327 @@ class _InventoryScreenState extends State<InventoryScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
-          child: BlocBuilder<InventoryBloc, InventoryState>(
-            builder: (context, state) => Column(
-              children: [
-                _buildAppBar(),
-                Expanded(child: _buildContent(state)),
-              ],
-            ),
+          child: Row(
+            children: [
+              if (isLandscape)
+                const MainNavigationRail(activeLabel: 'INVENTORY'),
+              if (isLandscape)
+                const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
+              Expanded(
+                child: BlocBuilder<InventoryBloc, InventoryState>(
+                  builder: (context, state) => Column(
+                    children: [
+                      _buildHeader(),
+                      _buildSearchBar(),
+                      _buildCategoryTabs(state),
+                      Expanded(child: _buildContent(state)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        bottomNavigationBar: const MainBottomNavBar(activeLabel: 'INVENTORY'),
+        bottomNavigationBar: isLandscape
+            ? null
+            : const MainBottomNavBar(activeLabel: 'INVENTORY'),
+        floatingActionButton: null,
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        String shopName = 'BradPOS';
+        if (state is AuthAuthenticated) {
+          shopName = state.user.shopName ?? 'BradPOS';
+        }
+        final isLandscape =
+            MediaQuery.of(context).orientation == Orientation.landscape;
+        return BradHeader(
+          title: 'Inventory',
+          subtitle: shopName,
+          leadingIcon: Icons.inventory_2_rounded,
+          showBottomBorder: true,
+          onSettingsTap: () => SettingsModal.show(context),
+          actions: isLandscape
+              ? [
+                  IconButton(
+                    onPressed: () {
+                      context.read<InventoryBloc>().add(SyncAllEvent());
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Menyingkronkan data...'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.sync_rounded,
+                      color: Color(0xFF64748B),
+                      size: 18,
+                    ),
+                    tooltip: 'Sync',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                  ),
+                ]
+              : null,
+        );
+      },
+    );
+  }
+
+  // ── Search bar (portrait & landscape) ──────────────────────────────────────
+  Widget _buildSearchBar() {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 22,
+                child: TextField(
+                  textAlignVertical: TextAlignVertical.center,
+                  controller: _searchController,
+                  style: const TextStyle(fontSize: 8),
+                  decoration: InputDecoration(
+                    hintText: 'Cari produk...',
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 8,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: Colors.grey,
+                      size: 12,
+                    ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 22,
+                    ),
+                    filled: true,
+                    fillColor: Color(0xFFF1F5F9),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Color(0xFFCBD5E1)),
+                    ),
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            SizedBox(
+              height: 22,
+              child: OutlinedButton.icon(
+                onPressed: () => _showFilterSheet(),
+                icon: const Icon(Icons.tune, size: 10),
+                label: const Text('Filter', style: TextStyle(fontSize: 8)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF334155),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  backgroundColor: Colors.white,
+                ),
+              ),
+            ),
+            if (!_isKaryawan) ...[
+              const SizedBox(width: 4),
+              SizedBox(
+                height: 22,
+                child: ElevatedButton.icon(
+                  onPressed: () => _openForm(),
+                  icon: const Icon(Icons.add, size: 10),
+                  label: const Text('New', style: TextStyle(fontSize: 8)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF065F46),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    // Portrait
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 56,
+              child: TextField(
+                textAlignVertical: TextAlignVertical.center,
+                controller: _searchController,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Cari produk...',
+                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF1F5F9),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  ),
+                  isDense: false,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            height: 46,
+            child: OutlinedButton.icon(
+              onPressed: () => _showFilterSheet(),
+              icon: const Icon(Icons.tune, size: 18),
+              label: const Text('Filter', style: TextStyle(fontSize: 13)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF334155),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                backgroundColor: Colors.white,
+              ),
+            ),
+          ),
+          if (!_isKaryawan) ...[
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 46,
+              child: ElevatedButton.icon(
+                onPressed: () => _openForm(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New', style: TextStyle(fontSize: 13)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF065F46),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Category pill tabs ──────────────────────────────────────────────────────
+  Widget _buildCategoryTabs(InventoryState state) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    List<String> categories = ['All'];
+    if (state is InventoryLoaded) {
+      categories.addAll(
+        state.categories.map((c) => c.name).where((n) => n != 'Tanpa Kategori'),
+      );
+    }
+    if (!categories.contains('Tanpa Kategori')) {
+      categories.add('Tanpa Kategori');
+    }
+
+    return Container(
+      color: Colors.white,
+      padding: EdgeInsets.only(
+        top: isLandscape ? 3 : 10,
+        bottom: isLandscape ? 4 : 12,
+      ),
+      child: SizedBox(
+        height: isLandscape ? 26 : 44,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: categories.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 4),
+          itemBuilder: (context, i) {
+            final cat = categories[i];
+            final isSel = _selectedCategory == cat;
+            return ChoiceChip(
+              label: Text(cat),
+              labelStyle: TextStyle(
+                fontSize: isLandscape ? 8 : 13,
+                fontWeight: FontWeight.bold,
+                color: isSel ? Colors.white : const Color(0xFF1E293B),
+              ),
+              selected: isSel,
+              onSelected: (_) {
+                setState(() {
+                  _selectedCategory = cat;
+                  _currentPage = 1;
+                });
+                _loadPage();
+              },
+              selectedColor: const Color(0xFF065F46),
+              backgroundColor: Colors.white,
+              showCheckmark: false,
+              elevation: 0,
+              padding: EdgeInsets.zero,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+              visualDensity: isLandscape
+                  ? const VisualDensity(horizontal: -4, vertical: -4)
+                  : const VisualDensity(horizontal: -2, vertical: -2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(isLandscape ? 6 : 12),
+                side: BorderSide(
+                  color: isSel
+                      ? const Color(0xFF065F46)
+                      : const Color(0xFFCBD5E1),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -179,18 +514,85 @@ class _InventoryScreenState extends State<InventoryScreen> {
             child: _buildInventoryList(displayItems),
           ),
         ),
-        if (totalPages > 1)
-          _buildPaginationControls(totalPages),
+        if (totalPages > 1) _buildPaginationControls(totalPages),
       ],
     );
   }
 
+  Widget _buildInventoryList(List<InventoryItem> items) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      // Landscape: 4 kolom grid, mainAxisExtent cukup besar untuk semua konten card
+      return GridView.builder(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          crossAxisSpacing: 4,
+          mainAxisSpacing: 4,
+          mainAxisExtent: 130,
+        ),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return InventoryItemCard(
+            item: item,
+            isKaryawan: _isKaryawan,
+            isCompact: true,
+            onEdit: () => _openForm(item: item),
+            onDelete: () => _showDeleteConfirmation(item),
+            onAddStock: item.stock == -1
+                ? null
+                : () => _showAddStockDialog(item),
+            onReduceStock: item.stock == -1
+                ? null
+                : () => _showReduceStockDialog(item),
+          );
+        },
+      );
+    }
+
+    // Portrait: ListView
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: InventoryItemCard(
+            item: item,
+            isKaryawan: _isKaryawan,
+            onEdit: () => _openForm(item: item),
+            onDelete: () => _showDeleteConfirmation(item),
+            onAddStock: item.stock == -1
+                ? null
+                : () => _showAddStockDialog(item),
+            onReduceStock: item.stock == -1
+                ? null
+                : () => _showReduceStockDialog(item),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildPaginationControls(int totalPages) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      padding: EdgeInsets.symmetric(
+        vertical: isLandscape ? 8 : 12,
+        horizontal: 16,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade100)),
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -203,14 +605,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   }
                 : null,
             icon: Icons.chevron_left_rounded,
+            isCompact: isLandscape,
           ),
           const SizedBox(width: 12),
           Text(
             '$_currentPage / $totalPages',
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
-              fontSize: 12,
+              fontSize: isLandscape ? 12 : 14,
             ),
           ),
           const SizedBox(width: 12),
@@ -222,180 +625,36 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   }
                 : null,
             icon: Icons.chevron_right_rounded,
+            isCompact: isLandscape,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPageButton({VoidCallback? onPressed, required IconData icon}) =>
-      Material(
-        color: onPressed == null
-            ? Colors.grey.shade50
-            : AppColors.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            child: Icon(
-              icon,
-              size: 20,
-              color: onPressed == null
-                  ? Colors.grey.shade300
-                  : AppColors.primary,
-            ),
-          ),
+  Widget _buildPageButton({
+    VoidCallback? onPressed,
+    required IconData icon,
+    bool isCompact = false,
+  }) => Material(
+    color: onPressed == null
+        ? Colors.grey.shade50
+        : AppColors.primary.withValues(alpha: 0.1),
+    borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
+    child: InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
+      child: Container(
+        width: isCompact ? 32 : 40,
+        height: isCompact ? 32 : 40,
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: isCompact ? 18 : 22,
+          color: onPressed == null ? Colors.grey.shade300 : AppColors.primary,
         ),
-      );
-
-  Widget _buildAppBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, state) {
-              String shopName = 'BradPOS';
-              if (state is AuthAuthenticated) {
-                shopName = state.user.shopName ?? 'BradPOS';
-              }
-              return BradHeader(
-                title: 'Manajemen Inventory / Produk',
-                subtitle: shopName,
-                leadingIcon: Icons.inventory_2_rounded,
-                onSettingsTap: () => SettingsModal.show(context),
-                actions: [
-                  IconButton(
-                    onPressed: () {
-                      AppNavigator.push(
-                        context,
-                        BlocProvider.value(
-                          value: context.read<InventoryBloc>(),
-                          child: const CategoryListScreen(),
-                        ),
-                      ).then((_) {
-                        if (!mounted) return;
-                        if (!context.mounted) return;
-                        if (!context.mounted) return;
-                        context.read<InventoryBloc>().add(
-                          const LoadInventory(page: 1, limit: _itemsPerPage),
-                        );
-                      });
-                    },
-                    icon: const Icon(
-                      Icons.category_outlined,
-                      color: Color(0xFF64748B),
-                      size: 22,
-                    ),
-                    tooltip: 'Kategori',
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      context.read<InventoryBloc>().add(SyncAllEvent());
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Menyingkronkan data...'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.sync_rounded,
-                      color: Color(0xFF64748B),
-                      size: 22,
-                    ),
-                    tooltip: 'Sync Now',
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Search products by name or SKU...',
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-              filled: true,
-              fillColor: const Color(0xFFF0F4F8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showFilterSheet(),
-                  icon: const Icon(Icons.tune, size: 20),
-                  label: const Text('Filters'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF334155),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    backgroundColor: const Color(0xFFF1F5F9),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _isKaryawan
-                    ? const SizedBox.shrink()
-                    : ElevatedButton.icon(
-                        onPressed: () => _openForm(),
-                        icon: const Icon(Icons.add, size: 20),
-                        label: const Text('New Product'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF065F46),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-        ],
       ),
-    );
-  }
-
-  Widget _buildInventoryList(List<InventoryItem> items) => ListView.builder(
-    controller: _scrollController,
-    physics: const AlwaysScrollableScrollPhysics(),
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-    itemCount: items.length,
-    itemBuilder: (context, index) {
-      final item = items[index];
-      return InventoryItemCard(
-        item: item,
-        isKaryawan: _isKaryawan,
-        onEdit: () => _openForm(item: item),
-        onDelete: () => _showDeleteConfirmation(item),
-        onAddStock: item.stock == -1 ? null : () => _showAddStockDialog(item),
-        onReduceStock: item.stock == -1
-            ? null
-            : () => _showReduceStockDialog(item),
-      );
-    },
+    ),
   );
 
   Widget _buildEmptyState() => RefreshIndicator(
@@ -485,7 +744,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Handle bar
                 Center(
                   child: Container(
                     margin: const EdgeInsets.only(top: 12),
@@ -808,24 +1066,25 @@ class _CustomFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilterChip(
+    return ChoiceChip(
       label: Text(label),
+      labelStyle: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        color: isSelected ? Colors.white : const Color(0xFF1E293B),
+      ),
       selected: isSelected,
       onSelected: onSelected,
+      selectedColor: const Color(0xFF065F46),
       backgroundColor: Colors.white,
-      selectedColor: AppColors.primary.withValues(alpha: 0.1),
-      checkmarkColor: AppColors.primary,
-      labelStyle: TextStyle(
-        color: isSelected ? AppColors.primary : const Color(0xFF64748B),
-        fontSize: 13,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      showCheckmark: false,
+      elevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
-          width: 1.5,
+          color: isSelected ? const Color(0xFF065F46) : const Color(0xFFCBD5E1),
         ),
       ),
     );
