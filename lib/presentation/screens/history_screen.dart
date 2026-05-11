@@ -134,6 +134,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
+    if (isLandscape) {
+      _showFilterSidePanel();
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -148,350 +153,375 @@ class _HistoryScreenState extends State<HistoryScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
+            child: SafeArea(
+              bottom: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(isLandscape ? 16 : 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Filter Transaksi',
-                              style: TextStyle(
-                                fontSize: isLandscape ? 16 : 20,
-                                fontWeight: FontWeight.w900,
-                                color: const Color(0xFF0F172A),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                setSheetState(() {});
-                                setState(() {
-                                  _selectedDateRange = null;
-                                  _selectedCashierId = null;
-                                });
-                                _searchController.clear();
-                                _searchQuery = '';
-                                _loadData();
-                                Navigator.pop(context);
-                              },
-                              child: const Text(
-                                'Reset',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.redAccent,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: isLandscape ? 12 : 24),
-                        Text(
-                          'Rentang Waktu',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: isLandscape ? 12 : 15,
-                            color: const Color(0xFF475569),
-                          ),
-                        ),
-                        SizedBox(height: isLandscape ? 8 : 12),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            _buildFilterChip(
-                              'Semua',
-                              null,
-                              isCompact: isLandscape,
-                              overrideSelected: _selectedDateRange == null,
-                              onTap: () {
-                                setSheetState(() {});
-                                setState(() => _selectedDateRange = null);
-                                _loadData();
-                              },
-                            ),
-                            _buildFilterChip(
-                              'Hari Ini',
-                              DateTimeRange(
-                                start: DateTime(
-                                  DateTime.now().year,
-                                  DateTime.now().month,
-                                  DateTime.now().day,
-                                ),
-                                end: DateTime(
-                                  DateTime.now().year,
-                                  DateTime.now().month,
-                                  DateTime.now().day,
-                                ),
-                              ),
-                              isCompact: isLandscape,
-                              overrideSelected: _selectedDateRange != null &&
-                                  _isSameDay(
-                                    _selectedDateRange!.start,
-                                    DateTime.now(),
-                                  ),
-                              onTap: () {
-                                setSheetState(() {});
-                                setState(
-                                  () => _selectedDateRange = DateTimeRange(
-                                    start: DateTime(
-                                      DateTime.now().year,
-                                      DateTime.now().month,
-                                      DateTime.now().day,
-                                    ),
-                                    end: DateTime(
-                                      DateTime.now().year,
-                                      DateTime.now().month,
-                                      DateTime.now().day,
-                                    ),
-                                  ),
-                                );
-                                _loadData();
-                              },
-                            ),
-                            _buildFilterChip(
-                              'Kemarin',
-                              DateTimeRange(
-                                start: DateTime(
-                                  DateTime.now().year,
-                                  DateTime.now().month,
-                                  DateTime.now().day,
-                                ).subtract(const Duration(days: 1)),
-                                end: DateTime(
-                                  DateTime.now().year,
-                                  DateTime.now().month,
-                                  DateTime.now().day,
-                                ).subtract(const Duration(days: 1)),
-                              ),
-                              isCompact: isLandscape,
-                              overrideSelected: _selectedDateRange != null &&
-                                  _isSameDay(
-                                    _selectedDateRange!.start,
-                                    DateTime.now().subtract(
-                                      const Duration(days: 1),
-                                    ),
-                                  ),
-                              onTap: () {
-                                setSheetState(() {});
-                                setState(
-                                  () => _selectedDateRange = DateTimeRange(
-                                    start: DateTime(
-                                      DateTime.now().year,
-                                      DateTime.now().month,
-                                      DateTime.now().day,
-                                    ).subtract(const Duration(days: 1)),
-                                    end: DateTime(
-                                      DateTime.now().year,
-                                      DateTime.now().month,
-                                      DateTime.now().day,
-                                    ).subtract(const Duration(days: 1)),
-                                  ),
-                                );
-                                _loadData();
-                              },
-                            ),
-                            _buildFilterChip(
-                              '7 Hari',
-                              DateTimeRange(
-                                start: DateTime(
-                                  DateTime.now().year,
-                                  DateTime.now().month,
-                                  DateTime.now().day,
-                                ).subtract(const Duration(days: 6)),
-                                end: DateTime(
-                                  DateTime.now().year,
-                                  DateTime.now().month,
-                                  DateTime.now().day,
-                                ),
-                              ),
-                              isCompact: isLandscape,
-                              overrideSelected: _selectedDateRange != null &&
-                                  _isSameDay(
-                                    _selectedDateRange!.start,
-                                    DateTime.now().subtract(
-                                      const Duration(days: 6),
-                                    ),
-                                  ),
-                              onTap: () {
-                                setSheetState(() {});
-                                setState(
-                                  () => _selectedDateRange = DateTimeRange(
-                                    start: DateTime(
-                                      DateTime.now().year,
-                                      DateTime.now().month,
-                                      DateTime.now().day,
-                                    ).subtract(const Duration(days: 6)),
-                                    end: DateTime(
-                                      DateTime.now().year,
-                                      DateTime.now().month,
-                                      DateTime.now().day,
-                                    ),
-                                  ),
-                                );
-                                _loadData();
-                              },
-                            ),
-                            _buildFilterChip(
-                              _selectedDateRange != null &&
-                                      !_isQuickRange(_selectedDateRange!)
-                                  ? '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM').format(_selectedDateRange!.end)}'
-                                  : 'Pilih Tanggal',
-                              null,
-                              isCompact: isLandscape,
-                              isDatePicker: true,
-                              overrideSelected: false,
-                              onTap: () async {
-                                final picked = await showDateRangePicker(
-                                  context: context,
-                                  firstDate: DateTime(2023),
-                                  lastDate: DateTime.now(),
-                                  initialDateRange: _selectedDateRange,
-                                  builder: (context, child) {
-                                    return Theme(
-                                      data: Theme.of(context).copyWith(
-                                        colorScheme: ColorScheme.light(
-                                          primary: AppColors.primary,
-                                          onPrimary: Colors.white,
-                                          onSurface: AppColors.primary,
-                                        ),
-                                      ),
-                                      child: child!,
-                                    );
-                                  },
-                                );
-                                if (picked != null) {
-                                  setSheetState(() {});
-                                  setState(() => _selectedDateRange = picked);
-                                  _loadData();
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                        BlocBuilder<AuthBloc, AuthState>(
-                          builder: (ctx, authState) {
-                            final bool isOwner =
-                                authState is AuthAuthenticated &&
-                                authState.user.role == 'owner';
-                            if (!isOwner) return const SizedBox.shrink();
-
-                            return BlocBuilder<KaryawanBloc, KaryawanState>(
-                              builder: (ctx, state) {
-                                if (state is! KaryawanListLoaded) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      height: isLandscape ? 12 : 24,
-                                    ),
-                                    Text(
-                                      'Kasir',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: isLandscape ? 12 : 15,
-                                        color: const Color(0xFF475569),
-                                      ),
-                                    ),
-                                    SizedBox(height: isLandscape ? 8 : 12),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
-                                      children: [
-                                        _buildFilterChip(
-                                          'Semua Kasir',
-                                          null,
-                                          isCompact: isLandscape,
-                                          isCashier: true,
-                                          cashierId: null,
-                                          overrideSelected:
-                                              _selectedCashierId == null,
-                                          onTap: () {
-                                            setSheetState(() {});
-                                            setState(
-                                              () => _selectedCashierId = null,
-                                            );
-                                            _loadData();
-                                          },
-                                        ),
-                                        ...state.karyawanList.map((k) {
-                                          return _buildFilterChip(
-                                            k.name,
-                                            null,
-                                            isCompact: isLandscape,
-                                            isCashier: true,
-                                            cashierId: k.id,
-                                            overrideSelected:
-                                                _selectedCashierId == k.id,
-                                            onTap: () {
-                                              setSheetState(() {});
-                                              setState(
-                                                () => _selectedCashierId = k.id,
-                                              );
-                                              _loadData();
-                                            },
-                                          );
-                                        }),
-                                      ],
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                        ),
-                        SizedBox(height: isLandscape ? 16 : 32),
-                        SizedBox(
-                          width: double.infinity,
-                          height: isLandscape ? 40 : 56,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  isLandscape ? 10 : 16,
-                                ),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              'Terapkan Filter',
-                              style: TextStyle(
-                                fontSize: isLandscape ? 13 : 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  Flexible(
+                    child: _buildFilterContent(setSheetState, onApply: () {
+                      _loadData();
+                      Navigator.pop(context);
+                    }),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showFilterSidePanel() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: SizedBox(
+          width: 400, // Fixed width for dialog in landscape
+          child: StatefulBuilder(
+            builder: (context, setSheetState) {
+              return _buildFilterContent(setSheetState, onApply: () {
+                _loadData();
+                Navigator.pop(context);
+              }, isCompact: true);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterContent(
+    StateSetter setSheetState, {
+    VoidCallback? onApply,
+    bool isCompact = false,
+  }) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isCompact ? 16 : 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Filter Transaksi',
+                style: TextStyle(
+                  fontSize: isCompact ? 16 : 20,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+              Row(
+                children: [
+                  if (isCompact)
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                    ),
+                  TextButton(
+                    onPressed: () {
+                      setSheetState(() {});
+                      setState(() {
+                        _selectedDateRange = null;
+                        _selectedCashierId = null;
+                      });
+                      _searchController.clear();
+                      _searchQuery = '';
+                    },
+                    child: const Text(
+                      'Reset',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: isCompact ? 12 : 24),
+          Text(
+            'Rentang Waktu',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: isCompact ? 12 : 15,
+              color: const Color(0xFF475569),
+            ),
+          ),
+          SizedBox(height: isCompact ? 8 : 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _buildFilterChip(
+                'Semua',
+                null,
+                isCompact: isCompact,
+                overrideSelected: _selectedDateRange == null,
+                onTap: () {
+                  setSheetState(() {});
+                  setState(() => _selectedDateRange = null);
+                  _loadData();
+                },
+              ),
+              _buildFilterChip(
+                'Hari Ini',
+                DateTimeRange(
+                  start: DateTime(
+                    DateTime.now().year,
+                    DateTime.now().month,
+                    DateTime.now().day,
+                  ),
+                  end: DateTime(
+                    DateTime.now().year,
+                    DateTime.now().month,
+                    DateTime.now().day,
+                  ),
+                ),
+                isCompact: isCompact,
+                overrideSelected: _selectedDateRange != null &&
+                    _isSameDay(_selectedDateRange!.start, DateTime.now()),
+                onTap: () {
+                  setSheetState(() {});
+                  setState(
+                    () => _selectedDateRange = DateTimeRange(
+                      start: DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                      ),
+                      end: DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                      ),
+                    ),
+                  );
+                  _loadData();
+                },
+              ),
+              _buildFilterChip(
+                'Kemarin',
+                DateTimeRange(
+                  start: DateTime(
+                    DateTime.now().year,
+                    DateTime.now().month,
+                    DateTime.now().day,
+                  ).subtract(const Duration(days: 1)),
+                  end: DateTime(
+                    DateTime.now().year,
+                    DateTime.now().month,
+                    DateTime.now().day,
+                  ).subtract(const Duration(days: 1)),
+                ),
+                isCompact: isCompact,
+                overrideSelected: _selectedDateRange != null &&
+                    _isSameDay(
+                      _selectedDateRange!.start,
+                      DateTime.now().subtract(const Duration(days: 1)),
+                    ),
+                onTap: () {
+                  setSheetState(() {});
+                  setState(
+                    () => _selectedDateRange = DateTimeRange(
+                      start: DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                      ).subtract(const Duration(days: 1)),
+                      end: DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                      ).subtract(const Duration(days: 1)),
+                    ),
+                  );
+                  _loadData();
+                },
+              ),
+              _buildFilterChip(
+                '7 Hari',
+                DateTimeRange(
+                  start: DateTime(
+                    DateTime.now().year,
+                    DateTime.now().month,
+                    DateTime.now().day,
+                  ).subtract(const Duration(days: 6)),
+                  end: DateTime(
+                    DateTime.now().year,
+                    DateTime.now().month,
+                    DateTime.now().day,
+                  ),
+                ),
+                isCompact: isCompact,
+                overrideSelected: _selectedDateRange != null &&
+                    _isSameDay(
+                      _selectedDateRange!.start,
+                      DateTime.now().subtract(const Duration(days: 6)),
+                    ),
+                onTap: () {
+                  setSheetState(() {});
+                  setState(
+                    () => _selectedDateRange = DateTimeRange(
+                      start: DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                      ).subtract(const Duration(days: 6)),
+                      end: DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                      ),
+                    ),
+                  );
+                  _loadData();
+                },
+              ),
+              _buildFilterChip(
+                _selectedDateRange != null &&
+                        !_isQuickRange(_selectedDateRange!)
+                    ? '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM').format(_selectedDateRange!.end)}'
+                    : 'Pilih Tanggal',
+                null,
+                isCompact: isCompact,
+                isDatePicker: true,
+                overrideSelected: false,
+                onTap: () async {
+                  final picked = await showDateRangePicker(
+                    context: context,
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime.now(),
+                    initialDateRange: _selectedDateRange,
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: ColorScheme.light(
+                            primary: AppColors.primary,
+                            onPrimary: Colors.white,
+                            onSurface: AppColors.primary,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
+                  if (picked != null) {
+                    setSheetState(() {});
+                    setState(() => _selectedDateRange = picked);
+                    _loadData();
+                  }
+                },
+              ),
+            ],
+          ),
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (ctx, authState) {
+              final bool isOwner = authState is AuthAuthenticated &&
+                  authState.user.role == 'owner';
+              if (!isOwner) return const SizedBox.shrink();
+
+              return BlocBuilder<KaryawanBloc, KaryawanState>(
+                builder: (ctx, state) {
+                  if (state is! KaryawanListLoaded) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: isCompact ? 12 : 24),
+                      Text(
+                        'Kasir',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: isCompact ? 12 : 15,
+                          color: const Color(0xFF475569),
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 8 : 12),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _buildFilterChip(
+                            'Semua Kasir',
+                            null,
+                            isCompact: isCompact,
+                            isCashier: true,
+                            cashierId: null,
+                            overrideSelected: _selectedCashierId == null,
+                            onTap: () {
+                              setSheetState(() {});
+                              setState(() => _selectedCashierId = null);
+                              _loadData();
+                            },
+                          ),
+                          ...state.karyawanList.map((k) {
+                            return _buildFilterChip(
+                              k.name,
+                              null,
+                              isCompact: isCompact,
+                              isCashier: true,
+                              cashierId: k.id,
+                              overrideSelected: _selectedCashierId == k.id,
+                              onTap: () {
+                                setSheetState(() {});
+                                setState(() => _selectedCashierId = k.id);
+                                _loadData();
+                              },
+                            );
+                          }),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+          SizedBox(height: isCompact ? 16 : 32),
+          SizedBox(
+            width: double.infinity,
+            height: isCompact ? 40 : 56,
+            child: ElevatedButton(
+              onPressed: onApply,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(isCompact ? 10 : 16),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Terapkan Filter',
+                style: TextStyle(
+                  fontSize: isCompact ? 13 : 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -898,7 +928,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               title,
               style: TextStyle(
                 fontSize: isLandscape ? 7 : 12,
-                color: Color(0xFF64748B),
+                color: const Color(0xFF64748B),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -910,7 +940,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 style: TextStyle(
                   fontSize: isLandscape ? 12 : 22,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF0F172A),
+                  color: const Color(0xFF0F172A),
                 ),
               ),
             ),
@@ -965,6 +995,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Row(
           children: [
@@ -972,417 +1003,232 @@ class _HistoryScreenState extends State<HistoryScreen> {
             if (isLandscape)
               const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
             Expanded(
-              child: Column(
-                children: [
-                  Container(
-                    color: Colors.white,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        BlocBuilder<AuthBloc, AuthState>(
-                          builder: (context, state) {
-                            String shopName = 'BradPOS';
-                            if (state is AuthAuthenticated) {
-                              shopName = state.user.shopName ?? 'BradPOS';
-                            }
-                            return BradHeader(
-                              title: 'Riwayat',
-                              subtitle: shopName,
-                              leadingIcon: Icons.history_rounded,
-                              showBottomBorder: true,
-                              onSettingsTap: () => SettingsModal.show(context),
-                              actions: isLandscape
-                                  ? [
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.refresh_rounded,
-                                          color: Color(0xFF64748B),
-                                          size: 16,
-                                        ),
-                                        onPressed: _loadData,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32,
-                                          minHeight: 32,
-                                        ),
-                                      ),
-                                    ]
-                                  : null,
-                            );
-                          },
-                        ),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            isLandscape ? 8 : 16,
-                            8,
-                            isLandscape ? 8 : 16,
-                            isLandscape ? 4 : 8,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  height: isLandscape ? 22 : 56,
-                                  child: TextField(
-                                    textAlignVertical: TextAlignVertical.center,
-                                    controller: _searchController,
-                                    style: TextStyle(
-                                      fontSize: isLandscape ? 8 : 14,
-                                    ),
-                                    decoration: InputDecoration(
-                                      hintText: 'Cari nomor transaksi...',
-                                      hintStyle: TextStyle(
-                                        fontSize: isLandscape ? 8 : 13,
-                                        color: Colors.grey,
-                                      ),
-                                      prefixIcon: Icon(
-                                        Icons.search_rounded,
-                                        color: Colors.grey,
-                                        size: isLandscape ? 12 : 20,
-                                      ),
-                                      prefixIconConstraints: isLandscape
-                                          ? const BoxConstraints(
-                                              minWidth: 24,
-                                              minHeight: 22,
-                                            )
-                                          : null,
-                                      suffixIcon: _searchQuery.isNotEmpty
-                                          ? IconButton(
-                                              icon: Icon(
-                                                Icons.clear,
-                                                size: isLandscape ? 12 : 18,
-                                                color: Colors.grey,
-                                              ),
-                                              onPressed: () {
-                                                _searchController.clear();
-                                                setState(
-                                                  () => _searchQuery = '',
-                                                );
-                                              },
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(
-                                                minWidth: 24,
-                                                minHeight: 24,
-                                              ),
-                                            )
-                                          : null,
-                                      filled: true,
-                                      fillColor: const Color(0xFFF1F5F9),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          isLandscape ? 8 : 16,
-                                        ),
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFFE2E8F0),
-                                        ),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          isLandscape ? 8 : 16,
-                                        ),
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFFE2E8F0),
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          isLandscape ? 8 : 16,
-                                        ),
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFFCBD5E1),
-                                        ),
-                                      ),
-                                      isDense: isLandscape,
-                                      contentPadding: EdgeInsets.symmetric(
-                                        vertical: isLandscape ? 0 : 16,
-                                      ),
-                                    ),
-                                    onChanged: (v) {
-                                      setState(() {
-                                        _searchQuery = v;
-                                        _currentPage = 0;
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: isLandscape ? 6 : 8),
-                              SizedBox(
-                                height: isLandscape ? 22 : 56,
-                                child: Material(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(
-                                    isLandscape ? 8 : 16,
-                                  ),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(
-                                      isLandscape ? 8 : 16,
-                                    ),
-                                    onTap: _showFilterModal,
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: isLandscape ? 8 : 16,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.tune,
-                                            color: const Color(0xFF64748B),
-                                            size: isLandscape ? 14 : 24,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'Filter',
-                                            style: TextStyle(
-                                              color: const Color(0xFF64748B),
-                                              fontSize: isLandscape ? 8 : 13,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+              child: NestedScrollView(
+                headerSliverBuilder: (context, innerBoxIsScrolled) {
+                  return [
+                    SliverToBoxAdapter(
+                      child: _buildHeaderSection(isLandscape),
                     ),
-                  ),
-                  Expanded(
-                    child: BlocBuilder<HistoryBloc, HistoryState>(
+                    BlocBuilder<HistoryBloc, HistoryState>(
                       builder: (context, state) {
-                        if (state is HistoryLoading) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-
-                        if (state is HistoryError) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.error_outline,
-                                  size: 60,
-                                  color: Colors.red,
+                        if (state is HistoryLoaded && state.transactions.isNotEmpty) {
+                          return SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isLandscape ? 8 : 16,
+                                vertical: isLandscape ? 4 : 8,
+                              ),
+                              child: IntrinsicHeight(
+                                child: Row(
+                                  children: [
+                                    _buildMiniStatCard(
+                                      icon: Icons.account_balance_wallet,
+                                      iconColor: const Color(0xFF1A73E8),
+                                      title: _selectedDateRange == null
+                                          ? 'Total Omzet'
+                                          : 'Omzet',
+                                      value: currencyFormatter.format(
+                                        state.totalOmzet,
+                                      ),
+                                      isLandscape: isLandscape,
+                                    ),
+                                    SizedBox(width: isLandscape ? 6 : 12),
+                                    _buildMiniStatCard(
+                                      icon: Icons.receipt_long,
+                                      iconColor: const Color(0xFF10B981),
+                                      title: 'Total Transaksi',
+                                      value: '${state.transactions.length}',
+                                      isLandscape: isLandscape,
+                                    ),
+                                    SizedBox(width: isLandscape ? 6 : 12),
+                                    _buildMiniStatCard(
+                                      icon: Icons.trending_up,
+                                      iconColor: const Color(0xFF8B5CF6),
+                                      title: 'Rata-rata',
+                                      value: currencyFormatter.format(
+                                        state.transactions.isEmpty
+                                            ? 0
+                                            : state.totalOmzet ~/
+                                                state.transactions.length,
+                                      ),
+                                      isLandscape: isLandscape,
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Gagal muat data: ${state.message}',
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 24),
-                                ElevatedButton(
-                                  onPressed: _loadData,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                  ),
-                                  child: const Text(
-                                    'Coba Lagi',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           );
                         }
-
-                        if (state is HistoryLoaded) {
-                          final filtered = _searchQuery.isEmpty
-                              ? state.transactions
-                              : state.transactions
-                                    .where(
-                                      (t) => t.transactionNumber
-                                          .toLowerCase()
-                                          .contains(_searchQuery.toLowerCase()),
-                                    )
-                                    .toList();
-                          final itemsPerPage = isLandscape ? 20 : 10;
-                          final totalPages = filtered.isEmpty
-                              ? 1
-                              : (filtered.length + itemsPerPage - 1) ~/
-                                    itemsPerPage;
-                          final startIndex = (_currentPage * itemsPerPage)
-                              .clamp(0, filtered.length);
-                          final endIndex = (startIndex + itemsPerPage).clamp(
-                            0,
-                            filtered.length,
-                          );
-                          final displayed = filtered.sublist(
-                            startIndex,
-                            endIndex,
-                          );
-
-                          return Column(
-                            children: [
-                              if (state.transactions.isNotEmpty)
-                                Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isLandscape ? 8 : 16,
-                                    vertical: isLandscape ? 4 : 8,
-                                  ),
-                                  child: IntrinsicHeight(
-                                    child: Row(
-                                    children: [
-                                      _buildMiniStatCard(
-                                        icon: Icons.account_balance_wallet,
-                                        iconColor: const Color(0xFF1A73E8),
-                                        title: _selectedDateRange == null
-                                            ? 'Total Omzet'
-                                            : 'Omzet',
-                                        value: currencyFormatter.format(
-                                          state.totalOmzet,
-                                        ),
-                                        isLandscape: isLandscape,
-                                      ),
-                                      SizedBox(width: isLandscape ? 6 : 12),
-                                      _buildMiniStatCard(
-                                        icon: Icons.receipt_long,
-                                        iconColor: const Color(0xFF10B981),
-                                        title: 'Total Transaksi',
-                                        value: '${state.transactions.length}',
-                                        isLandscape: isLandscape,
-                                      ),
-                                      SizedBox(width: isLandscape ? 6 : 12),
-                                      _buildMiniStatCard(
-                                        icon: Icons.trending_up,
-                                        iconColor: const Color(0xFF8B5CF6),
-                                        title: 'Rata-rata',
-                                        value: currencyFormatter.format(
-                                          state.totalOmzet ~/
-                                              state.transactions.length,
-                                        ),
-                                        isLandscape: isLandscape,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                ),
-                              Expanded(
-                                child: RefreshIndicator(
-                                  onRefresh: () async {
-                                    context
-                                        .read<AuthBloc>()
-                                        .syncService
-                                        .syncAll();
-                                    _loadData();
-                                    await Future.delayed(
-                                      const Duration(seconds: 1),
-                                    );
-                                  },
-                                  child: filtered.isEmpty
-                                      ? ListView(
-                                          physics:
-                                              const AlwaysScrollableScrollPhysics(),
-                                          children: [
-                                            SizedBox(
-                                              height:
-                                                  MediaQuery.of(
-                                                    context,
-                                                  ).size.height *
-                                                  0.2,
-                                            ),
-                                            Center(
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    Icons.receipt_long_outlined,
-                                                    size: isLandscape ? 48 : 80,
-                                                    color: Colors.grey,
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  Text(
-                                                    _searchQuery.isNotEmpty
-                                                        ? 'Tidak ada hasil untuk "$_searchQuery"'
-                                                        : _selectedDateRange ==
-                                                              null
-                                                        ? 'Belum ada transaksi'
-                                                        : 'Tidak ada transaksi di rentang tanggal ini',
-                                                    style: TextStyle(
-                                                      color: Colors.grey,
-                                                      fontSize: isLandscape
-                                                          ? 12
-                                                          : 16,
-                                                    ),
-                                                  ),
-                                                  if (_selectedDateRange !=
-                                                      null)
-                                                    TextButton(
-                                                      onPressed: () {
-                                                        setState(
-                                                          () =>
-                                                              _selectedDateRange =
-                                                                  null,
-                                                        );
-                                                        _loadData();
-                                                      },
-                                                      child: const Text(
-                                                        'Hapus Filter',
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : isLandscape
-                                      ? GridView.builder(
-                                          physics:
-                                              const AlwaysScrollableScrollPhysics(),
-                                          padding: const EdgeInsets.all(8),
-                                          gridDelegate:
-                                              SliverGridDelegateWithFixedCrossAxisCount(
-                                                crossAxisCount: 4,
-                                                mainAxisExtent: 120,
-                                                crossAxisSpacing: 6,
-                                                mainAxisSpacing: 6,
-                                              ),
-                                          itemCount: displayed.length,
-                                          itemBuilder: (context, index) {
-                                            return _buildTransactionCard(
-                                              displayed[index],
-                                              isLandscape,
-                                              context,
-                                            );
-                                          },
-                                        )
-                                      : ListView(
-                                          physics:
-                                              const AlwaysScrollableScrollPhysics(),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 8,
-                                          ),
-                                          children: displayed
-                                              .map(
-                                                (trx) =>
-                                                    _buildTransactionCard(
-                                                      trx,
-                                                      isLandscape,
-                                                      context,
-                                                    ),
-                                              )
-                                              .toList(),
-                                        ),
-                                ),
-                              ),
-                              if (filtered.isNotEmpty && totalPages > 1)
-                                _buildPagination(totalPages, isLandscape),
-                            ],
-                          );
-                        }
-                        return const SizedBox();
+                        return const SliverToBoxAdapter(child: SizedBox.shrink());
                       },
                     ),
-                  ),
-                ],
+                  ];
+                },
+                body: BlocBuilder<HistoryBloc, HistoryState>(
+                  builder: (context, state) {
+                    if (state is HistoryLoading) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    if (state is HistoryError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              size: 60,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Gagal muat data: ${state.message}',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: _loadData,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                              ),
+                              child: const Text(
+                                'Coba Lagi',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (state is HistoryLoaded) {
+                      final filtered = _searchQuery.isEmpty
+                          ? state.transactions
+                          : state.transactions
+                                .where(
+                                  (t) => t.transactionNumber
+                                      .toLowerCase()
+                                      .contains(_searchQuery.toLowerCase()),
+                                )
+                                .toList();
+                      final itemsPerPage = isLandscape ? 20 : 10;
+                      final totalPages = filtered.isEmpty
+                          ? 1
+                          : (filtered.length + itemsPerPage - 1) ~/
+                                itemsPerPage;
+                      final startIndex = (_currentPage * itemsPerPage)
+                          .clamp(0, filtered.length);
+                      final endIndex = (startIndex + itemsPerPage).clamp(
+                        0,
+                        filtered.length,
+                      );
+                      final displayed = filtered.sublist(
+                        startIndex,
+                        endIndex,
+                      );
+
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: filtered.isEmpty
+                                ? ListView(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
+                                    children: [
+                                      SizedBox(
+                                        height: MediaQuery.of(context)
+                                                .size
+                                                .height *
+                                            0.2,
+                                      ),
+                                      Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.receipt_long_outlined,
+                                              size: isLandscape ? 48 : 80,
+                                              color: Colors.grey,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              _searchQuery.isNotEmpty
+                                                  ? 'Tidak ada hasil untuk "$_searchQuery"'
+                                                  : _selectedDateRange == null
+                                                      ? 'Belum ada transaksi'
+                                                      : 'Tidak ada transaksi di rentang tanggal ini',
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: isLandscape ? 12 : 16,
+                                              ),
+                                            ),
+                                            if (_selectedDateRange != null)
+                                              TextButton(
+                                                onPressed: () {
+                                                  setState(
+                                                    () => _selectedDateRange =
+                                                        null,
+                                                  );
+                                                  _loadData();
+                                                },
+                                                child: const Text(
+                                                  'Hapus Filter',
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : isLandscape
+                                    ? GridView.builder(
+                                        physics:
+                                            const AlwaysScrollableScrollPhysics(),
+                                        padding: const EdgeInsets.all(8),
+                                        gridDelegate:
+                                            const SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 4,
+                                          mainAxisExtent: 130,
+                                          crossAxisSpacing: 4,
+                                          mainAxisSpacing: 4,
+                                        ),
+                                        itemCount: displayed.length,
+                                        itemBuilder: (context, index) {
+                                          return _buildTransactionCard(
+                                            displayed[index],
+                                            isLandscape,
+                                            context,
+                                          );
+                                        },
+                                      )
+                                    : ListView(
+                                        physics:
+                                            const AlwaysScrollableScrollPhysics(),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                        children: displayed
+                                            .map(
+                                              (trx) => _buildTransactionCard(
+                                                trx,
+                                                isLandscape,
+                                                context,
+                                              ),
+                                            )
+                                            .toList(),
+                                      ),
+                          ),
+                          if (filtered.isNotEmpty && totalPages > 1)
+                            _buildPagination(totalPages, isLandscape),
+                        ],
+                      );
+                    }
+                    return const SizedBox();
+                  },
+                ),
               ),
             ),
           ],
@@ -1391,6 +1237,226 @@ class _HistoryScreenState extends State<HistoryScreen> {
       bottomNavigationBar: isLandscape
           ? null
           : const MainBottomNavBar(activeLabel: 'HISTORY'),
+    );
+  }
+
+  Widget _buildHeaderSection(bool isLandscape) {
+    return Column(
+      children: [
+        BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            String shopName = 'BradPOS';
+            if (state is AuthAuthenticated) {
+              shopName = state.user.shopName ?? 'BradPOS';
+            }
+            return BradHeader(
+              title: 'Riwayat Transaksi',
+              subtitle: shopName,
+              leadingIcon: Icons.history_rounded,
+              showBottomBorder: true,
+              showSettings: !isLandscape,
+              onSettingsTap: () => SettingsModal.show(context),
+              onSyncTap: () {
+                context.read<AuthBloc>().syncService.syncAll();
+                _loadData();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Menyingkronkan data...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              },
+              actions: isLandscape
+                  ? [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.sync_rounded,
+                          color: Color(0xFF64748B),
+                          size: 18,
+                        ),
+                        onPressed: _loadData,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                    ]
+                  : null,
+            );
+          },
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: isLandscape
+                    ? const EdgeInsets.fromLTRB(8, 4, 8, 4)
+                    : const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: isLandscape ? 22 : 56,
+                        child: TextField(
+                          textAlignVertical: TextAlignVertical.center,
+                          controller: _searchController,
+                          style: TextStyle(
+                            fontSize: isLandscape ? 8 : 14,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Cari nomor transaksi...',
+                            hintStyle: TextStyle(
+                              fontSize: isLandscape ? 8 : 14,
+                              color: Colors.grey,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search_rounded,
+                              color: Colors.grey,
+                              size: isLandscape ? 12 : 20,
+                            ),
+                            prefixIconConstraints: isLandscape
+                                ? const BoxConstraints(
+                                    minWidth: 24,
+                                    minHeight: 22,
+                                  )
+                                : null,
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(
+                                      Icons.clear,
+                                      size: isLandscape ? 12 : 18,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(
+                                        () => _searchQuery = '',
+                                      );
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 24,
+                                      minHeight: 24,
+                                    ),
+                                  )
+                                : null,
+                            filled: true,
+                            fillColor: const Color(0xFFF1F5F9),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(
+                                isLandscape ? 8 : 16,
+                              ),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(
+                                isLandscape ? 8 : 16,
+                              ),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(
+                                isLandscape ? 8 : 16,
+                              ),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFCBD5E1),
+                              ),
+                            ),
+                            isDense: isLandscape,
+                            contentPadding: isLandscape
+                                ? EdgeInsets.zero
+                                : const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                          ),
+                          onChanged: (v) {
+                            setState(() {
+                              _searchQuery = v;
+                              _currentPage = 0;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: isLandscape ? 6 : 8),
+                    if (isLandscape)
+                      SizedBox(
+                        height: 22,
+                        child: OutlinedButton.icon(
+                          onPressed: _showFilterModal,
+                          icon: const Icon(Icons.tune, size: 10),
+                          label: const Text('Filter',
+                              style: TextStyle(fontSize: 8)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF334155),
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            backgroundColor: Colors.white,
+                          ),
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: 56,
+                        child: Material(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: _showFilterModal,
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              alignment: Alignment.center,
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.tune,
+                                    color: Color(0xFF64748B),
+                                    size: 24,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Filter',
+                                    style: TextStyle(
+                                      color: Color(0xFF64748B),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

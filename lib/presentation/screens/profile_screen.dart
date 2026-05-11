@@ -143,19 +143,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 showBackButton: true,
                 leadingIcon: Icons.store_rounded,
                 showSettings: false,
+                onSyncTap: () {
+                  context.read<AuthBloc>().syncService.syncAll();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Menyingkronkan data...'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
               ),
             ),
             Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  context.read<AuthBloc>().syncService.syncAll();
-                  context.read<AuthBloc>().add(CheckAuthStatus());
-                  await Future.delayed(const Duration(seconds: 1));
-                },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                child: Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,7 +440,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                       ],
-                    ),
                   ),
                 ),
               ),

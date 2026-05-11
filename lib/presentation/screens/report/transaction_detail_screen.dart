@@ -23,6 +23,8 @@ class TransactionDetailScreen extends StatelessWidget {
       decimalDigits: 0,
     );
 
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
     return BlocProvider(
       create: (context) =>
           sl<TransactionDetailBloc>()
@@ -37,244 +39,316 @@ class TransactionDetailScreen extends StatelessWidget {
           backgroundColor: Colors.white,
           foregroundColor: AppColors.primary,
           elevation: 0,
+          toolbarHeight: isLandscape ? 40 : 56,
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+        body: SafeArea(
+          child: isLandscape
+              ? Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header Card
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          BlocBuilder<AuthBloc, AuthState>(
-                            builder: (context, authState) {
-                              String shopName = 'BradPOS Store';
-                              if (authState is AuthAuthenticated) {
-                                shopName = authState.user.shopName ?? 'BradPOS Store';
-                              }
-                              return Text(
-                                shopName.toUpperCase(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 16,
-                                  color: AppColors.primary,
-                                  letterSpacing: 1.2,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            transaction.transactionNumber,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            DateFormat(
-                              'dd MMMM yyyy, HH:mm',
-                            ).format(transaction.createdAt),
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                          const Divider(height: 32),
-                          _buildInfoRow(
-                            'Status',
-                            transaction.status.toUpperCase(),
-                            isStatus: true,
-                          ),
-                          _buildInfoRow('Kasir', transaction.cashierName ?? 'System'),
-                          if (transaction.customerName != null)
-                            _buildInfoRow('Pelanggan', transaction.customerName!),
-                          _buildInfoRow(
-                            'Metode Bayar',
-                            transaction.paymentMethod.toUpperCase(),
-                          ),
-                        ],
+                    // Left Side: Info & Summary
+                    Expanded(
+                      flex: 4,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          children: [
+                            _buildHeaderCard(context, isLandscape),
+                            const SizedBox(height: 6),
+                            _buildSummaryCard(currencyFormatter, isLandscape),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'DAFTAR PRODUK',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
+                    // Right Side: Product List & Action
+                    Expanded(
+                      flex: 5,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'DAFTAR PRODUK',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                                fontSize: isLandscape ? 9 : 12,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Expanded(child: _buildItemsList(currencyFormatter, isLandscape)),
+                            const SizedBox(height: 8),
+                            _buildPrintButton(context, isLandscape),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-
-                    // Items List
-                    BlocBuilder<TransactionDetailBloc, TransactionDetailState>(
-                      builder: (context, state) {
-                        if (state is TransactionDetailLoading) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(20.0),
-                              child: CircularProgressIndicator(),
+                  ],
+                )
+              : Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeaderCard(context, isLandscape),
+                            const SizedBox(height: 24),
+                            const Text(
+                              'DAFTAR PRODUK',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
                             ),
-                          );
-                        }
-                        if (state is TransactionDetailError) {
-                          return Center(child: Text(state.message));
-                        }
-                        if (state is TransactionDetailLoaded) {
-                          return Column(
-                            children: state.items
-                                .map(
-                                  (item) => Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                item.productName,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              Text(
-                                                '${item.quantity} x ${currencyFormatter.format(item.unitPrice)}',
-                                                style: const TextStyle(
-                                                  color: Colors.grey,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Text(
-                                          currencyFormatter.format(item.subtotal),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                          );
-                        }
-                        return const SizedBox();
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Summary Calculation
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildPriceRow(
-                            'Subtotal',
-                            transaction.subtotal,
-                            currencyFormatter,
-                          ),
-                          if (transaction.discount > 0)
-                            _buildPriceRow(
-                              'Diskon',
-                              -transaction.discount,
-                              currencyFormatter,
-                              isDiscount: true,
-                            ),
-                          if (transaction.tax > 0)
-                            _buildPriceRow(
-                              'Pajak',
-                              transaction.tax,
-                              currencyFormatter,
-                            ),
-                          const Divider(height: 24),
-                          _buildPriceRow(
-                            'Total',
-                            transaction.total,
-                            currencyFormatter,
-                            isTotal: true,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildPriceRow(
-                            'Bayar',
-                            transaction.paymentAmount,
-                            currencyFormatter,
-                          ),
-                          _buildPriceRow(
-                            'Kembali',
-                            transaction.changeAmount,
-                            currencyFormatter,
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+                            _buildItemsList(currencyFormatter, isLandscape),
+                            const SizedBox(height: 24),
+                            _buildSummaryCard(currencyFormatter, isLandscape),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
         ),
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: BlocBuilder<TransactionDetailBloc, TransactionDetailState>(
-              builder: (context, state) {
-                if (state is TransactionDetailLoaded) {
-                  return SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _showReceipt(context, state),
-                      icon: const Icon(Icons.print_rounded),
-                      label: const Text(
-                        'PRINT RECEIPT',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
+        bottomNavigationBar: isLandscape
+            ? null
+            : SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: _buildPrintButton(context, isLandscape),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard(BuildContext context, bool isLandscape) {
+    return Container(
+      padding: EdgeInsets.all(isLandscape ? 10 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
+              String shopName = 'BradPOS Store';
+              if (authState is AuthAuthenticated) {
+                shopName = authState.user.shopName ?? 'BradPOS Store';
+              }
+              return Text(
+                shopName.toUpperCase(),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: isLandscape ? 10 : 16,
+                  color: AppColors.primary,
+                  letterSpacing: 1.2,
+                ),
+              );
+            },
+          ),
+          SizedBox(height: isLandscape ? 4 : 12),
+          Text(
+            transaction.transactionNumber,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isLandscape ? 12 : 20,
             ),
           ),
-        ),
+          SizedBox(height: isLandscape ? 2 : 8),
+          Text(
+            DateFormat(
+              'dd MMM yyyy, HH:mm',
+            ).format(transaction.createdAt),
+            style: TextStyle(color: Colors.grey, fontSize: isLandscape ? 9 : 14),
+          ),
+          Divider(height: isLandscape ? 16 : 32),
+          _buildInfoRow(
+            'Status',
+            transaction.status.toUpperCase(),
+            isStatus: true,
+            isLandscape: isLandscape,
+          ),
+          _buildInfoRow('Kasir', transaction.cashierName ?? 'System', isLandscape: isLandscape),
+          if (transaction.customerName != null)
+            _buildInfoRow('Pelanggan', transaction.customerName!, isLandscape: isLandscape),
+          _buildInfoRow(
+            'Metode Bayar',
+            transaction.paymentMethod.toUpperCase(),
+            isLandscape: isLandscape,
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildItemsList(NumberFormat currencyFormatter, bool isLandscape) {
+    return BlocBuilder<TransactionDetailBloc, TransactionDetailState>(
+      builder: (context, state) {
+        if (state is TransactionDetailLoading) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        if (state is TransactionDetailError) {
+          return Center(child: Text(state.message));
+        }
+        if (state is TransactionDetailLoaded) {
+          final list = state.items
+                .map(
+                  (item) => Container(
+                    margin: EdgeInsets.only(bottom: isLandscape ? 4 : 8),
+                    padding: EdgeInsets.all(isLandscape ? 8 : 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.productName,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isLandscape ? 10 : 14,
+                                ),
+                              ),
+                              Text(
+                                '${item.quantity} x ${currencyFormatter.format(item.unitPrice)}',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: isLandscape ? 8 : 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          currencyFormatter.format(item.subtotal),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isLandscape ? 10 : 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList();
+          return isLandscape 
+            ? ListView(
+                padding: EdgeInsets.zero,
+                children: list,
+              )
+            : Column(children: list);
+        }
+        return const SizedBox();
+      },
+    );
+  }
+
+  Widget _buildSummaryCard(NumberFormat currencyFormatter, bool isLandscape) {
+    return Container(
+      padding: EdgeInsets.all(isLandscape ? 10 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          _buildPriceRow(
+            'Subtotal',
+            transaction.subtotal,
+            currencyFormatter,
+            isLandscape: isLandscape,
+          ),
+          if (transaction.discount > 0)
+            _buildPriceRow(
+              'Diskon',
+              -transaction.discount,
+              currencyFormatter,
+              isDiscount: true,
+              isLandscape: isLandscape,
+            ),
+          if (transaction.tax > 0)
+            _buildPriceRow(
+              'Pajak',
+              transaction.tax,
+              currencyFormatter,
+              isLandscape: isLandscape,
+            ),
+          Divider(height: isLandscape ? 12 : 24),
+          _buildPriceRow(
+            'Total',
+            transaction.total,
+            currencyFormatter,
+            isTotal: true,
+            isLandscape: isLandscape,
+          ),
+          SizedBox(height: isLandscape ? 4 : 12),
+          _buildPriceRow(
+            'Bayar',
+            transaction.paymentAmount,
+            currencyFormatter,
+            isLandscape: isLandscape,
+          ),
+          _buildPriceRow(
+            'Kembali',
+            transaction.changeAmount,
+            currencyFormatter,
+            isLandscape: isLandscape,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrintButton(BuildContext context, bool isLandscape) {
+    return BlocBuilder<TransactionDetailBloc, TransactionDetailState>(
+      builder: (context, state) {
+        if (state is TransactionDetailLoaded) {
+          return SizedBox(
+            width: double.infinity,
+            height: isLandscape ? 36 : 56,
+            child: ElevatedButton.icon(
+              onPressed: () => _showReceipt(context, state),
+              icon: Icon(Icons.print_rounded, size: isLandscape ? 16 : 24),
+              label: Text(
+                'PRINT RECEIPT',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isLandscape ? 12 : 16,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(isLandscape ? 8 : 16),
+                ),
+              ),
+            ),
+          );
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 
@@ -314,17 +388,18 @@ class TransactionDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isStatus = false}) {
+  Widget _buildInfoRow(String label, String value, {bool isStatus = false, bool isLandscape = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: isLandscape ? 2 : 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(label, style: TextStyle(color: Colors.grey, fontSize: isLandscape ? 9 : 14)),
           Text(
             value,
             style: TextStyle(
               fontWeight: FontWeight.bold,
+              fontSize: isLandscape ? 9 : 14,
               color: isStatus ? Colors.green : Colors.black,
             ),
           ),
@@ -339,23 +414,24 @@ class TransactionDetailScreen extends StatelessWidget {
     NumberFormat formatter, {
     bool isTotal = false,
     bool isDiscount = false,
+    bool isLandscape = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: isLandscape ? 2 : 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontSize: isTotal ? 18 : 14,
+              fontSize: isTotal ? (isLandscape ? 14 : 18) : (isLandscape ? 9 : 14),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
             ),
           ),
           Text(
             formatter.format(value),
             style: TextStyle(
-              fontSize: isTotal ? 18 : 14,
+              fontSize: isTotal ? (isLandscape ? 14 : 18) : (isLandscape ? 9 : 14),
               fontWeight: FontWeight.bold,
               color: isDiscount
                   ? Colors.red

@@ -222,8 +222,9 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
             BlocBuilder<AuthBloc, AuthState>(
               builder: (context, state) {
                 String shopName = 'BradPOS';
-                if (state is AuthAuthenticated)
+                if (state is AuthAuthenticated) {
                   shopName = state.user.shopName ?? 'BradPOS';
+                }
                 return BradHeader(
                   title: isEditing ? 'Ubah Produk' : 'Tambah Produk Baru',
                   subtitle: shopName,
@@ -369,6 +370,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           Expanded(
             flex: 4,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSectionHeader(
@@ -411,6 +413,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           Expanded(
             flex: 6,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSectionHeader(
@@ -907,12 +910,98 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? img = await _picker.pickImage(source: ImageSource.gallery);
-    if (img != null) {
-      final dir = await getApplicationDocumentsDirectory();
-      final p = '${dir.path}/${path.basename(img.path)}';
-      await File(img.path).copy(p);
-      setState(() => _imagePath = p);
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    ImageSource? source;
+    if (isLandscape) {
+      source = await showDialog<ImageSource>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24)),
+          title: const Text('Pilih Foto',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded,
+                    color: AppColors.primary),
+                title: const Text('Kamera'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded,
+                    color: AppColors.primary),
+                title: const Text('Galeri'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'PILIH FOTO PRODUK',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF64748B),
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Kamera'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Galeri'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!mounted) return;
+
+    if (source != null) {
+      final XFile? img = await _picker.pickImage(
+        source: source,
+        imageQuality: 50,
+      );
+      if (img != null) {
+        final dir = await getApplicationDocumentsDirectory();
+        final p = '${dir.path}/${path.basename(img.path)}';
+        await File(img.path).copy(p);
+        setState(() => _imagePath = p);
+      }
     }
   }
 }
@@ -1002,9 +1091,11 @@ class _PickerModalState extends State<_PickerModal> {
             : double.infinity,
         minWidth: isLandscape ? MediaQuery.of(context).size.width * 0.75 : 0.0,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: SafeArea(
+        bottom: !isLandscape,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1086,6 +1177,7 @@ class _PickerModalState extends State<_PickerModal> {
             ),
           ],
         ],
+        ),
       ),
     );
   }

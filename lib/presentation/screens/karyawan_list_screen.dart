@@ -54,14 +54,7 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
                     if (state is KaryawanLoading) {
                       return const Center(child: CircularProgressIndicator());
                     } else if (state is KaryawanListLoaded) {
-                      return RefreshIndicator(
-                        onRefresh: () async {
-                          context.read<AuthBloc>().syncService.syncAll();
-                          context.read<KaryawanBloc>().add(LoadKaryawanList());
-                          await Future.delayed(const Duration(seconds: 1));
-                        },
-                        child: _buildKaryawanList(state.karyawanList),
-                      );
+                      return _buildKaryawanList(state.karyawanList);
                     } else if (state is KaryawanError) {
                       return Center(child: Text(state.message));
                     }
@@ -76,118 +69,207 @@ class _KaryawanListScreenState extends State<KaryawanListScreen> {
     );
   }
 
-  /// Bagian Header Halaman yang berisi Judul, Pencarian, dan Tombol Tambah.
   Widget _buildAppBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, state) {
-              String shopName = 'BradPOS';
-              if (state is AuthAuthenticated) {
-                shopName = state.user.shopName ?? 'BradPOS';
-              }
-              return BradHeader(
-                title: 'Karyawan',
-                subtitle: shopName,
-                showBackButton: true,
-                leadingIcon: Icons.people_rounded,
-                showSettings: false,
-              );
-            },
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    return Column(
+      children: [
+        BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            String shopName = 'BradPOS';
+            if (state is AuthAuthenticated) {
+              shopName = state.user.shopName ?? 'BradPOS';
+            }
+            return BradHeader(
+              title: 'Karyawan',
+              subtitle: shopName,
+              showBackButton: true,
+              leadingIcon: Icons.people_rounded,
+              showBottomBorder: true,
+              showSettings: false,
+            );
+          },
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          // Filter Pencarian
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Cari karyawan berdasarkan nama atau ID...',
-              hintStyle: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-              ),
-              prefixIcon: const Icon(
-                Icons.search,
-                color: AppColors.textSecondary,
-              ),
-              filled: true,
-              fillColor: const Color(0xFFF1F5F9),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+          child: Padding(
+            padding: isLandscape
+                ? const EdgeInsets.fromLTRB(12, 4, 12, 8)
+                : const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isLandscape)
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _buildSearchBar(isCompact: true),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: _buildActionButtons(isCompact: true),
+                      ),
+                    ],
+                  )
+                else ...[
+                  _buildSearchBar(isCompact: false),
+                  const SizedBox(height: 16),
+                  _buildActionButtons(isCompact: false),
+                ],
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          // Baris tombol Filter dan Tambah Karyawan (RBAC)
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, authState) {
-              final bool isOwner =
-                  authState is AuthAuthenticated && authState.user.isOwner;
-
-              return Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.tune, size: 18),
-                      label: const Text('Filter'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textPrimary,
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        backgroundColor: const Color(0xFFF1F5F9),
-                      ),
-                    ),
-                  ),
-                  // Tombol Tambah hanya muncul untuk Owner
-                  if (isOwner) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => BlocProvider.value(
-                                value: context.read<KaryawanBloc>(),
-                                child: const KaryawanFormScreen(),
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Tambah'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
+        ),
+        if (!isLandscape) const SizedBox(height: 8),
+      ],
     );
   }
 
-  /// Membuat daftar list karyawan menggunakan ListView.
+  Widget _buildSearchBar({required bool isCompact}) {
+    return TextField(
+      decoration: InputDecoration(
+        hintText: 'Cari karyawan...',
+        hintStyle: TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: isCompact ? 8 : 14,
+        ),
+        prefixIcon: Icon(
+          Icons.search,
+          color: AppColors.textSecondary,
+          size: isCompact ? 12 : 20,
+        ),
+        prefixIconConstraints: isCompact
+            ? const BoxConstraints(minWidth: 24, minHeight: 22)
+            : null,
+        filled: true,
+        fillColor: const Color(0xFFF1F5F9),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(isCompact ? 8 : 12),
+          borderSide: BorderSide.none,
+        ),
+        isDense: true,
+        contentPadding:
+            isCompact ? EdgeInsets.zero : const EdgeInsets.symmetric(vertical: 16),
+      ),
+      style: TextStyle(fontSize: isCompact ? 8 : 14),
+    );
+  }
+
+  Widget _buildActionButtons({required bool isCompact}) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        final bool isOwner =
+            authState is AuthAuthenticated && authState.user.isOwner;
+
+        return Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: isCompact ? 22 : 46,
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: Icon(Icons.tune, size: isCompact ? 10 : 18),
+                  label: Text('Filter',
+                      style: TextStyle(fontSize: isCompact ? 8 : 13)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(isCompact ? 8 : 12),
+                    ),
+                    backgroundColor: const Color(0xFFF1F5F9),
+                  ),
+                ),
+              ),
+            ),
+            if (isOwner) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: isCompact ? 22 : 46,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider.value(
+                            value: context.read<KaryawanBloc>(),
+                            child: const KaryawanFormScreen(),
+                          ),
+                        ),
+                      );
+                    },
+                    icon: Icon(Icons.add, size: isCompact ? 10 : 18),
+                    label: Text('Tambah',
+                        style: TextStyle(fontSize: isCompact ? 8 : 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(isCompact ? 8 : 12),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildKaryawanList(List<Karyawan> karyawanList) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      return GridView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 2.2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemCount: karyawanList.length,
+        itemBuilder: (context, index) {
+          return KaryawanCard(
+            karyawan: karyawanList[index],
+            onEdit: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider.value(
+                    value: context.read<KaryawanBloc>(),
+                    child: KaryawanFormScreen(karyawan: karyawanList[index]),
+                  ),
+                ),
+              );
+            },
+            onDelete: () {
+              _showDeleteConfirmation(context, karyawanList[index]);
+            },
+          );
+        },
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: karyawanList.length,

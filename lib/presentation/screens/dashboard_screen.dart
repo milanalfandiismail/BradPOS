@@ -43,6 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Row(
           children: [
@@ -64,6 +65,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         leadingIcon: Icons.home_rounded,
                         showBottomBorder: true,
                         onSettingsTap: () => SettingsModal.show(context),
+                        onSyncTap: () {
+                          context.read<AuthBloc>().syncService.syncAll();
+                          context.read<DashboardBloc>().add(LoadDashboardStats());
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Menyingkronkan data...'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
                         actions: isLandscape
                             ? [
                                 IconButton(
@@ -100,172 +111,158 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   ),
                   Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: () async {
-                        context.read<AuthBloc>().syncService.syncAll();
-                        context.read<DashboardBloc>().add(LoadDashboardStats());
-                        await Future.delayed(const Duration(seconds: 1));
-                      },
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (isLandscape) {
-                            return SingleChildScrollView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              child: Container(
-                                constraints: BoxConstraints(
-                                  minHeight: constraints.maxHeight,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildGreeting(isCompact: true),
-                                    const SizedBox(height: 10),
-                                    _buildMainActions(context, isCompact: true),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          flex: 6,
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              BlocBuilder<
-                                                DashboardBloc,
-                                                DashboardState
-                                              >(
-                                                builder: (context, state) {
-                                                  if (state
-                                                      is DashboardLoading) {
-                                                    return const Center(
-                                                      child:
-                                                          CircularProgressIndicator(),
-                                                    );
-                                                  } else if (state
-                                                      is DashboardLoaded) {
-                                                    return Column(
-                                                      children: [
-                                                        LowStockBanner(
-                                                          lowStockCount: state
-                                                              .lowStockCount,
-                                                          outOfStockCount: state
-                                                              .outOfStockCount,
-                                                          onTap: () =>
-                                                              AppNavigator.push(
-                                                                context,
-                                                                const InventoryScreen(),
-                                                              ),
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 10,
-                                                        ),
-                                                        _buildStats(
-                                                          state.stats,
-                                                          isLandscape: true,
-                                                          isCompact: true,
-                                                        ),
-                                                      ],
-                                                    );
-                                                  }
-                                                  return const SizedBox();
-                                                },
-                                              ),
-                                              const SizedBox(height: 12),
-                                              _buildBottomActions(
-                                                context,
-                                                isCompact: true,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          flex: 4,
-                                          child:
-                                              BlocBuilder<
-                                                DashboardBloc,
-                                                DashboardState
-                                              >(
-                                                builder: (context, state) {
-                                                  if (state
-                                                      is DashboardLoaded) {
-                                                    return _buildSalesPerformance(
-                                                      state.stats.dailySales,
-                                                      isCompact: true,
-                                                    );
-                                                  }
-                                                  return const SizedBox();
-                                                },
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
-
-                          // Portrait Mode
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (isLandscape) {
                           return SingleChildScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 12),
-                                _buildGreeting(),
-                                const SizedBox(height: 24),
-                                _buildMainActions(context),
-                                const SizedBox(height: 24),
-                                BlocBuilder<DashboardBloc, DashboardState>(
-                                  builder: (context, state) {
-                                    if (state is DashboardLoading) {
-                                      return const Center(
-                                        child: CircularProgressIndicator(),
-                                      );
-                                    } else if (state is DashboardLoaded) {
-                                      return Column(
-                                        children: [
-                                          LowStockBanner(
-                                            lowStockCount: state.lowStockCount,
-                                            outOfStockCount:
-                                                state.outOfStockCount,
-                                            onTap: () => AppNavigator.push(
-                                              context,
-                                              const InventoryScreen(),
+                            child: Container(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildGreeting(isCompact: true),
+                                  const SizedBox(height: 10),
+                                  _buildMainActions(context, isCompact: true),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 6,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            BlocBuilder<DashboardBloc,
+                                                DashboardState>(
+                                              builder: (context, state) {
+                                                if (state is DashboardLoading) {
+                                                  return const Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  );
+                                                } else if (state
+                                                    is DashboardLoaded) {
+                                                  return Column(
+                                                    children: [
+                                                      LowStockBanner(
+                                                        lowStockCount:
+                                                            state.lowStockCount,
+                                                        outOfStockCount: state
+                                                            .outOfStockCount,
+                                                        onTap: () =>
+                                                            AppNavigator.push(
+                                                          context,
+                                                          const InventoryScreen(),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 10,
+                                                      ),
+                                                      _buildStats(
+                                                        state.stats,
+                                                        isLandscape: true,
+                                                        isCompact: true,
+                                                      ),
+                                                    ],
+                                                  );
+                                                }
+                                                return const SizedBox();
+                                              },
                                             ),
-                                          ),
-                                          _buildStats(state.stats),
-                                          const SizedBox(height: 24),
-                                          _buildSalesPerformance(
-                                            state.stats.dailySales,
-                                          ),
-                                        ],
-                                      );
-                                    } else if (state is DashboardError) {
-                                      return Center(child: Text(state.message));
-                                    }
-                                    return const SizedBox();
-                                  },
-                                ),
-                                const SizedBox(height: 24),
-                                _buildBottomActions(context),
-                                const SizedBox(height: 100),
-                              ],
+                                            const SizedBox(height: 12),
+                                            _buildBottomActions(
+                                              context,
+                                              isCompact: true,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        flex: 4,
+                                        child: BlocBuilder<DashboardBloc,
+                                            DashboardState>(
+                                          builder: (context, state) {
+                                            if (state is DashboardLoaded) {
+                                              return _buildSalesPerformance(
+                                                state.stats.dailySales,
+                                                isCompact: true,
+                                              );
+                                            }
+                                            return const SizedBox();
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           );
-                        },
-                      ),
+                        }
+
+                        // Portrait Mode
+                        return SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 12),
+                              _buildGreeting(),
+                              const SizedBox(height: 24),
+                              _buildMainActions(context),
+                              const SizedBox(height: 24),
+                              BlocBuilder<DashboardBloc, DashboardState>(
+                                builder: (context, state) {
+                                  if (state is DashboardLoading) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  } else if (state is DashboardLoaded) {
+                                    return Column(
+                                      children: [
+                                        LowStockBanner(
+                                          lowStockCount: state.lowStockCount,
+                                          outOfStockCount:
+                                              state.outOfStockCount,
+                                          onTap: () => AppNavigator.push(
+                                            context,
+                                            const InventoryScreen(),
+                                          ),
+                                        ),
+                                        _buildStats(state.stats),
+                                        const SizedBox(height: 24),
+                                        _buildSalesPerformance(
+                                          state.stats.dailySales,
+                                        ),
+                                      ],
+                                    );
+                                  } else if (state is DashboardError) {
+                                    return Center(child: Text(state.message));
+                                  }
+                                  return const SizedBox();
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                              _buildBottomActions(context),
+                              const SizedBox(height: 100),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

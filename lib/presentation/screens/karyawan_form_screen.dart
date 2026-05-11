@@ -151,7 +151,8 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                         ],
                       ),
                       child: ClipOval(
-                        child: (_localImagePath != null &&
+                        child:
+                            (_localImagePath != null &&
                                 File(_localImagePath!).existsSync())
                             ? Image.file(
                                 File(_localImagePath!),
@@ -160,19 +161,19 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                                     _buildAvatarFallback(),
                               )
                             : _remoteImageUrl != null &&
-                                    _remoteImageUrl!.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: _remoteImageUrl!,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        _buildAvatarFallback(),
-                                  )
-                                : _buildAvatarFallback(),
+                                  _remoteImageUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: _remoteImageUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) =>
+                                    _buildAvatarFallback(),
+                              )
+                            : _buildAvatarFallback(),
                       ),
                     ),
                   ),
@@ -193,38 +194,104 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
   }
 
   Future<void> _pickImage() async {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     final picker = ImagePicker();
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Galeri'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Kamera'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-          ],
+
+    ImageSource? source;
+    if (isLandscape) {
+      source = await showDialog<ImageSource>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text(
+            'Pilih Foto',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.camera_alt_rounded,
+                  color: AppColors.primary,
+                ),
+                title: const Text('Kamera'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.photo_library_rounded,
+                  color: AppColors.primary,
+                ),
+                title: const Text('Galeri'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'PILIH FOTO',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF64748B),
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Kamera'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Galeri'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!mounted) return;
 
     if (source != null) {
-      final pickedFile = await picker.pickImage(
+      final XFile? image = await picker.pickImage(
         source: source,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 75,
+        imageQuality: 50,
       );
-      if (pickedFile != null) {
+      if (image != null) {
         setState(() {
-          _localImagePath = pickedFile.path;
+          _localImagePath = image.path;
+          _remoteImageUrl = null;
         });
       }
     }
@@ -232,14 +299,25 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x08000000),
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
               child: BlocBuilder<AuthBloc, AuthState>(
                 builder: (context, state) {
                   String shopName = 'BradPOS';
@@ -259,220 +337,277 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
             Expanded(
               child: Form(
                 key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    // Avatar Selection
-                    Center(
-                      child: GestureDetector(
-                        onTap: () {
-                          if ((_localImagePath != null &&
-                                  File(_localImagePath!).existsSync()) ||
-                              (_remoteImageUrl != null &&
-                                  _remoteImageUrl!.isNotEmpty)) {
-                            _showFullScreenImage();
-                          } else {
-                            _pickImage();
-                          }
-                        },
-                        child: Hero(
-                          tag: 'karyawan_avatar_${widget.karyawan?.id ?? 'new'}',
-                          child: Stack(
-                            children: [
-                              Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
-                                  shape: BoxShape.circle,
-                                  border:
-                                      Border.all(color: Colors.white, width: 4),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.1),
-                                      blurRadius: 10,
-                                    )
-                                  ],
-                                ),
-                                child: ClipOval(
-                                  child: (_localImagePath != null &&
-                                          File(_localImagePath!).existsSync())
-                                      ? Image.file(
-                                          File(_localImagePath!),
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            return _remoteImageUrl != null
-                                                ? CachedNetworkImage(
-                                                    imageUrl: _remoteImageUrl!,
-                                                    fit: BoxFit.cover,
-                                                    placeholder:
-                                                        (context, url) =>
-                                                            const Center(
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                              strokeWidth: 2),
-                                                    ),
-                                                    errorWidget:
-                                                        (context, url, error) =>
-                                                            const Icon(
-                                                                Icons.person,
-                                                                size: 50,
-                                                                color: Colors
-                                                                    .grey),
-                                                  )
-                                                : const Icon(Icons.person,
-                                                    size: 50,
-                                                    color: Colors.grey);
-                                          },
-                                        )
-                                      : (_remoteImageUrl != null &&
-                                              _remoteImageUrl!.isNotEmpty
-                                          ? CachedNetworkImage(
-                                              imageUrl: _remoteImageUrl!,
-                                              fit: BoxFit.cover,
-                                              placeholder: (context, url) =>
-                                                  const Center(
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        strokeWidth: 2),
-                                              ),
-                                              errorWidget:
-                                                  (context, url, error) =>
-                                                      const Icon(Icons.person,
-                                                          size: 50,
-                                                          color: Colors.grey),
-                                            )
-                                          : const Icon(Icons.person,
-                                              size: 50, color: Colors.grey)),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: _pickImage,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.primary,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.camera_alt,
-                                        color: Colors.white, size: 16),
-                                  ),
-                                ),
-                              ),
-                            ],
+                child: isLandscape
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left Column: Avatar & Switch
+                          Expanded(
+                            flex: 2,
+                            child: ListView(
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                _buildAvatarPicker(isCompact: true),
+                                const SizedBox(height: 16),
+                                _buildStatusSwitch(isCompact: true),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    // Input Nama
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Nama',
-                        hintText: 'Masukkan nama karyawan',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Nama wajib diisi';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    // Input Password
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        hintText: isEditing
-                            ? 'Kosongkan jika tidak ingin mengubah password'
-                            : 'Masukkan password',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
+                          // Right Column: Inputs & Submit
+                          Expanded(
+                            flex: 3,
+                            child: ListView(
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                _buildNameInput(isCompact: true),
+                                const SizedBox(height: 12),
+                                _buildPasswordInput(isCompact: true),
+                                const SizedBox(height: 20),
+                                _buildSubmitButton(isCompact: true),
+                              ],
+                            ),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
+                        ],
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.all(20),
+                        children: [
+                          _buildAvatarPicker(isCompact: false),
+                          const SizedBox(height: 32),
+                          _buildNameInput(isCompact: false),
+                          const SizedBox(height: 16),
+                          _buildPasswordInput(isCompact: false),
+                          const SizedBox(height: 24),
+                          _buildStatusSwitch(isCompact: false),
+                          const SizedBox(height: 32),
+                          _buildSubmitButton(isCompact: false),
+                        ],
                       ),
-                      validator: (value) {
-                        if (!isEditing && (value == null || value.isEmpty)) {
-                          return 'Password wajib diisi';
-                        }
-                        if (value != null &&
-                            value.isNotEmpty &&
-                            value.length < 6) {
-                          return 'Password minimal 6 karakter';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    // Input Status (Hanya muncul jika mode edit atau opsional)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: SwitchListTile(
-                        title: const Text(
-                          'Karyawan Aktif',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: const Text(
-                          'Nonaktifkan jika karyawan sudah tidak bekerja',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        value: _isActive,
-                        onChanged: (val) => setState(() => _isActive = val),
-                        activeTrackColor: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    // Tombol Submit
-                    ElevatedButton(
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        isEditing ? 'Simpan Perubahan' : 'Tambah Karyawan',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarPicker({required bool isCompact}) {
+    return Center(
+      child: GestureDetector(
+        onTap: () {
+          if ((_localImagePath != null &&
+                  File(_localImagePath!).existsSync()) ||
+              (_remoteImageUrl != null && _remoteImageUrl!.isNotEmpty)) {
+            _showFullScreenImage();
+          } else {
+            _pickImage();
+          }
+        },
+        child: Hero(
+          tag: 'karyawan_avatar_${widget.karyawan?.id ?? 'new'}',
+          child: Stack(
+            children: [
+              Container(
+                width: isCompact ? 80 : 100,
+                height: isCompact ? 80 : 100,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child:
+                      (_localImagePath != null &&
+                          File(_localImagePath!).existsSync())
+                      ? Image.file(
+                          File(_localImagePath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _remoteImageUrl != null
+                                ? CachedNetworkImage(
+                                    imageUrl: _remoteImageUrl!,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        const Icon(
+                                          Icons.person,
+                                          size: 50,
+                                          color: Colors.grey,
+                                        ),
+                                  )
+                                : const Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: Colors.grey,
+                                  );
+                          },
+                        )
+                      : (_remoteImageUrl != null && _remoteImageUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: _remoteImageUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) =>
+                                    const Icon(
+                                      Icons.person,
+                                      size: 50,
+                                      color: Colors.grey,
+                                    ),
+                              )
+                            : const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.grey,
+                              )),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: isCompact ? 12 : 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNameInput({required bool isCompact}) {
+    return TextFormField(
+      controller: _nameController,
+      style: TextStyle(fontSize: isCompact ? 12 : 14),
+      decoration: InputDecoration(
+        labelText: 'Nama',
+        hintText: 'Masukkan nama karyawan',
+        labelStyle: TextStyle(fontSize: isCompact ? 12 : 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        isDense: isCompact,
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Nama wajib diisi';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPasswordInput({required bool isCompact}) {
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: _obscurePassword,
+      style: TextStyle(fontSize: isCompact ? 12 : 14),
+      decoration: InputDecoration(
+        labelText: 'Password ( Kosongkan jika tidak mau diganti )',
+        hintText: isEditing
+            ? (isCompact ? 'Password Baru' : 'Kosongkan jika tidak diubah')
+            : 'Masukkan password',
+        labelStyle: TextStyle(fontSize: isCompact ? 12 : 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        isDense: isCompact,
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+            size: isCompact ? 18 : 24,
+          ),
+          onPressed: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
+        ),
+      ),
+      validator: (value) {
+        if (!isEditing && (value == null || value.isEmpty)) {
+          return 'Password wajib diisi';
+        }
+        if (value != null && value.isNotEmpty && value.length < 6) {
+          return 'Password minimal 6 karakter';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildStatusSwitch({required bool isCompact}) {
+    return Container(
+      padding: EdgeInsets.all(isCompact ? 8 : 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: SwitchListTile(
+        title: Text(
+          'Karyawan Aktif',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: isCompact ? 12 : 14,
+          ),
+        ),
+        subtitle: isCompact
+            ? null
+            : const Text(
+                'Nonaktifkan jika karyawan sudah tidak bekerja',
+                style: TextStyle(fontSize: 12),
+              ),
+        value: _isActive,
+        onChanged: (val) => setState(() => _isActive = val),
+        activeTrackColor: AppColors.primary,
+        dense: isCompact,
+        contentPadding: EdgeInsets.zero,
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton({required bool isCompact}) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: isCompact ? 12 : 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          isEditing ? 'Simpan Perubahan' : 'Tambah Karyawan',
+          style: TextStyle(
+            fontSize: isCompact ? 13 : 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

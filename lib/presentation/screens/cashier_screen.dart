@@ -54,6 +54,7 @@ class _CashierScreenState extends State<CashierScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -62,136 +63,147 @@ class _CashierScreenState extends State<CashierScreen> {
             const double railWidth = 64.0;
 
             return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (isLandscape)
                   const MainNavigationRail(activeLabel: 'CASHIER'),
                 if (isLandscape)
                   const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
                 Expanded(
-                  child: Column(
-                    children: [
-                      BlocBuilder<AuthBloc, AuthState>(
-                        builder: (context, state) {
-                          String shopName = 'BradPOS';
-                          if (state is AuthAuthenticated) {
-                            shopName = state.user.shopName ?? 'BradPOS';
-                          }
-                          return BradHeader(
-                            title: 'Kasir',
-                            subtitle: shopName,
-                            leadingIcon: Icons.point_of_sale_rounded,
-                            showBottomBorder: true,
-                            showSettings: !isLandscape,
-                            onSettingsTap: () => SettingsModal.show(context),
-                            actions: isLandscape
-                                ? [
-                                    IconButton(
-                                      onPressed: () {
-                                        context.read<InventoryBloc>().add(
-                                          const LoadInventory(
-                                            page: 1,
-                                            limit: 10,
-                                            skipSync: true,
-                                          ),
-                                        );
-                                        context
-                                            .read<InventoryBloc>()
-                                            .add(LoadCategoriesEvent());
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Menyingkronkan data...',
-                                            ),
-                                            duration: Duration(seconds: 1),
-                                          ),
-                                        );
-                                      },
-                                      icon: const Icon(
-                                        Icons.sync_rounded,
-                                        color: Color(0xFF64748B),
-                                        size: 18,
-                                      ),
-                                      tooltip: 'Sync',
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 32,
-                                        minHeight: 32,
-                                      ),
-                                    ),
-                                  ]
-                                : null,
-                          );
-                        },
-                      ),
-                      Expanded(
-                        child: BlocListener<InventoryBloc, InventoryState>(
-                          listener: (context, state) {
-                            if (state is InventoryLoaded) {
-                              setState(() {
-                                _categories = state.categories;
-                              });
-                            }
-                          },
-                          child: BlocListener<CashierBloc, CashierState>(
-                            listener: (context, state) {
-                              if (state.isSuccess) {
-                                context.read<InventoryBloc>().add(
-                                  const LoadInventory(
-                                    page: 1,
-                                    limit: 10,
-                                    skipSync: true,
-                                  ),
-                                );
-                                context.read<InventoryBloc>().add(
-                                  LoadCategoriesEvent(),
-                                );
-                              }
-                              if (state.error != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(state.error!),
-                                    backgroundColor: Colors.redAccent,
-                                  ),
-                                );
-                              }
-                            },
-                            child: Column(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.05,
-                                        ),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      _buildSearchBar(isCompact: isLandscape),
-                                      _buildCategories(isCompact: isLandscape),
-                                      const SizedBox(height: 12),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                _buildProductGrid(
-                                  constraints.maxWidth -
-                                      (showSidebar ? sidebarWidth : 0) -
-                                      (isLandscape ? railWidth : 0),
-                                  isLandscape: isLandscape,
-                                ),
-                              ],
+                  child: BlocListener<InventoryBloc, InventoryState>(
+                    listener: (context, state) {
+                      if (state is InventoryLoaded) {
+                        setState(() {
+                          _categories = state.categories;
+                        });
+                      }
+                    },
+                    child: BlocListener<CashierBloc, CashierState>(
+                      listener: (context, state) {
+                        if (state.isSuccess) {
+                          context.read<InventoryBloc>().add(
+                            const LoadInventory(
+                              page: 1,
+                              limit: 10,
+                              skipSync: true,
                             ),
-                          ),
+                          );
+                          context.read<InventoryBloc>().add(
+                            LoadCategoriesEvent(),
+                          );
+                        }
+                        if (state.error != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(state.error!),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      },
+                      child: NestedScrollView(
+                        headerSliverBuilder: (context, innerBoxIsScrolled) {
+                          return [
+                            SliverToBoxAdapter(
+                              child: Column(
+                                children: [
+                                  BlocBuilder<AuthBloc, AuthState>(
+                                    builder: (context, state) {
+                                      String shopName = 'BradPOS';
+                                      if (state is AuthAuthenticated) {
+                                        shopName = state.user.shopName ?? 'BradPOS';
+                                      }
+                                      return BradHeader(
+                                        title: 'Kasir',
+                                        subtitle: shopName,
+                                        leadingIcon: Icons.point_of_sale_rounded,
+                                        showBottomBorder: true,
+                                        showSettings: !isLandscape,
+                                        onSettingsTap: () =>
+                                            SettingsModal.show(context),
+                                        onSyncTap: () {
+                                          context.read<InventoryBloc>().add(
+                                                const LoadInventory(
+                                                  page: 1,
+                                                  limit: 10,
+                                                  skipSync: true,
+                                                ),
+                                              );
+                                          context
+                                              .read<InventoryBloc>()
+                                              .add(LoadCategoriesEvent());
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Menyingkronkan data...',
+                                              ),
+                                              duration: Duration(seconds: 1),
+                                            ),
+                                          );
+                                        },
+                                        actions: isLandscape
+                                            ? [
+                                                IconButton(
+                                                  onPressed: () {
+                                                    context
+                                                        .read<InventoryBloc>()
+                                                        .add(
+                                                          const LoadInventory(
+                                                            page: 1,
+                                                            limit: 10,
+                                                            skipSync: true,
+                                                          ),
+                                                        );
+                                                    context
+                                                        .read<InventoryBloc>()
+                                                        .add(LoadCategoriesEvent());
+                                                    ScaffoldMessenger.of(context)
+                                                        .showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          'Menyingkronkan data...',
+                                                        ),
+                                                        duration:
+                                                            Duration(seconds: 1),
+                                                      ),
+                                                    );
+                                                  },
+                                                  icon: const Icon(
+                                                    Icons.sync_rounded,
+                                                    color: Color(0xFF64748B),
+                                                    size: 18,
+                                                  ),
+                                                  tooltip: 'Sync',
+                                                  padding: EdgeInsets.zero,
+                                                  constraints:
+                                                      const BoxConstraints(
+                                                    minWidth: 32,
+                                                    minHeight: 32,
+                                                  ),
+                                                ),
+                                              ]
+                                            : null,
+                                      );
+                                    },
+                                  ),
+                                  _buildSearchBar(isCompact: isLandscape),
+                                  if (isLandscape) const SizedBox(height: 4),
+                                  _buildCategories(isCompact: isLandscape),
+                                  const SizedBox(height: 12),
+                                ],
+                              ),
+                            ),
+                          ];
+                        },
+                        body: _buildProductGrid(
+                          constraints.maxWidth -
+                              (showSidebar ? sidebarWidth : 0) -
+                              (isLandscape ? railWidth : 0),
+                          isLandscape: isLandscape,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
                 if (showSidebar) ...[
@@ -227,8 +239,8 @@ class _CashierScreenState extends State<CashierScreen> {
   Widget _buildSearchBar({bool isCompact = false}) {
     return Padding(
       padding: isCompact
-          ? const EdgeInsets.fromLTRB(8, 2, 8, 4)
-          : const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          ? const EdgeInsets.fromLTRB(8, 4, 8, 4)
+          : const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: SizedBox(
         height: isCompact ? 22 : 56,
         child: TextField(
@@ -239,7 +251,7 @@ class _CashierScreenState extends State<CashierScreen> {
             hintText: 'Cari produk...',
             hintStyle: TextStyle(
               color: Colors.grey,
-              fontSize: isCompact ? 8 : 13,
+              fontSize: isCompact ? 8 : 14,
             ),
             prefixIcon: Icon(
               Icons.search_rounded,
@@ -264,7 +276,9 @@ class _CashierScreenState extends State<CashierScreen> {
               borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
             ),
             isDense: isCompact,
-            contentPadding: EdgeInsets.symmetric(vertical: isCompact ? 0 : 16),
+            contentPadding: isCompact
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(vertical: 16),
           ),
           onChanged: (val) => context.read<InventoryBloc>().add(
             LoadInventory(
@@ -298,7 +312,11 @@ class _CashierScreenState extends State<CashierScreen> {
             padding: const EdgeInsets.only(right: 6),
             child: ChoiceChip(
               label: Text(cat, style: TextStyle(fontSize: isCompact ? 8 : 13)),
+              labelPadding: isCompact ? EdgeInsets.zero : null,
               selected: isActive,
+              materialTapTargetSize: isCompact
+                  ? MaterialTapTargetSize.shrinkWrap
+                  : null,
               visualDensity: isCompact
                   ? const VisualDensity(horizontal: -4, vertical: -4)
                   : null,
@@ -329,7 +347,10 @@ class _CashierScreenState extends State<CashierScreen> {
               ),
               showCheckmark: false,
               elevation: 0,
-              padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 8 : 12,
+                vertical: isCompact ? 0 : 4,
+              ),
             ),
           );
         },
@@ -362,63 +383,50 @@ class _CashierScreenState extends State<CashierScreen> {
       }
     }
 
-    return Expanded(
-      child: BlocBuilder<InventoryBloc, InventoryState>(
-        builder: (context, invState) {
-          if (invState is InventoryLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF065F46)),
-            );
-          }
-          if (invState is InventoryLoaded) {
-            return BlocBuilder<CashierBloc, CashierState>(
-              builder: (context, cashierState) {
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    context.read<AuthBloc>().syncService.syncAll();
-                    context.read<InventoryBloc>().add(
-                      const LoadInventory(page: 1, limit: 10, skipSync: true),
-                    );
-                    context.read<InventoryBloc>().add(LoadCategoriesEvent());
-                    await Future.delayed(const Duration(seconds: 1));
-                  },
-                  child: GridView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.all(isLandscape ? 4 : 20),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: aspectRatio,
-                      crossAxisSpacing: isLandscape ? 4 : 16,
-                      mainAxisSpacing: isLandscape ? 4 : 16,
-                    ),
-                    itemCount: invState.items.length,
-                    itemBuilder: (context, index) {
-                      final product = invState.items[index];
-                      final cartIdx = cashierState.cartItems.indexWhere(
-                        (i) => i.produkId == product.id,
-                      );
-                      final qty = cartIdx >= 0
-                          ? cashierState.cartItems[cartIdx].quantity
-                          : 0;
-                      final authState = context.read<AuthBloc>().state;
-                      final isGuest =
-                          authState is AuthAuthenticated &&
-                          authState.user.isGuest;
-                      return _buildProductCard(
-                        product,
-                        qty,
-                        isGuest,
-                        isCompact: isLandscape,
-                      );
-                    },
-                  ),
-                );
-              },
-            );
-          }
-          return const SizedBox();
-        },
-      ),
+    return BlocBuilder<InventoryBloc, InventoryState>(
+      builder: (context, invState) {
+        if (invState is InventoryLoading) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF065F46)),
+          );
+        }
+        if (invState is InventoryLoaded) {
+          return BlocBuilder<CashierBloc, CashierState>(
+            builder: (context, cashierState) {
+              return GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(isLandscape ? 4 : 20),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: aspectRatio,
+                  crossAxisSpacing: isLandscape ? 4 : 16,
+                  mainAxisSpacing: isLandscape ? 4 : 16,
+                ),
+                itemCount: invState.items.length,
+                itemBuilder: (context, index) {
+                  final product = invState.items[index];
+                  final cartIdx = cashierState.cartItems.indexWhere(
+                    (i) => i.produkId == product.id,
+                  );
+                  final qty = cartIdx >= 0
+                      ? cashierState.cartItems[cartIdx].quantity
+                      : 0;
+                  final authState = context.read<AuthBloc>().state;
+                  final isGuest = authState is AuthAuthenticated &&
+                      authState.user.isGuest;
+                  return _buildProductCard(
+                    product,
+                    qty,
+                    isGuest,
+                    isCompact: isLandscape,
+                  );
+                },
+              );
+            },
+          );
+        }
+        return const SizedBox();
+      },
     );
   }
 
@@ -794,294 +802,269 @@ class CartSummaryView extends StatelessWidget {
       symbol: 'Rp',
       decimalDigits: 0,
     );
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!isSidebar) ...[
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
+        Row(
+          children: [
+            Text(
+              'Ringkasan',
+              style: TextStyle(
+                fontSize: isSidebar ? 12 : 20,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF1E293B),
+              ),
+            ),
+            const Spacer(),
+            if (state.cartItems.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  context.read<CashierBloc>().add(ClearCart());
+                  if (!isSidebar) Navigator.pop(context);
+                },
+                child: Text(
+                  'HAPUS',
+                  style: TextStyle(
+                    color: const Color(0xFFEF4444),
+                    fontWeight: FontWeight.w900,
+                    fontSize: isSidebar ? 9 : 11,
+                  ),
+                ),
+              ),
+            if (!isSidebar)
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+          ],
+        ),
+        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+        if (isSidebar) ...[
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+        ],
+        const SizedBox(height: 8),
+        if (state.cartItems.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.shopping_basket_outlined,
+                    size: isSidebar ? 48 : 64,
+                    color: const Color(0xFFE2E8F0),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Keranjang Kosong',
+                    style: TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            itemCount: state.cartItems.length,
+            itemBuilder: (context, index) {
+              final item = state.cartItems[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    Text(
+                      '${item.quantity}x',
+                      style: TextStyle(
+                        fontSize: isSidebar ? 9 : 13,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF4338CA),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                           Text(
+                            item.productName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: isSidebar ? 9 : 13,
+                              color: const Color(0xFF1E293B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            currency.format(item.unitPrice),
+                            style: TextStyle(
+                              fontSize: isSidebar ? 8 : 9,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      currency.format(item.subtotal),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: isSidebar ? 9 : 13,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+        if (isSidebar && state.cartItems.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Total Qty',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                Text(
+                  '${state.cartItems.fold<int>(0, (s, i) => s + i.quantity)} item',
+                  style: TextStyle(
+                    fontSize: isSidebar ? 9 : 11,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Rata-rata',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                Text(
+                  currency.format(
+                    state.total / state.cartItems.length,
+                  ),
+                  style: TextStyle(
+                    fontSize: isSidebar ? 9 : 11,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+        ],
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Tagihan',
+                style: TextStyle(
+                  fontSize: isSidebar ? 11 : 13,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+              Text(
+                currency.format(state.total),
+                style: TextStyle(
+                  fontSize: isSidebar ? 14 : 24,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF059669),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          width: double.infinity,
+          height: isSidebar ? 32 : 56,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF059669),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            onPressed: state.cartItems.isEmpty
+                ? null
+                : () {
+                    if (!isSidebar) Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PaymentScreen(cashierState: state),
+                      ),
+                    );
+                  },
+            child: Text(
+              'CHECKOUT',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: isSidebar ? 10 : 15,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ),
+        if (!isSidebar) const SizedBox(height: 20),
+      ],
+    );
+
     return Container(
-      padding: EdgeInsets.all(isSidebar ? 12 : 24),
+      padding: EdgeInsets.all(isSidebar ? 8 : 24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: isSidebar
             ? null
             : const BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      child: Column(
-        mainAxisSize: isSidebar ? MainAxisSize.max : MainAxisSize.min,
-        children: [
-          if (!isSidebar) ...[
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ],
-          Row(
-            children: [
-              Text(
-                'Ringkasan',
-                style: TextStyle(
-                  fontSize: isSidebar ? 15 : 20,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF1E293B),
-                ),
-              ),
-              const Spacer(),
-              if (state.cartItems.isNotEmpty)
-                TextButton(
-                  onPressed: () {
-                    context.read<CashierBloc>().add(ClearCart());
-                    if (!isSidebar) Navigator.pop(context);
-                  },
-                  child: const Text(
-                    'HAPUS',
-                    style: TextStyle(
-                      color: Color(0xFFEF4444),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-              if (!isSidebar)
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-            ],
-          ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          if (isSidebar) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: TextField(
-                onChanged: (val) => context
-                    .read<CashierBloc>()
-                    .add(UpdateCustomerName(val)),
-                style: const TextStyle(fontSize: 11),
-                decoration: InputDecoration(
-                  hintText: 'Nama Pelanggan',
-                  hintStyle: const TextStyle(fontSize: 10),
-                  prefixIcon: const Icon(Icons.person_outline, size: 14),
-                  prefixIconConstraints: const BoxConstraints(
-                    minWidth: 24,
-                    minHeight: 14,
-                  ),
-                  isDense: true,
-                  filled: true,
-                  fillColor: const Color(0xFFF1F5F9),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-          ],
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 8),
-          if (state.cartItems.isEmpty)
-            SizedBox(
-              height: isSidebar ? null : 200,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.shopping_basket_outlined,
-                      size: isSidebar ? 48 : 64,
-                      color: const Color(0xFFE2E8F0),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Keranjang Kosong',
-                      style: TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else ...[
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: state.cartItems.length,
-                itemBuilder: (context, index) {
-                  final item = state.cartItems[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${item.quantity}x',
-                          style: TextStyle(
-                            fontSize: isSidebar ? 11 : 13,
-                            fontWeight: FontWeight.w900,
-                            color: const Color(0xFF4338CA),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.productName,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: isSidebar ? 11 : 13,
-                                  color: const Color(0xFF1E293B),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                currency.format(item.unitPrice),
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          currency.format(item.subtotal),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: isSidebar ? 11 : 13,
-                            color: const Color(0xFF0F172A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-            if (isSidebar) ...[
-              const Divider(height: 1, color: Color(0xFFE2E8F0)),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total Qty',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    Text(
-                      '${state.cartItems.fold<int>(0, (s, i) => s + i.quantity)} item',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Rata-rata',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    Text(
-                      currency.format(
-                        state.total / state.cartItems.length,
-                      ),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Total Tagihan',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-                Text(
-                  currency.format(state.total),
-                  style: TextStyle(
-                    fontSize: isSidebar ? 18 : 24,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF059669),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: double.infinity,
-            height: isSidebar ? 44 : 56,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF059669),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              onPressed: state.cartItems.isEmpty
-                  ? null
-                  : () {
-                      if (!isSidebar) Navigator.pop(context);
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => PaymentScreen(cashierState: state),
-                        ),
-                      );
-                    },
-              child: Text(
-                'CHECKOUT',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: isSidebar ? 13 : 15,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-          ),
-          if (!isSidebar) const SizedBox(height: 20),
-        ],
+      child: SafeArea(
+        bottom: !isSidebar,
+        child: SingleChildScrollView(child: content),
       ),
     );
   }

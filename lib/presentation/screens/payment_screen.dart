@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
@@ -67,6 +68,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final isLandscape = mediaQuery.orientation == Orientation.landscape;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: _buildAppBar(isLandscape: isLandscape),
       body: SafeArea(
@@ -271,23 +273,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 style: TextStyle(
                   color: const Color(0xFF64748B),
                   fontWeight: FontWeight.w800,
-                  fontSize: isCompact ? 9 : 10,
+                  fontSize: isCompact ? 8 : 10,
                 ),
               ),
               Text(
                 currencyFormatter.format(_balanceDue),
                 style: TextStyle(
-                  fontSize: isCompact ? 11 : 13,
+                  fontSize: isCompact ? 10 : 13,
                   fontWeight: FontWeight.w900,
                   color: const Color(0xFF0F172A),
                 ),
               ),
             ],
           ),
-          if (isCompact)
-            const SizedBox(height: 0)
-          else
-            const SizedBox(height: 2),
+          if (!isCompact) const SizedBox(height: 2),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -296,13 +295,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 style: TextStyle(
                   color: const Color(0xFF64748B),
                   fontWeight: FontWeight.w800,
-                  fontSize: isCompact ? 9 : 10,
+                  fontSize: isCompact ? 8 : 10,
                 ),
               ),
               Text(
                 currencyFormatter.format(_change.abs()),
                 style: TextStyle(
-                  fontSize: isCompact ? 11 : 13,
+                  fontSize: isCompact ? 10 : 13,
                   fontWeight: FontWeight.w900,
                   color: _change >= 0
                       ? const Color(0xFF059669)
@@ -314,7 +313,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           SizedBox(height: isCompact ? 2 : 6),
           SizedBox(
             width: double.infinity,
-            height: isCompact ? 24 : 36,
+            height: isCompact ? 20 : 36,
             child: ElevatedButton(
               onPressed: canConfirm ? _processPayment : null,
               style: ElevatedButton.styleFrom(
@@ -322,7 +321,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 elevation: 0,
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(isCompact ? 3 : 8),
+                  borderRadius: BorderRadius.circular(isCompact ? 4 : 8),
                 ),
               ),
               child: Text(
@@ -338,13 +337,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
           SizedBox(height: isCompact ? 2 : 4),
           SizedBox(
             width: double.infinity,
-            height: isCompact ? 20 : 28,
+            height: isCompact ? 18 : 28,
             child: TextButton(
               onPressed: () => Navigator.pop(context),
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(isCompact ? 3 : 8),
+                  borderRadius: BorderRadius.circular(isCompact ? 4 : 8),
                 ),
               ),
               child: Text(
@@ -569,7 +568,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           });
         },
         child: Container(
-          height: isCompact ? 28 : 36,
+          height: isCompact ? 24 : 36,
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFFECFDF5) : Colors.white,
             borderRadius: BorderRadius.circular(isCompact ? 4 : 8),
@@ -588,22 +587,75 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 color: isSelected
                     ? const Color(0xFF059669)
                     : const Color(0xFF475569),
-                size: isCompact ? 12 : 16,
+                size: isCompact ? 11 : 16,
               ),
-              SizedBox(width: isCompact ? 3 : 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: isCompact ? 9 : 13,
-                  fontWeight: FontWeight.w900,
-                  color: isSelected
-                      ? const Color(0xFF065F46)
-                      : const Color(0xFF475569),
+              SizedBox(width: isCompact ? 2 : 6),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: isCompact ? 8 : 13,
+                    fontWeight: FontWeight.w900,
+                    color: isSelected
+                        ? const Color(0xFF065F46)
+                        : const Color(0xFF475569),
+                  ),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCustomerCard({bool isCompact = false}) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 6 : 12,
+        vertical: isCompact ? 2 : 12,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.person_outline_rounded,
+            size: isCompact ? 12 : 22,
+            color: const Color(0xFF64748B),
+          ),
+          SizedBox(width: isCompact ? 3 : 8),
+          Expanded(
+            child: TextField(
+              controller: _customerController,
+              decoration: InputDecoration(
+                hintText: 'Nama Pelanggan',
+                hintStyle: TextStyle(
+                  fontSize: isCompact ? 8 : 13,
+                  color: const Color(0xFF94A3B8),
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              style: TextStyle(
+                fontSize: isCompact ? 9 : 14,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -823,56 +875,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ),
       );
 
-  Widget _buildCustomerCard({bool isCompact = false}) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 6 : 12,
-        vertical: isCompact ? 3 : 12,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.person_outline_rounded,
-            size: isCompact ? 14 : 22,
-            color: const Color(0xFF64748B),
-          ),
-          SizedBox(width: isCompact ? 4 : 8),
-          Expanded(
-            child: TextField(
-              controller: _customerController,
-              decoration: InputDecoration(
-                hintText: 'Nama Pelanggan',
-                hintStyle: TextStyle(
-                  fontSize: isCompact ? 9 : 13,
-                  color: const Color(0xFF94A3B8),
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              style: TextStyle(
-                fontSize: isCompact ? 10 : 14,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildBottomActionsPortrait() {
     final canConfirm =
         _amountReceived >= _balanceDue || _selectedMethod != 'Cash';
@@ -936,6 +938,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _processPayment() {
+    if (MediaQuery.of(context).orientation == Orientation.landscape) {
+      FocusScope.of(context).unfocus();
+      SystemChannels.textInput.invokeMethod('TextInput.hide');
+    }
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1021,6 +1027,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _executePayment() {
+    if (MediaQuery.of(context).orientation == Orientation.landscape) {
+      FocusScope.of(context).unfocus();
+      SystemChannels.textInput.invokeMethod('TextInput.hide');
+    }
     context.read<CashierBloc>().add(
       ProcessPayment(
         paymentAmount: _amountReceived,

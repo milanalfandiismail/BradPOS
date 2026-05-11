@@ -20,9 +20,11 @@ class KaryawanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(isLandscape ? 8 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -36,6 +38,7 @@ class KaryawanCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -45,18 +48,19 @@ class KaryawanCard extends StatelessWidget {
                   tag: 'karyawan_avatar_${karyawan.id}',
                   child: ClipOval(
                     child: Container(
-                      width: 56,
-                      height: 56,
+                      width: isLandscape ? 40 : 56,
+                      height: isLandscape ? 40 : 56,
                       color: const Color(0xFFF1F5F9),
                       child: _buildImage(),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: isLandscape ? 8 : 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -67,66 +71,82 @@ class KaryawanCard extends StatelessWidget {
                               ?.copyWith(
                                 color: const Color(0xFF94A3B8),
                                 fontWeight: FontWeight.bold,
+                                fontSize: isLandscape ? 8 : null,
                               ),
                         ),
-                        _buildStatusBadge(karyawan.isActive),
+                        _buildStatusBadge(karyawan.isActive, isCompact: isLandscape),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: isLandscape ? 0 : 2),
                     Text(
                       karyawan.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: (isLandscape 
+                          ? Theme.of(context).textTheme.titleSmall 
+                          : Theme.of(context).textTheme.titleMedium)?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: const Color(0xFF0F172A),
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.badge_outlined,
-                          size: 14,
-                          color: Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Karyawan Aktif',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: const Color(0xFF64748B)),
-                        ),
-                      ],
-                    ),
+                    if (!isLandscape) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.badge_outlined,
+                            size: 14,
+                            color: Color(0xFF64748B),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Karyawan Aktif',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: const Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: isLandscape ? 8 : 16),
           Row(
             children: [
               Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_rounded, size: 18),
-                  label: const Text('Ubah'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFF1F5F9),
-                    foregroundColor: const Color(0xFF475569),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  height: isLandscape ? 32 : 40,
+                  child: FilledButton.tonalIcon(
+                    onPressed: onEdit,
+                    icon: Icon(Icons.edit_rounded, size: isLandscape ? 14 : 18),
+                    label: Text('Ubah', style: TextStyle(fontSize: isLandscape ? 11 : 13)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFF1F5F9),
+                      foregroundColor: const Color(0xFF475569),
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton.filledTonal(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFFFEF2F2),
-                  foregroundColor: const Color(0xFFEF4444),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              SizedBox(
+                height: isLandscape ? 32 : 40,
+                width: isLandscape ? 32 : 40,
+                child: IconButton.filledTonal(
+                  onPressed: onDelete,
+                  icon: Icon(Icons.delete_outline_rounded, size: isLandscape ? 16 : 20),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFFEF2F2),
+                    foregroundColor: const Color(0xFFEF4444),
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -138,7 +158,7 @@ class KaryawanCard extends StatelessWidget {
   }
 
   /// Menampilkan tag status AKTIF/NONAKTIF dengan warna yang berbeda.
-  Widget _buildStatusBadge(bool isActive) {
+  Widget _buildStatusBadge(bool isActive, {bool isCompact = false}) {
     Color bgColor;
     Color textColor;
     String label;
@@ -154,7 +174,10 @@ class KaryawanCard extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 4 : 8, 
+        vertical: isCompact ? 2 : 4
+      ),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(12),
@@ -162,7 +185,7 @@ class KaryawanCard extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 10,
+          fontSize: isCompact ? 8 : 10,
           fontWeight: FontWeight.bold,
           color: textColor,
         ),

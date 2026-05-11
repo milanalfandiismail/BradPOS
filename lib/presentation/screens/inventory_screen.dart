@@ -15,6 +15,7 @@ import 'package:bradpos/injection_container.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/utils/app_navigator.dart';
 import 'package:bradpos/core/widgets/main_navigation_rail.dart';
+import 'package:bradpos/presentation/screens/category_list_screen.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -159,6 +160,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
+        resizeToAvoidBottomInset: false,
         body: SafeArea(
           child: Row(
             children: [
@@ -167,14 +169,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
               if (isLandscape)
                 const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
               Expanded(
-                child: BlocBuilder<InventoryBloc, InventoryState>(
-                  builder: (context, state) => Column(
-                    children: [
-                      _buildHeader(),
-                      _buildSearchBar(),
-                      if (!isLandscape) _buildFilterActions(),
-                      Expanded(child: _buildContent(state)),
-                    ],
+                child: NestedScrollView(
+                  controller: _scrollController,
+                  headerSliverBuilder: (context, innerBoxIsScrolled) {
+                    return [
+                      SliverToBoxAdapter(
+                        child: _buildHeaderSection(isLandscape),
+                      ),
+                    ];
+                  },
+                  body: BlocBuilder<InventoryBloc, InventoryState>(
+                    builder: (context, state) => _buildContent(state),
                   ),
                 ),
               ),
@@ -189,23 +194,47 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        String shopName = 'BradPOS';
-        if (state is AuthAuthenticated) {
-          shopName = state.user.shopName ?? 'BradPOS';
-        }
-        final isLandscape =
-            MediaQuery.of(context).orientation == Orientation.landscape;
-        return BradHeader(
-          title: 'Produk | Inventory',
-          subtitle: shopName,
-          leadingIcon: Icons.inventory_2_rounded,
-          showBottomBorder: true,
-          onSettingsTap: () => SettingsModal.show(context),
-          actions: isLandscape
-              ? [
+  Widget _buildHeaderSection(bool isLandscape) {
+    return Column(
+      children: [
+        BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            String shopName = 'BradPOS';
+            if (state is AuthAuthenticated) {
+              shopName = state.user.shopName ?? 'BradPOS';
+            }
+            return BradHeader(
+              title: 'Produk | Inventory',
+              subtitle: shopName,
+              leadingIcon: Icons.inventory_2_rounded,
+              showBottomBorder: true,
+              showSettings: !isLandscape,
+              onSettingsTap: () => SettingsModal.show(context),
+              onSyncTap: () {
+                context.read<InventoryBloc>().add(SyncAllEvent());
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Menyingkronkan data...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              },
+              actions: [
+                IconButton(
+                  onPressed: () =>
+                      AppNavigator.push(context, const CategoryListScreen()),
+                  icon: Icon(
+                    Icons.category_rounded,
+                    color: const Color(0xFF64748B),
+                    size: isLandscape ? 18 : 24,
+                  ),
+                  tooltip: 'Kategori',
+                  padding: isLandscape ? EdgeInsets.zero : null,
+                  constraints: isLandscape
+                      ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                      : null,
+                ),
+                if (isLandscape)
                   IconButton(
                     onPressed: () {
                       context.read<InventoryBloc>().add(SyncAllEvent());
@@ -228,21 +257,42 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       minHeight: 32,
                     ),
                   ),
-                ]
-              : null,
-        );
-      },
+              ],
+            );
+          },
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSearchBarAndActions(isLandscape),
+              if (!isLandscape) ...[
+                const SizedBox(height: 12),
+                _buildFilterActions(),
+                const SizedBox(height: 12),
+              ] else
+                const SizedBox(height: 4),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   // ── Search bar (portrait & landscape) ──────────────────────────────────────
-  Widget _buildSearchBar() {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-
+  Widget _buildSearchBarAndActions(bool isLandscape) {
     if (isLandscape) {
-      return Container(
-        color: Colors.white,
+      return Padding(
         padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
         child: Row(
           children: [
@@ -255,10 +305,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   style: const TextStyle(fontSize: 8),
                   decoration: InputDecoration(
                     hintText: 'Cari produk...',
-                    hintStyle: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 8,
-                    ),
+                    hintStyle: const TextStyle(color: Colors.grey, fontSize: 8),
                     prefixIcon: const Icon(
                       Icons.search_rounded,
                       color: Colors.grey,
@@ -269,18 +316,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       minHeight: 22,
                     ),
                     filled: true,
-                    fillColor: Color(0xFFF1F5F9),
+                    fillColor: const Color(0xFFF1F5F9),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Color(0xFFE2E8F0)),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Color(0xFFE2E8F0)),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Color(0xFFCBD5E1)),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
                     ),
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
@@ -288,7 +335,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             SizedBox(
               height: 22,
               child: OutlinedButton.icon(
@@ -297,34 +344,38 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 label: const Text('Filter', style: TextStyle(fontSize: 8)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF334155),
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   side: const BorderSide(color: Color(0xFFE2E8F0)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   backgroundColor: Colors.white,
+                  visualDensity:
+                      const VisualDensity(horizontal: -4, vertical: -4),
                 ),
               ),
             ),
             if (!_isKaryawan) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
               SizedBox(
                 height: 22,
                 child: ElevatedButton.icon(
                   onPressed: () => _openForm(),
                   icon: const Icon(Icons.add, size: 10),
                   label: const Text(
-                    'Tambah Produk',
+                    'Tambah',
                     style: TextStyle(fontSize: 8),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF065F46),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     elevation: 0,
+                    visualDensity:
+                        const VisualDensity(horizontal: -4, vertical: -4),
                   ),
                 ),
               ),
@@ -334,9 +385,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       );
     }
 
-    // Portrait — search bar full-width, filter/new buttons below
-    return Container(
-      color: Colors.white,
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: SizedBox(
         height: 56,
@@ -446,82 +495,82 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (displayItems.isEmpty) return _buildNoSearchResult();
     int totalPages = (totalItems / _itemsPerPage).ceil();
     if (totalPages == 0) totalPages = 1;
-    return Column(
-      children: [
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              context.read<InventoryBloc>().add(SyncAllEvent());
-              await Future.delayed(const Duration(seconds: 1));
-            },
-            child: _buildInventoryList(displayItems),
+
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        _buildInventorySliver(displayItems),
+        if (totalPages > 1)
+          SliverToBoxAdapter(
+            child: _buildPaginationControls(totalPages),
           ),
-        ),
-        if (totalPages > 1) _buildPaginationControls(totalPages),
+        const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
       ],
     );
   }
 
-  Widget _buildInventoryList(List<InventoryItem> items) {
+  Widget _buildInventorySliver(List<InventoryItem> items) {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     if (isLandscape) {
-      // Landscape: 4 kolom grid, mainAxisExtent cukup besar untuk semua konten card
-      return GridView.builder(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
+      return SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          crossAxisSpacing: 4,
-          mainAxisSpacing: 4,
-          mainAxisExtent: 130,
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: 4,
+            mainAxisSpacing: 4,
+            mainAxisExtent: 130,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final item = items[index];
+              return InventoryItemCard(
+                item: item,
+                isKaryawan: _isKaryawan,
+                isCompact: true,
+                onEdit: () => _openForm(item: item),
+                onDelete: () => _showDeleteConfirmation(item),
+                onAddStock: item.stock == -1
+                    ? null
+                    : () => _showAddStockDialog(item),
+                onReduceStock: item.stock == -1
+                    ? null
+                    : () => _showReduceStockDialog(item),
+              );
+            },
+            childCount: items.length,
+          ),
         ),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final item = items[index];
-          return InventoryItemCard(
-            item: item,
-            isKaryawan: _isKaryawan,
-            isCompact: true,
-            onEdit: () => _openForm(item: item),
-            onDelete: () => _showDeleteConfirmation(item),
-            onAddStock: item.stock == -1
-                ? null
-                : () => _showAddStockDialog(item),
-            onReduceStock: item.stock == -1
-                ? null
-                : () => _showReduceStockDialog(item),
-          );
-        },
       );
     }
 
-    // Portrait: ListView
-    return ListView.builder(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
+    return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: InventoryItemCard(
-            item: item,
-            isKaryawan: _isKaryawan,
-            onEdit: () => _openForm(item: item),
-            onDelete: () => _showDeleteConfirmation(item),
-            onAddStock: item.stock == -1
-                ? null
-                : () => _showAddStockDialog(item),
-            onReduceStock: item.stock == -1
-                ? null
-                : () => _showReduceStockDialog(item),
-          ),
-        );
-      },
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final item = items[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: InventoryItemCard(
+                item: item,
+                isKaryawan: _isKaryawan,
+                onEdit: () => _openForm(item: item),
+                onDelete: () => _showDeleteConfirmation(item),
+                onAddStock: item.stock == -1
+                    ? null
+                    : () => _showAddStockDialog(item),
+                onReduceStock: item.stock == -1
+                    ? null
+                    : () => _showReduceStockDialog(item),
+              ),
+            );
+          },
+          childCount: items.length,
+        ),
+      ),
     );
   }
 
@@ -600,43 +649,37 @@ class _InventoryScreenState extends State<InventoryScreen> {
     ),
   );
 
-  Widget _buildEmptyState() => RefreshIndicator(
-    onRefresh: () async {
-      context.read<InventoryBloc>().add(SyncAllEvent());
-      await Future.delayed(const Duration(seconds: 1));
-    },
-    child: ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.inventory_2_outlined,
-                size: 64,
-                color: Colors.grey.shade300,
+  Widget _buildEmptyState() => ListView(
+    physics: const AlwaysScrollableScrollPhysics(),
+    children: [
+      SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+      Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 64,
+              color: Colors.grey.shade300,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Belum ada produk',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Belum ada produk',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Tambahkan produk pertama Anda atau tarik untuk sinkron',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tambahkan produk pertama Anda',
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            ),
+          ],
         ),
-      ],
-    ),
+      ),
+    ],
   );
 
   Widget _buildNoSearchResult() => Center(
@@ -707,28 +750,31 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
+            child: SafeArea(
+              bottom: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                Flexible(
-                  child: _buildFilterContent(setSheetState, onApply: () {
-                    _currentPage = 1;
-                    _loadPage();
-                    Navigator.pop(context);
-                  }, categories: modalCategories),
-                ),
-              ],
+                  Flexible(
+                    child: _buildFilterContent(setSheetState, onApply: () {
+                      _currentPage = 1;
+                      _loadPage();
+                      Navigator.pop(context);
+                    }, categories: modalCategories),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -782,24 +828,34 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   color: const Color(0xFF0F172A),
                 ),
               ),
-              TextButton(
-                onPressed: () {
-                  setSheetState(() {
-                    _selectedCategory = 'All';
-                    _stockFilter = 'All';
-                  });
-                  setState(() {
-                    _selectedCategory = 'All';
-                    _stockFilter = 'All';
-                  });
-                },
-                child: const Text(
-                  'Reset',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.redAccent,
+              Row(
+                children: [
+                  if (isCompact)
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                    ),
+                  TextButton(
+                    onPressed: () {
+                      setSheetState(() {
+                        _selectedCategory = 'All';
+                        _stockFilter = 'All';
+                      });
+                      setState(() {
+                        _selectedCategory = 'All';
+                        _stockFilter = 'All';
+                      });
+                    },
+                    child: const Text(
+                      'Reset',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -914,56 +970,194 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final stockController = TextEditingController();
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Tambah Stok - ${item.name}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Stok saat ini: ${item.stock} ${item.unit}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: stockController,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Jumlah stok ditambahkan',
-                border: OutlineInputBorder(),
+      builder: (dialogContext) {
+        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+        return Dialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+            constraints: BoxConstraints(maxWidth: isLandscape ? 380 : 400),
+            padding: EdgeInsets.fromLTRB(20, isLandscape ? 6 : 20, 20, isLandscape ? 6 : 16),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isLandscape)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Tambah Stok',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900)),
+                              Text(item.name,
+                                  style: TextStyle(
+                                      fontSize: 10, color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis),
+                              Text('Stok: ${item.stock} ${item.unit}',
+                                  style: const TextStyle(fontSize: 10)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 1,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: stockController,
+                                  keyboardType: TextInputType.number,
+                                  autofocus: true,
+                                  style: const TextStyle(fontSize: 12),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Qty',
+                                    labelStyle: TextStyle(fontSize: 10),
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 6),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => Navigator.pop(dialogContext),
+                                icon: const Icon(Icons.close_rounded,
+                                    color: Colors.redAccent, size: 18),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  final qty =
+                                      int.tryParse(stockController.text);
+                                  if (qty == null || qty <= 0) return;
+                                  final updatedItem = item.copyWith(
+                                      stock: item.stock + qty,
+                                      updatedAt: DateTime.now());
+                                  context.read<InventoryBloc>().add(
+                                      UpdateInventoryItemEvent(updatedItem));
+                                  Navigator.pop(dialogContext);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10),
+                                  minimumSize: const Size(0, 32),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6)),
+                                ),
+                                child: const Text('OK',
+                                    style: TextStyle(fontSize: 10)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  else ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Tambah Stok',
+                                  style: TextStyle(
+                                      fontSize: isLandscape ? 14 : 18,
+                                      fontWeight: FontWeight.w900)),
+                              Text(item.name,
+                                  style: TextStyle(
+                                      fontSize: isLandscape ? 11 : 13,
+                                      color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: isLandscape ? 8 : 12),
+                    Text('Stok saat ini: ${item.stock} ${item.unit}',
+                        style: TextStyle(fontSize: isLandscape ? 11 : 13)),
+                    SizedBox(height: isLandscape ? 8 : 12),
+                    TextField(
+                      controller: stockController,
+                      keyboardType: TextInputType.number,
+                      autofocus: true,
+                      style: TextStyle(fontSize: isLandscape ? 12 : 14),
+                      decoration: InputDecoration(
+                        labelText: 'Jumlah ditambahkan',
+                        labelStyle: TextStyle(fontSize: isLandscape ? 11 : 13),
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                    SizedBox(height: isLandscape ? 12 : 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: Text('Batal',
+                              style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: isLandscape ? 11 : 13)),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            final qty = int.tryParse(stockController.text);
+                            if (qty == null || qty <= 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Masukkan jumlah yang valid')));
+                              return;
+                            }
+                            final updatedItem = item.copyWith(
+                                stock: item.stock + qty,
+                                updatedAt: DateTime.now());
+                            context
+                                .read<InventoryBloc>()
+                                .add(UpdateInventoryItemEvent(updatedItem));
+                            Navigator.pop(dialogContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(
+                                horizontal: isLandscape ? 16 : 24,
+                                vertical: isLandscape ? 8 : 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: Text('Simpan',
+                              style:
+                                  TextStyle(fontSize: isLandscape ? 11 : 13)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Batal'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              final qty = int.tryParse(stockController.text);
-              if (qty == null || qty <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Masukkan jumlah yang valid')),
-                );
-                return;
-              }
-              final updatedItem = item.copyWith(
-                stock: item.stock + qty,
-                updatedAt: DateTime.now(),
-              );
-              context.read<InventoryBloc>().add(
-                UpdateInventoryItemEvent(updatedItem),
-              );
-              Navigator.pop(dialogContext);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -971,62 +1165,207 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final stockController = TextEditingController();
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Kurangi Stok - ${item.name}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Stok saat ini: ${item.stock} ${item.unit}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: stockController,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Jumlah stok dikurangi',
-                border: OutlineInputBorder(),
+      builder: (dialogContext) {
+        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+        return Dialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isLandscape ? 12 : 20)),
+          child: Container(
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(isLandscape ? 12 : 20)),
+            constraints: BoxConstraints(maxWidth: isLandscape ? 380 : 400),
+            padding: EdgeInsets.fromLTRB(isLandscape ? 12 : 24, isLandscape ? 8 : 20, isLandscape ? 12 : 24, isLandscape ? 8 : 16),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isLandscape)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Kurangi Stok',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900)),
+                              Text(item.name,
+                                  style: TextStyle(
+                                      fontSize: 9, color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis),
+                              Text('Stok: ${item.stock} ${item.unit}',
+                                  style: const TextStyle(fontSize: 9)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 1,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: stockController,
+                                  keyboardType: TextInputType.number,
+                                  autofocus: true,
+                                  style: const TextStyle(fontSize: 10),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Qty',
+                                    labelStyle: TextStyle(fontSize: 9),
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 4),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => Navigator.pop(dialogContext),
+                                icon: const Icon(Icons.close_rounded,
+                                    color: Colors.redAccent, size: 16),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  final qty =
+                                      int.tryParse(stockController.text);
+                                  if (qty == null || qty <= 0) return;
+                                  if (qty > item.stock) {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(const SnackBar(
+                                            content:
+                                                Text('Stok tidak mencukupi')));
+                                    return;
+                                  }
+                                  final updatedItem = item.copyWith(
+                                      stock: item.stock - qty,
+                                      updatedAt: DateTime.now());
+                                  context.read<InventoryBloc>().add(
+                                      UpdateInventoryItemEvent(updatedItem));
+                                  Navigator.pop(dialogContext);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8),
+                                  minimumSize: const Size(0, 26),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4)),
+                                ),
+                                child: const Text('OK',
+                                    style: TextStyle(fontSize: 9)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  else ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Kurangi Stok',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900)),
+                              Text(item.name,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Stok saat ini: ${item.stock} ${item.unit}',
+                        style: const TextStyle(fontSize: 13)),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: stockController,
+                      keyboardType: TextInputType.number,
+                      autofocus: true,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: const InputDecoration(
+                        labelText: 'Jumlah dikurangi',
+                        labelStyle: TextStyle(fontSize: 13),
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Batal',
+                              style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13)),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            final qty = int.tryParse(stockController.text);
+                            if (qty == null || qty <= 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Masukkan jumlah yang valid')));
+                              return;
+                            }
+                            if (qty > item.stock) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Stok tidak mencukupi')));
+                              return;
+                            }
+                            final updatedItem = item.copyWith(
+                                stock: item.stock - qty,
+                                updatedAt: DateTime.now());
+                            context
+                                .read<InventoryBloc>()
+                                .add(UpdateInventoryItemEvent(updatedItem));
+                            Navigator.pop(dialogContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: const Text('Simpan',
+                              style:
+                                  TextStyle(fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Batal'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              final qty = int.tryParse(stockController.text);
-              if (qty == null || qty <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Masukkan jumlah yang valid')),
-                );
-                return;
-              }
-              if (qty > item.stock) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Stok tidak mencukupi')),
-                );
-                return;
-              }
-              final updatedItem = item.copyWith(
-                stock: item.stock - qty,
-                updatedAt: DateTime.now(),
-              );
-              context.read<InventoryBloc>().add(
-                UpdateInventoryItemEvent(updatedItem),
-              );
-              Navigator.pop(dialogContext);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -53,24 +53,31 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
           body: SafeArea(
             child: Column(
               children: [
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: BlocBuilder<AuthBloc, AuthState>(
-                    builder: (context, state) {
-                      String shopName = 'BradPOS';
-                      if (state is AuthAuthenticated) {
-                        shopName = state.user.shopName ?? 'BradPOS';
-                      }
-                      return BradHeader(
-                        title: 'Kelola Kategori',
-                        subtitle: shopName,
-                        showBackButton: true,
-                        leadingIcon: Icons.category_rounded,
-                        onSettingsTap: () => SettingsModal.show(context),
-                      );
-                    },
-                  ),
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    String shopName = 'BradPOS';
+                    if (state is AuthAuthenticated) {
+                      shopName = state.user.shopName ?? 'BradPOS';
+                    }
+                    return BradHeader(
+                      title: 'Kelola Kategori',
+                      subtitle: shopName,
+                      showBackButton: true,
+                      leadingIcon: Icons.category_rounded,
+                      showBottomBorder: true,
+                      onSettingsTap: () => SettingsModal.show(context),
+                      onSyncTap: () {
+                        context.read<AuthBloc>().syncService.syncAll();
+                        context.read<CategoryBloc>().add(LoadCategoriesEvent());
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Menyingkronkan data...'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
                 Expanded(
                   child: BlocBuilder<CategoryBloc, CategoryState>(
@@ -85,99 +92,81 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                         categories = state.categories;
                       }
 
-                      return RefreshIndicator(
-                        onRefresh: () async {
-                          context.read<AuthBloc>().syncService.syncAll();
-                          sl<CategoryBloc>().add(LoadCategoriesEvent());
-                          await Future.delayed(const Duration(seconds: 1));
-                        },
-                        child: categories.isEmpty
-                            ? ListView(
-                                children: [
-                                  SizedBox(
-                                    height:
-                                        MediaQuery.of(context).size.height *
-                                        0.2,
-                                  ),
-                                  Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(
-                                                  alpha: 0.05,
-                                                ),
-                                                blurRadius: 20,
-                                              ),
-                                            ],
-                                          ),
-                                          child: Icon(
-                                            Icons.category_outlined,
-                                            size: 64,
-                                            color: Colors.grey.shade300,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 24),
-                                        Text(
-                                          'Belum ada kategori',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade500,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
+                      bool isLandscape =
+                          MediaQuery.of(context).orientation ==
+                          Orientation.landscape;
+
+                      if (categories.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.05,
+                                      ),
+                                      blurRadius: 20,
                                     ),
-                                  ),
-                                ],
-                              )
-                            : LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final isLandscape =
-                                      constraints.maxWidth > 600;
-                                  if (isLandscape) {
-                                    return GridView.builder(
-                                      padding: const EdgeInsets.all(20),
-                                      gridDelegate:
-                                          const SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: 4,
-                                            crossAxisSpacing: 12,
-                                            mainAxisSpacing: 12,
-                                            mainAxisExtent: 125,
-                                          ),
-                                      itemCount: categories.length,
-                                      itemBuilder: (context, index) {
-                                        final category = categories[index];
-                                        return _buildCategoryItem(
-                                          category,
-                                          isCompact: true,
-                                        );
-                                      },
-                                    );
-                                  }
-                                  return ListView.separated(
-                                    padding: const EdgeInsets.all(20),
-                                    itemCount: categories.length,
-                                    separatorBuilder: (context, index) =>
-                                        const SizedBox(height: 12),
-                                    itemBuilder: (context, index) {
-                                      final category = categories[index];
-                                      return _buildCategoryItem(
-                                        category,
-                                        isCompact: false,
-                                      );
-                                    },
-                                  );
-                                },
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.category_outlined,
+                                  size: 64,
+                                  color: Colors.grey.shade300,
+                                ),
                               ),
-                      );
+                              const SizedBox(height: 24),
+                              Text(
+                                'Belum ada kategori',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return isLandscape
+                          ? GridView.builder(
+                              padding: const EdgeInsets.all(20),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                childAspectRatio: 2.5,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                              ),
+                              itemCount: categories.length,
+                              itemBuilder: (context, index) {
+                                final category = categories[index];
+                                return _buildCategoryItem(
+                                  category,
+                                  isCompact: true,
+                                );
+                              },
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.all(20),
+                              itemCount: categories.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final category = categories[index];
+                                return _buildCategoryItem(
+                                  category,
+                                  isCompact: false,
+                                );
+                              },
+                            );
                     },
                   ),
                 ),
@@ -410,22 +399,31 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
         body: SafeArea(
           child: Column(
             children: [
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  String shopName = 'BradPOS';
+                  if (state is AuthAuthenticated) {
+                    shopName = state.user.shopName ?? 'BradPOS';
+                  }
+                  return BradHeader(
+                    title: isEditing ? 'Edit Kategori' : 'Kategori Baru',
+                    subtitle: shopName,
+                    showBackButton: true,
+                    leadingIcon: Icons.category_rounded,
+                    showBottomBorder: true,
+                  );
+                },
+              ),
               Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: BlocBuilder<AuthBloc, AuthState>(
-                  builder: (context, state) {
-                    String shopName = 'BradPOS';
-                    if (state is AuthAuthenticated) {
-                      shopName = state.user.shopName ?? 'BradPOS';
-                    }
-                    return BradHeader(
-                      title: isEditing ? 'Edit Kategori' : 'Kategori Baru',
-                      subtitle: shopName,
-                      showBackButton: true,
-                      leadingIcon: Icons.category_rounded,
-                    );
-                  },
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
               ),
               Expanded(

@@ -7,6 +7,7 @@ class BradHeader extends StatelessWidget {
   final List<Widget>? actions;
   final bool showBackButton;
   final VoidCallback? onSettingsTap;
+  final VoidCallback? onSyncTap;
   final IconData leadingIcon;
   final bool showSettings;
   final bool showBottomBorder;
@@ -18,6 +19,7 @@ class BradHeader extends StatelessWidget {
     this.actions,
     this.showBackButton = false,
     this.onSettingsTap,
+    this.onSyncTap,
     this.leadingIcon = Icons.storefront_rounded,
     this.showSettings = true,
     this.showBottomBorder = false,
@@ -108,13 +110,22 @@ class BradHeader extends StatelessWidget {
               ),
             ),
             if (actions != null) ...actions!,
+            if (onSyncTap != null && !isLandscape)
+              IconButton(
+                onPressed: onSyncTap,
+                tooltip: 'Sync',
+                padding: const EdgeInsets.all(8),
+                icon: const Icon(
+                  Icons.sync_rounded,
+                  color: Color(0xFF64748B),
+                  size: 24,
+                ),
+              ),
             if (showSettings && !isLandscape)
               IconButton(
                 onPressed: onSettingsTap ?? () => _showSettingsMenu(context),
                 tooltip: 'Settings',
-                padding: isLandscape
-                    ? EdgeInsets.zero
-                    : const EdgeInsets.all(8),
+                padding: isLandscape ? EdgeInsets.zero : const EdgeInsets.all(8),
                 constraints: isLandscape
                     ? const BoxConstraints(minWidth: 32, minHeight: 32)
                     : null,
