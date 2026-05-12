@@ -127,20 +127,24 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
       setState(() => _isSubmitting = true);
       try {
         final name = _nameController.text.trim();
-        final repository = sl<InventoryRepository>();
-        final isExists = await repository.isProductNameExists(
-          name,
-          excludeId: isEditing ? widget.item!.id : null,
-        );
-        if (isExists && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Nama produk sudah ada!'),
-              backgroundColor: Colors.red,
-            ),
+
+        // Skip duplicate check if editing and name hasn't changed
+        if (!isEditing || name != widget.item!.name) {
+          final repository = sl<InventoryRepository>();
+          final isExists = await repository.isProductNameExists(
+            name,
+            excludeId: isEditing ? widget.item!.id : null,
           );
-          setState(() => _isSubmitting = false);
-          return;
+          if (isExists && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Nama produk sudah ada!'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            setState(() => _isSubmitting = false);
+            return;
+          }
         }
         String ownerId = widget.item?.ownerId ?? '';
         if (ownerId.isEmpty) {
