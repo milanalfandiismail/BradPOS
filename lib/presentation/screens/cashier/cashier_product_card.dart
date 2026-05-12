@@ -121,8 +121,6 @@ class CashierProductCard extends StatelessWidget {
                     fontSize: 13,
                     color: Color(0xFF1E293B),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   currencyFormatter.format(product.sellingPrice),

@@ -104,8 +104,6 @@ class InventoryItemCardNormal extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1E293B),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 8),
                       if (!isUnlimited)

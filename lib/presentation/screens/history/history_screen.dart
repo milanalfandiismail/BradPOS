@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -32,7 +33,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   DateTimeRange? _selectedDateRange;
   String? _selectedCashierId;
   int _currentPage = 0;
+  Timer? _debounce;
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
 
   @override
@@ -45,6 +48,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -267,6 +272,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
             Expanded(
               child: NestedScrollView(
+                controller: _scrollController,
                 headerSliverBuilder: (context, innerBoxIsScrolled) {
                   return [
                     SliverToBoxAdapter(
@@ -277,9 +283,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         onFilterTap: _showFilterModal,
                         onSyncTap: _loadData,
                         onSearchChanged: (v) {
-                          setState(() {
-                            _searchQuery = v;
-                            _currentPage = 0;
+                          if (_debounce?.isActive ?? false) _debounce!.cancel();
+                          _debounce = Timer(const Duration(milliseconds: 500), () {
+                            if (mounted) {
+                              setState(() {
+                                _searchQuery = v;
+                                _currentPage = 0;
+                              });
+                              _loadData();
+                            }
                           });
                         },
                         onClearSearch: () {
@@ -466,38 +478,91 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     ],
                                   )
                                 : isLandscape
-                                    ? GridView.builder(
+                                    ? CustomScrollView(
                                         physics:
                                             const AlwaysScrollableScrollPhysics(),
-                                        padding: const EdgeInsets.all(8),
-                                        gridDelegate:
-                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 4,
-                                          mainAxisExtent: 130,
-                                          crossAxisSpacing: 4,
-                                          mainAxisSpacing: 4,
-                                        ),
-                                        itemCount: displayed.length,
-                                        itemBuilder: (context, index) {
-                                          final trx = displayed[index];
-                                          return HistoryTransactionCard(
-                                            transaction: trx,
-                                            isLandscape: isLandscape,
-                                            currencyFormatter:
-                                                currencyFormatter,
-                                            onTap: () => Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    TransactionDetailScreen(
-                                                  transaction: trx,
-                                                ),
+                                        slivers: [
+                                          SliverPadding(
+                                            padding: const EdgeInsets.all(8),
+                                            sliver: SliverGrid(
+                                              gridDelegate:
+                                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                                crossAxisCount: 4,
+                                                mainAxisExtent: 130,
+                                                crossAxisSpacing: 4,
+                                                mainAxisSpacing: 4,
+                                              ),
+                                              delegate:
+                                                  SliverChildBuilderDelegate(
+                                                (context, index) {
+                                                  final trx = displayed[index];
+                                                  return HistoryTransactionCard(
+                                                    transaction: trx,
+                                                    isLandscape: isLandscape,
+                                                    currencyFormatter:
+                                                        currencyFormatter,
+                                                    onTap: () => Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            TransactionDetailScreen(
+                                                          transaction: trx,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    onDelete: (ctx) =>
+                                                        _confirmDelete(
+                                                            ctx, trx.id),
+                                                  );
+                                                },
+                                                childCount: displayed.length,
                                               ),
                                             ),
-                                            onDelete: (ctx) =>
-                                                _confirmDelete(ctx, trx.id),
-                                          );
-                                        },
+                                          ),
+                                          if (filtered.isNotEmpty &&
+                                              totalPages > 1)
+                                            SliverToBoxAdapter(
+                                              child: HistoryPaginationBar(
+                                                currentPage: _currentPage,
+                                                totalPages: totalPages,
+                                                isLandscape: isLandscape,
+                                                onPrevious: _currentPage > 0
+                                                    ? () {
+                                                        setState(() =>
+                                                            _currentPage--);
+                                                        _scrollController
+                                                            .animateTo(
+                                                          0,
+                                                          duration:
+                                                              const Duration(
+                                                                  milliseconds:
+                                                                      300),
+                                                          curve: Curves.easeOut,
+                                                        );
+                                                      }
+                                                    : null,
+                                                onNext: _currentPage <
+                                                        totalPages - 1
+                                                    ? () {
+                                                        setState(() =>
+                                                            _currentPage++);
+                                                        _scrollController
+                                                            .animateTo(
+                                                          0,
+                                                          duration:
+                                                              const Duration(
+                                                                  milliseconds:
+                                                                      300),
+                                                          curve: Curves.easeOut,
+                                                        );
+                                                      }
+                                                    : null,
+                                              ),
+                                            ),
+                                          const SliverPadding(
+                                              padding:
+                                                  EdgeInsets.only(bottom: 20)),
+                                        ],
                                       )
                                     : ListView(
                                         physics:
@@ -505,42 +570,70 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 8,
                                         ),
-                                        children: displayed
-                                            .map(
-                                              (trx) =>
-                                                  HistoryTransactionCard(
-                                                transaction: trx,
-                                                isLandscape: isLandscape,
-                                                currencyFormatter:
-                                                    currencyFormatter,
-                                                onTap: () => Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        TransactionDetailScreen(
-                                                      transaction: trx,
-                                                    ),
+                                        children: [
+                                          ...displayed.map(
+                                            (trx) => HistoryTransactionCard(
+                                              transaction: trx,
+                                              isLandscape: isLandscape,
+                                              currencyFormatter:
+                                                  currencyFormatter,
+                                              onTap: () => Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      TransactionDetailScreen(
+                                                    transaction: trx,
                                                   ),
                                                 ),
-                                                onDelete: (ctx) =>
-                                                    _confirmDelete(ctx, trx.id),
                                               ),
-                                            )
-                                            .toList(),
+                                              onDelete: (ctx) =>
+                                                  _confirmDelete(ctx, trx.id),
+                                            ),
+                                          ),
+                                          if (filtered.isNotEmpty &&
+                                              totalPages > 1)
+                                            HistoryPaginationBar(
+                                              currentPage: _currentPage,
+                                              totalPages: totalPages,
+                                              isLandscape: isLandscape,
+                                              onPrevious: _currentPage > 0
+                                                  ? () {
+                                                      setState(() =>
+                                                          _currentPage--);
+                                                      _scrollController
+                                                          .animateTo(
+                                                        0,
+                                                        duration:
+                                                            const Duration(
+                                                                milliseconds:
+                                                                    300),
+                                                        curve: Curves.easeOut,
+                                                      );
+                                                    }
+                                                  : null,
+                                              onNext: _currentPage <
+                                                      totalPages - 1
+                                                  ? () {
+                                                      setState(() =>
+                                                          _currentPage++);
+                                                      _scrollController
+                                                          .animateTo(
+                                                        0,
+                                                        duration:
+                                                            const Duration(
+                                                                milliseconds:
+                                                                    300),
+                                                        curve: Curves.easeOut,
+                                                      );
+                                                    }
+                                                  : null,
+                                            ),
+                                          const Padding(
+                                              padding:
+                                                  EdgeInsets.only(bottom: 20)),
+                                        ],
                                       ),
                           ),
-                            if (filtered.isNotEmpty && totalPages > 1)
-                            HistoryPaginationBar(
-                              currentPage: _currentPage,
-                              totalPages: totalPages,
-                              isLandscape: isLandscape,
-                              onPrevious: _currentPage > 0
-                                  ? () => setState(() => _currentPage--)
-                                  : null,
-                              onNext: _currentPage < totalPages - 1
-                                  ? () => setState(() => _currentPage++)
-                                  : null,
-                            ),
                         ],
                       );
                     }

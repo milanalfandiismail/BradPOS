@@ -130,8 +130,6 @@ class CartSummaryView extends StatelessWidget {
                               fontSize: isSidebar ? 9 : 13,
                               color: const Color(0xFF1E293B),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             currency.format(item.unitPrice),

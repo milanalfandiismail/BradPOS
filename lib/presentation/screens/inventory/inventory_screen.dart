@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/core/app_colors.dart';
@@ -39,16 +40,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String _stockFilter = 'All';
   bool _isKaryawan = false;
   bool _isInit = false;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
     _checkUserRole();
-    _searchController.addListener(() {
-      _currentPage = 1;
-      _loadPage();
-      setState(() {});
-    });
   }
 
   @override
@@ -101,7 +98,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _currentPage = 1;
+        });
+        _loadPage();
+      }
+    });
   }
 
   List<InventoryItem> _filteredItems(List<InventoryItem> items) {
@@ -306,6 +316,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   textAlignVertical: TextAlignVertical.center,
                   controller: _searchController,
                   style: const TextStyle(fontSize: 14),
+                  onChanged: _onSearchChanged,
                   decoration: InputDecoration(
                     hintText: 'Cari produk...',
                     hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
@@ -419,6 +430,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             isDense: false,
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
           ),
+          onChanged: _onSearchChanged,
         ),
       ),
     );
