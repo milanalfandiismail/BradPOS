@@ -1,5 +1,5 @@
 import 'package:bradpos/core/database/database_helper.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:bradpos/core/database/db_utils.dart';
 
 abstract class KaryawanLocalDataSource {
   Future<List<Map<String, dynamic>>> getKaryawans(String ownerId);
@@ -29,7 +29,7 @@ class KaryawanLocalDataSourceImpl implements KaryawanLocalDataSource {
     final db = await dbHelper.database;
     final batch = db.batch();
     for (var item in karyawans) {
-      batch.insert('karyawan', item, conflictAlgorithm: ConflictAlgorithm.replace);
+      batch.insert('karyawan', item, conflictAlgorithm: DbUtils.getConflictAlgorithmReplace());
     }
     await batch.commit(noResult: true);
   }
@@ -37,7 +37,7 @@ class KaryawanLocalDataSourceImpl implements KaryawanLocalDataSource {
   @override
   Future<void> saveKaryawan(Map<String, dynamic> karyawan) async {
     final db = await dbHelper.database;
-    await db.insert('karyawan', karyawan, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('karyawan', karyawan, conflictAlgorithm: DbUtils.getConflictAlgorithmReplace());
   }
 
   @override

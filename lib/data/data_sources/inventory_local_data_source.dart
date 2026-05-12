@@ -1,7 +1,7 @@
 import 'package:bradpos/core/database/database_helper.dart';
 import 'package:bradpos/data/models/inventory_item_model.dart';
 import 'package:bradpos/domain/entities/inventory_item.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:bradpos/core/database/db_utils.dart';
 
 abstract class InventoryLocalDataSource {
   Future<List<InventoryItemModel>> getInventory(
@@ -121,7 +121,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       final modMap = Map<String, dynamic>.from(map);
       modMap['is_active'] = modMap['is_active'] == 1;
       return InventoryItemModel.fromMap(modMap);
-    }).toList();
+    }).toList().cast<InventoryItemModel>();
   }
 
   @override
@@ -144,7 +144,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       'SELECT COUNT(*) as count FROM produk WHERE $clause',
       args,
     );
-    return Sqflite.firstIntValue(result) ?? 0;
+    return DbUtils.firstIntValue(result) ?? 0;
   }
 
   @override
@@ -159,7 +159,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     await db.insert(
       'produk',
       map,
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
     );
     return itemModel;
   }
@@ -258,7 +258,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       await db.insert(
         'produk',
         map,
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
       );
     }
   }

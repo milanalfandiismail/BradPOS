@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:sqflite/sqflite.dart';
+import 'package:bradpos/core/database/db_utils.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
@@ -88,7 +88,7 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
       await db.insert(
         'transactions',
         trxModel.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
       );
 
       // 2. Potong Stok (Hanya jika transaksi baru)
@@ -145,7 +145,7 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
       orderBy: 'created_at DESC',
     );
 
-    return maps.map((map) => TransactionModel.fromMap(map)).toList();
+    return maps.map((map) => TransactionModel.fromMap(map)).toList().cast<TransactionModel>();
   }
 
   @override
@@ -177,7 +177,7 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
       orderBy: 'created_at DESC',
     );
 
-    return maps.map((map) => TransactionModel.fromMap(map)).toList();
+    return maps.map((map) => TransactionModel.fromMap(map)).toList().cast<TransactionModel>();
   }
 
   @override
@@ -206,7 +206,7 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
 
     final String itemsJson = maps.first['items'] as String;
     final List<dynamic> decoded = jsonDecode(itemsJson);
-    return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+    return decoded.map((e) => Map<String, dynamic>.from(e)).toList().cast<Map<String, dynamic>>();
   }
 
   @override
@@ -230,7 +230,7 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
       batch.insert(
         'transactions',
         map,
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
       );
     }
     await batch.commit(noResult: true);

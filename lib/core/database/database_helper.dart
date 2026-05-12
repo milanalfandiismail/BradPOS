@@ -1,11 +1,13 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' as sqlite;
 import 'package:path/path.dart';
 import 'package:flutter/foundation.dart';
+import 'web_database_adapter.dart';
+import 'dart:async';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static const int _databaseVersion = 16;
-  static Database? _database;
+  static dynamic _database; // dynamic to support both sqlite.Database and WebDatabaseAdapter
 
   static const String _idType = 'TEXT PRIMARY KEY';
   static const String _textType = 'TEXT NOT NULL';
@@ -13,20 +15,42 @@ class DatabaseHelper {
   static const String _integerType = 'INTEGER NOT NULL';
   static const String _realType = 'REAL NOT NULL';
   static const String _boolType = 'INTEGER NOT NULL';
+  static Completer<dynamic>? _dbCompleter;
+  static bool _initialized = false;
 
   DatabaseHelper._init();
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB('bradpos.db');
-    return _database!;
+  Future<dynamic> get database async {
+    if (_initialized && _database != null) return _database;
+    
+    if (_dbCompleter != null) return _dbCompleter!.future;
+    
+    _dbCompleter = Completer<dynamic>();
+    
+    try {
+      debugPrint("DatabaseHelper: Starting one-time initialization...");
+      _database = await _initDB('bradpos.db');
+      _initialized = true;
+      _dbCompleter!.complete(_database);
+      return _database;
+    } catch (e) {
+      _dbCompleter!.completeError(e);
+      _dbCompleter = null; // Allow retry
+      rethrow;
+    }
   }
 
-  Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
+  Future<dynamic> _initDB(String filePath) async {
+    if (kIsWeb) {
+      final webDb = WebDatabaseAdapter();
+      await webDb.init(filePath, onCreate: _createDB, onUpgrade: _upgradeDB, version: _databaseVersion);
+      return webDb;
+    }
+
+    final dbPath = await sqlite.getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(
+    return await sqlite.openDatabase(
       path,
       version: _databaseVersion,
       onCreate: _createDB,
@@ -34,7 +58,7 @@ class DatabaseHelper {
     );
   }
 
-  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+  Future _upgradeDB(dynamic db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE produk ADD COLUMN image_url TEXT');
     }
@@ -147,7 +171,7 @@ class DatabaseHelper {
     }
   }
 
-  Future _createDB(Database db, int version) async {
+  Future _createDB(dynamic db, int version) async {
     await db.execute('''
 CREATE TABLE produk (
   id $_idType,
@@ -185,7 +209,7 @@ CREATE TABLE categories (
     await _createProfilesTable(db);
   }
 
-  Future<void> _createKaryawanTable(Database db) async {
+  Future<void> _createKaryawanTable(dynamic db) async {
     await db.execute('''
 CREATE TABLE karyawan (
   id $_idType,
@@ -202,7 +226,7 @@ CREATE TABLE karyawan (
 ''');
   }
 
-  Future<void> _createTransactionsTable(Database db) async {
+  Future<void> _createTransactionsTable(dynamic db) async {
     await db.execute('''
 CREATE TABLE transactions (
   id $_idType,
@@ -230,7 +254,7 @@ CREATE TABLE transactions (
 ''');
   }
 
-  Future<void> _createProfilesTable(Database db) async {
+  Future<void> _createProfilesTable(dynamic db) async {
     await db.execute('''
 CREATE TABLE profiles (
   id $_idType,
@@ -246,6 +270,8 @@ CREATE TABLE profiles (
 
   Future<void> close() async {
     final db = await instance.database;
-    db.close();
+    if (db != null) {
+      await db.close();
+    }
   }
 }

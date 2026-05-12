@@ -17,6 +17,7 @@ abstract class AuthRepository {
   );
 
   /// Login Owner menggunakan akun Google (OAuth).
+  /// Platform-aware: web pakai Supabase OAuth redirect, mobile pakai GoogleSignIn plugin.
   Future<Either<String, UserEntity>> signInWithGoogle();
 
   /// Logout dari semua sesi (Owner maupun Karyawan).

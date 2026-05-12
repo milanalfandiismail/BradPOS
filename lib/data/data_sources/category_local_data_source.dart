@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart' hide Category;
+import 'package:bradpos/core/database/db_utils.dart';
 import 'package:bradpos/core/database/database_helper.dart';
 import 'package:bradpos/data/models/category_model.dart';
 import 'package:bradpos/domain/entities/category.dart';
-import 'package:sqflite/sqflite.dart';
 
 abstract class CategoryLocalDataSource {
   Future<List<CategoryModel>> getCategories(String userId);
@@ -38,7 +38,7 @@ class CategoryLocalDataSourceImpl implements CategoryLocalDataSource {
       );
     }
 
-    return maps.map((map) => CategoryModel.fromMap(map)).toList();
+    return maps.map((map) => CategoryModel.fromMap(map)).toList().cast<CategoryModel>();
   }
 
   @override
@@ -64,7 +64,7 @@ class CategoryLocalDataSourceImpl implements CategoryLocalDataSource {
     await db.insert(
       'categories',
       map,
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
     );
     return model;
   }
@@ -137,7 +137,7 @@ class CategoryLocalDataSourceImpl implements CategoryLocalDataSource {
       await db.insert(
         'categories',
         map,
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
       );
     }
   }

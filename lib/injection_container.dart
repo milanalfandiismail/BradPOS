@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Data Layer
@@ -210,7 +211,8 @@ Future<void> init() async {
 
   // Initialize Google Sign In v7.x
   await GoogleSignIn.instance.initialize(
-    serverClientId: dotenv.get('GOOGLE_WEB_CLIENT_ID'),
+    clientId: kIsWeb ? dotenv.get('GOOGLE_WEB_CLIENT_ID') : null,
+    serverClientId: kIsWeb ? null : dotenv.get('GOOGLE_WEB_CLIENT_ID'),
   );
 
   sl.registerLazySingleton(() => Supabase.instance.client);

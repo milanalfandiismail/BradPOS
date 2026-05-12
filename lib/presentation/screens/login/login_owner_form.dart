@@ -4,6 +4,7 @@ import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/utils/app_navigator.dart';
 import 'register_screen.dart';
+import 'widgets/google_sign_in_web_button.dart';
 
 class LoginOwnerForm extends StatelessWidget {
   final TextEditingController emailController;
@@ -189,39 +190,11 @@ class LoginOwnerForm extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: GoogleSignInWebButton(
+                    isLandscape: isLandscape,
                     onPressed: () {
                       context.read<AuthBloc>().add(GoogleSignInRequested());
                     },
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 38),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      side: BorderSide(color: Colors.grey.shade300),
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.network(
-                          'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
-                          width: 16,
-                          height: 16,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.g_mobiledata, size: 16),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Google',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -261,35 +234,11 @@ class LoginOwnerForm extends StatelessWidget {
             )
           else ...[
             // Google Login Button (Portrait)
-            OutlinedButton.icon(
+            GoogleSignInWebButton(
+              isLandscape: isLandscape,
               onPressed: () {
                 context.read<AuthBloc>().add(GoogleSignInRequested());
               },
-              style: OutlinedButton.styleFrom(
-                fixedSize: const Size.fromHeight(56),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                side: BorderSide(color: Colors.grey.shade300),
-              ),
-              icon: Image.network(
-                'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
-                width: 24,
-                height: 24,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.account_circle_outlined,
-                  size: 24,
-                  color: AppColors.primary,
-                ),
-              ),
-              label: const Text(
-                'Continue with Google',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ),
             const SizedBox(height: 16),
             // Guest / Offline Mode Button (Portrait)

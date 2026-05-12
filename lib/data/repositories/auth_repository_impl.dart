@@ -46,20 +46,26 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
       final user = response.user;
       if (user != null) {
         // Fetch profile immediately
-        final profile = await profileRemoteDataSource.getProfile(user.id, isStaff: false);
-        
+        final profile = await profileRemoteDataSource.getProfile(
+          user.id,
+          isStaff: false,
+        );
+
         final userEntity = UserEntity(
           id: user.id,
           email: user.email ?? '',
           name: profile?['full_name'] ?? user.userMetadata?['full_name'],
-          shopName: profile?['shop_name'] ?? user.userMetadata?['shop_name'] ?? 'BradPOS',
+          shopName:
+              profile?['shop_name'] ??
+              user.userMetadata?['shop_name'] ??
+              'BradPOS',
           shopId: profile?['shop_id'] ?? user.userMetadata?['shop_id'],
           role: 'owner',
           remoteImage: profile?['remote_image'],
           address: profile?['address'],
           phone: profile?['phone'],
         );
-        
+
         await _saveLocalProfile(userEntity);
         await prefs.setString(_ownerSessionKey, jsonEncode(userEntity.toMap()));
         return Right(userEntity);
@@ -82,15 +88,15 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
       final response = await supabase.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'full_name': fullName,
-          'shop_name': 'BradPOS',
-        },
+        data: {'full_name': fullName, 'shop_name': 'BradPOS'},
       );
       final user = response.user;
       if (user != null) {
         // Fetch profile (might be empty but good for consistency)
-        final profile = await profileRemoteDataSource.getProfile(user.id, isStaff: false);
+        final profile = await profileRemoteDataSource.getProfile(
+          user.id,
+          isStaff: false,
+        );
 
         final userEntity = UserEntity(
           id: user.id,
@@ -116,6 +122,14 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
   @override
   Future<Either<String, UserEntity>> signInWithGoogle() async {
     try {
+      if (kIsWeb) {
+        await supabase.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: Uri.base.toString(),
+        );
+        return const Left('Mengalihkan ke halaman login Google...');
+      }
+
       final googleUser = await GoogleSignIn.instance.authenticate();
       final googleAuth = googleUser.authentication;
       final idToken = googleAuth.idToken;
@@ -131,14 +145,19 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
 
       final user = response.user;
       if (user != null) {
-        // Fetch profile immediately
-        final profile = await profileRemoteDataSource.getProfile(user.id, isStaff: false);
+        final profile = await profileRemoteDataSource.getProfile(
+          user.id,
+          isStaff: false,
+        );
 
         final userEntity = UserEntity(
           id: user.id,
           email: user.email ?? '',
           name: profile?['full_name'] ?? user.userMetadata?['full_name'],
-          shopName: profile?['shop_name'] ?? user.userMetadata?['shop_name'] ?? 'BradPOS',
+          shopName:
+              profile?['shop_name'] ??
+              user.userMetadata?['shop_name'] ??
+              'BradPOS',
           shopId: profile?['shop_id'] ?? user.userMetadata?['shop_id'],
           role: 'owner',
           remoteImage: profile?['remote_image'],
@@ -165,7 +184,7 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
       await prefs.remove(_karyawanSessionKey);
       await prefs.remove(_ownerSessionKey);
       await prefs.remove(_guestSessionKey);
-      
+
       return const Right(null);
     } catch (e) {
       return Left(e.toString());
@@ -236,19 +255,25 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
       final karyawanJson = prefs.getString(_karyawanSessionKey);
       if (karyawanJson != null) {
         final karyawanMap = jsonDecode(karyawanJson);
-        final ownerProfile = await profileLocalDataSource.getProfile(karyawanMap['owner_id'] ?? '');
-        final personalProfile = await profileLocalDataSource.getProfile(karyawanMap['id'] ?? '');
-        
+        final ownerProfile = await profileLocalDataSource.getProfile(
+          karyawanMap['owner_id'] ?? '',
+        );
+        final personalProfile = await profileLocalDataSource.getProfile(
+          karyawanMap['id'] ?? '',
+        );
+
         final shopName = ownerProfile?['shop_name'] ?? 'BradPOS';
         final shopId = ownerProfile?['shop_id'];
-        
+
         return Right(
           UserEntity.fromMap({
-            ...karyawanMap, 
+            ...karyawanMap,
             'shop_name': shopName,
             'shop_id': shopId,
-            'remote_image': personalProfile?['remote_image'] ?? karyawanMap['remote_image'],
-            'local_image': personalProfile?['local_image'] ?? karyawanMap['local_image'],
+            'remote_image':
+                personalProfile?['remote_image'] ?? karyawanMap['remote_image'],
+            'local_image':
+                personalProfile?['local_image'] ?? karyawanMap['local_image'],
             'name': personalProfile?['full_name'] ?? karyawanMap['name'],
           }),
         );
@@ -256,7 +281,9 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
 
       // 4. Cek Mode Guest
       if (isGuestMode()) {
-        final profile = await profileLocalDataSource.getProfile('offline_guest');
+        final profile = await profileLocalDataSource.getProfile(
+          'offline_guest',
+        );
         final shopName = profile?['shop_name'] ?? 'BradPOS';
         return Right(
           UserEntity(
@@ -298,8 +325,8 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
           await profileRemoteDataSource.deleteProfileImage(user.remoteImage!);
         }
         finalRemoteUrl = await profileRemoteDataSource.uploadProfileImage(
-          localImage, 
-          user.id, 
+          localImage,
+          user.id,
           isStaff: user.role == 'karyawan',
         );
       }
@@ -334,9 +361,15 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
       // Sync Karyawan Table if info changes
       if (user.role == 'karyawan') {
         final Map<String, dynamic> updateKaryawan = {};
-        if (fullName != null) updateKaryawan['full_name'] = fullName;
-        if (finalRemoteUrl != null) updateKaryawan['remote_image'] = finalRemoteUrl;
-        if (localImage != null) updateKaryawan['local_image'] = localImage;
+        if (fullName != null) {
+          updateKaryawan['full_name'] = fullName;
+        }
+        if (finalRemoteUrl != null) {
+          updateKaryawan['remote_image'] = finalRemoteUrl;
+        }
+        if (localImage != null) {
+          updateKaryawan['local_image'] = localImage;
+        }
 
         if (updateKaryawan.isNotEmpty) {
           await supabase
@@ -348,9 +381,15 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
 
       await _saveLocalProfile(updatedUser);
       if (user.role == 'karyawan') {
-        await prefs.setString(_karyawanSessionKey, jsonEncode(updatedUser.toMap()));
+        await prefs.setString(
+          _karyawanSessionKey,
+          jsonEncode(updatedUser.toMap()),
+        );
       } else {
-        await prefs.setString(_ownerSessionKey, jsonEncode(updatedUser.toMap()));
+        await prefs.setString(
+          _ownerSessionKey,
+          jsonEncode(updatedUser.toMap()),
+        );
       }
 
       if (user.role == 'owner') {
@@ -426,5 +465,4 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
       'updated_at': DateTime.now().toIso8601String(),
     });
   }
-
 }

@@ -16,7 +16,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final SyncService syncService;
   StreamSubscription<supabase_auth.AuthState>? _authSubscription;
 
-  AuthBloc({required this.authRepository, required this.syncService}) : super(AuthInitial()) {
+  AuthBloc({required this.authRepository, required this.syncService})
+    : super(AuthInitial()) {
     // Listen to Supabase Auth Changes globally (Owner only)
     _authSubscription = supabase_auth
         .Supabase
@@ -90,7 +91,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthLoading());
       final result = await authRepository.signInWithGoogle();
       result.fold((failure) {
-        if (!failure.contains('Membuka') && !failure.contains('halaman')) {
+        if (!failure.contains('Mengalihkan') && !failure.contains('halaman')) {
           emit(AuthError(failure));
         }
       }, (user) => emit(AuthAuthenticated(user)));
@@ -142,7 +143,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               : current.user.shopId,
           role: current.user.role,
           ownerId: current.user.ownerId,
-          remoteImage: current.user.remoteImage, // Will be updated by repository result
+          remoteImage:
+              current.user.remoteImage, // Will be updated by repository result
           localImage: event.localImage ?? current.user.localImage,
           address: (event.address != null && event.address!.isNotEmpty)
               ? event.address
@@ -169,7 +171,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           },
           (finalUser) {
             emit(AuthAuthenticated(finalUser));
-            syncService.syncAll(user: finalUser); // Instant Sync dengan data terbaru
+            syncService.syncAll(
+              user: finalUser,
+            ); // Instant Sync dengan data terbaru
           },
         );
       }
@@ -184,6 +188,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 }
 
 extension AuthStateX on AuthState {
-  String get displayShopName =>
-      this is AuthAuthenticated ? (this as AuthAuthenticated).user.shopName ?? 'BradPOS' : 'BradPOS';
+  String get displayShopName => this is AuthAuthenticated
+      ? (this as AuthAuthenticated).user.shopName ?? 'BradPOS'
+      : 'BradPOS';
 }

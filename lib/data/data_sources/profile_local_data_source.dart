@@ -1,5 +1,5 @@
 import 'package:bradpos/core/database/database_helper.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:bradpos/core/database/db_utils.dart';
 
 abstract class ProfileLocalDataSource {
   Future<Map<String, dynamic>?> getProfile(String id);
@@ -28,6 +28,6 @@ class ProfileLocalDataSourceImpl implements ProfileLocalDataSource {
   @override
   Future<void> saveProfile(Map<String, dynamic> data) async {
     final db = await dbHelper.database;
-    await db.insert('profiles', data, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('profiles', data, conflictAlgorithm: DbUtils.getConflictAlgorithmReplace());
   }
 }
