@@ -10,6 +10,7 @@ import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/presentation/screens/category/category_form_screen.dart';
+import 'package:bradpos/presentation/screens/category/category_card.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -142,10 +143,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
                               ),
                               itemCount: categories.length,
                               itemBuilder: (context, index) {
-                                final category = categories[index];
-                                return _buildCategoryItem(
-                                  category,
+                                final cat = categories[index];
+                                return CategoryCard(
+                                  category: cat,
                                   isCompact: true,
+                                  onEdit: () => _navigateToForm(category: cat),
+                                  onDelete: () => _confirmDelete(cat),
                                 );
                               },
                             )
@@ -155,10 +158,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
                               separatorBuilder: (context, index) =>
                                   const SizedBox(height: 12),
                               itemBuilder: (context, index) {
-                                final category = categories[index];
-                                return _buildCategoryItem(
-                                  category,
+                                final cat = categories[index];
+                                return CategoryCard(
+                                  category: cat,
                                   isCompact: false,
+                                  onEdit: () => _navigateToForm(category: cat),
+                                  onDelete: () => _confirmDelete(cat),
                                 );
                               },
                             );
@@ -179,134 +184,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
             foregroundColor: Colors.white,
             elevation: 4,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryItem(Category category, {required bool isCompact}) {
-    if (isCompact) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.category,
-                    color: AppColors.primary,
-                    size: 14,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    category.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    color: Colors.blue,
-                    size: 18,
-                  ),
-                  onPressed: () => _navigateToForm(category: category),
-                ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.red,
-                    size: 18,
-                  ),
-                  onPressed: () => _confirmDelete(category),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.category, color: AppColors.primary, size: 20),
-        ),
-        title: Text(
-          category.name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(
-                Icons.edit_outlined,
-                color: Colors.blue,
-                size: 22,
-              ),
-              onPressed: () => _navigateToForm(category: category),
-            ),
-            IconButton(
-              icon: const Icon(
-                Icons.delete_outline,
-                color: Colors.red,
-                size: 22,
-              ),
-              onPressed: () => _confirmDelete(category),
-            ),
-          ],
         ),
       ),
     );

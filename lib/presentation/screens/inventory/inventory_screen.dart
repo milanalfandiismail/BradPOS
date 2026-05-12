@@ -17,6 +17,9 @@ import 'package:bradpos/core/utils/app_navigator.dart';
 import 'package:bradpos/core/widgets/main_navigation_rail.dart';
 import 'package:bradpos/presentation/screens/category/category_screen.dart';
 import 'package:bradpos/presentation/screens/inventory/inventory_pagination_bar.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_filter_section.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_add_stock_dialog.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_reduce_stock_dialog.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -547,10 +550,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 onDelete: () => _showDeleteConfirmation(item),
                 onAddStock: item.stock == -1
                     ? null
-                    : () => _showAddStockDialog(item),
+                    : () => showAddStockDialog(context, item),
                 onReduceStock: item.stock == -1
                     ? null
-                    : () => _showReduceStockDialog(item),
+                    : () => showReduceStockDialog(context, item),
               );
             },
             childCount: items.length,
@@ -574,10 +577,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 onDelete: () => _showDeleteConfirmation(item),
                 onAddStock: item.stock == -1
                     ? null
-                    : () => _showAddStockDialog(item),
+                    : () => showAddStockDialog(context, item),
                 onReduceStock: item.stock == -1
                     ? null
-                    : () => _showReduceStockDialog(item),
+                    : () => showReduceStockDialog(context, item),
               ),
             );
           },
@@ -706,11 +709,28 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                   ),
                   Flexible(
-                    child: _buildFilterContent(setSheetState, onApply: () {
-                      _currentPage = 1;
-                      _loadPage();
-                      Navigator.pop(context);
-                    }, categories: modalCategories),
+                    child: InventoryFilterContent(
+                      selectedCategory: _selectedCategory,
+                      stockFilter: _stockFilter,
+                      categories: modalCategories,
+                      onCategoryChanged: (cat) {
+                        setSheetState(() => _selectedCategory = cat);
+                        _selectedCategory = cat;
+                        _currentPage = 1;
+                        _loadPage();
+                      },
+                      onStockFilterChanged: (filter) {
+                        setSheetState(() => _stockFilter = filter);
+                        _stockFilter = filter;
+                        _currentPage = 1;
+                        _loadPage();
+                      },
+                      onApply: () {
+                        _currentPage = 1;
+                        _loadPage();
+                        Navigator.pop(context);
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -732,149 +752,35 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
         child: StatefulBuilder(
           builder: (context, setSheetState) {
-            return _buildFilterContent(setSheetState, onApply: () {
-              _currentPage = 1;
-              _loadPage();
-              Navigator.pop(context);
-            }, isCompact: true, categories: modalCategories);
+            return InventoryFilterContent(
+              selectedCategory: _selectedCategory,
+              stockFilter: _stockFilter,
+              categories: modalCategories,
+              isCompact: true,
+              onCategoryChanged: (cat) {
+                setSheetState(() => _selectedCategory = cat);
+                _selectedCategory = cat;
+                _currentPage = 1;
+                _loadPage();
+              },
+              onStockFilterChanged: (filter) {
+                setSheetState(() => _stockFilter = filter);
+                _stockFilter = filter;
+                _currentPage = 1;
+                _loadPage();
+              },
+              onApply: () {
+                _currentPage = 1;
+                _loadPage();
+                Navigator.pop(context);
+              },
+            );
           },
         ),
       ),
     );
   }
 
-  Widget _buildFilterContent(
-    StateSetter setSheetState, {
-    VoidCallback? onApply,
-    bool isCompact = false,
-    List<String>? categories,
-  }) {
-    final cats = categories ??
-        ['All', 'Tanpa Kategori', 'Makanan', 'Minuman'];
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isCompact ? 16 : 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Filter Produk',
-                style: TextStyle(
-                  fontSize: isCompact ? 16 : 20,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF0F172A),
-                ),
-              ),
-              Row(
-                children: [
-                  if (isCompact)
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
-                    ),
-                  TextButton(
-                    onPressed: () {
-                      setSheetState(() {
-                        _selectedCategory = 'All';
-                        _stockFilter = 'All';
-                      });
-                      setState(() {
-                        _selectedCategory = 'All';
-                        _stockFilter = 'All';
-                      });
-                    },
-                    child: const Text(
-                      'Reset',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.redAccent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: isCompact ? 12 : 24),
-          _FilterSectionTitle(
-            title: 'Kategori Produk',
-            isCompact: isCompact,
-          ),
-          SizedBox(height: isCompact ? 8 : 12),
-          Wrap(
-              spacing: isCompact ? 6 : 8,
-              runSpacing: isCompact ? 6 : 8,
-              children: cats.map((c) {
-                final isSel = _selectedCategory == c;
-                return _CustomFilterChip(
-                  label: c,
-                  isSelected: isSel,
-                  isCompact: isCompact,
-                  onSelected: (val) {
-                    setSheetState(() => _selectedCategory = c);
-                    _selectedCategory = c;
-                    _currentPage = 1;
-                    _loadPage();
-                  },
-                );
-              }).toList(),
-            ),
-          SizedBox(height: isCompact ? 12 : 24),
-          _FilterSectionTitle(
-            title: 'Status Stok',
-            isCompact: isCompact,
-          ),
-          SizedBox(height: isCompact ? 8 : 12),
-          Wrap(
-            spacing: isCompact ? 6 : 8,
-            runSpacing: isCompact ? 6 : 8,
-            children: ['All', 'Low Stock', 'Out of Stock', 'Unlimited'].map((
-              s,
-            ) {
-              final isSel = _stockFilter == s;
-              return _CustomFilterChip(
-                label: s,
-                isSelected: isSel,
-                isCompact: isCompact,
-                onSelected: (val) {
-                  setSheetState(() => _stockFilter = s);
-                  _stockFilter = s;
-                  _currentPage = 1;
-                  _loadPage();
-                },
-              );
-            }).toList(),
-          ),
-          SizedBox(height: isCompact ? 16 : 32),
-          SizedBox(
-            width: double.infinity,
-            height: isCompact ? 40 : 56,
-            child: ElevatedButton(
-              onPressed: onApply,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(isCompact ? 10 : 16),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                'Terapkan Filter',
-                style: TextStyle(
-                  fontSize: isCompact ? 13 : 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showDeleteConfirmation(InventoryItem item) {
     showDialog(
@@ -905,470 +811,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  void _showAddStockDialog(InventoryItem item) {
-    final stockController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-        return Dialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Container(
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-            constraints: BoxConstraints(maxWidth: isLandscape ? 380 : 400),
-            padding: EdgeInsets.fromLTRB(20, isLandscape ? 6 : 20, 20, isLandscape ? 6 : 16),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isLandscape)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Tambah Stok',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w900)),
-                              Text(item.name,
-                                  style: TextStyle(
-                                      fontSize: 10, color: Colors.grey),
-                                  overflow: TextOverflow.ellipsis),
-                              Text('Stok: ${item.stock} ${item.unit}',
-                                  style: const TextStyle(fontSize: 10)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 1,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: stockController,
-                                  keyboardType: TextInputType.number,
-                                  autofocus: true,
-                                  style: const TextStyle(fontSize: 12),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Qty',
-                                    labelStyle: TextStyle(fontSize: 10),
-                                    border: OutlineInputBorder(),
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 6),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => Navigator.pop(dialogContext),
-                                icon: const Icon(Icons.close_rounded,
-                                    color: Colors.redAccent, size: 18),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  final qty =
-                                      int.tryParse(stockController.text);
-                                  if (qty == null || qty <= 0) return;
-                                  final updatedItem = item.copyWith(
-                                      stock: item.stock + qty,
-                                      updatedAt: DateTime.now());
-                                  context.read<InventoryBloc>().add(
-                                      UpdateInventoryItemEvent(updatedItem));
-                                  Navigator.pop(dialogContext);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10),
-                                  minimumSize: const Size(0, 32),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6)),
-                                ),
-                                child: const Text('OK',
-                                    style: TextStyle(fontSize: 10)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  else ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Tambah Stok',
-                                  style: TextStyle(
-                                      fontSize: isLandscape ? 14 : 18,
-                                      fontWeight: FontWeight.w900)),
-                              Text(item.name,
-                                  style: TextStyle(
-                                      fontSize: isLandscape ? 11 : 13,
-                                      color: Colors.grey),
-                                  overflow: TextOverflow.ellipsis),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: isLandscape ? 8 : 12),
-                    Text('Stok saat ini: ${item.stock} ${item.unit}',
-                        style: TextStyle(fontSize: isLandscape ? 11 : 13)),
-                    SizedBox(height: isLandscape ? 8 : 12),
-                    TextField(
-                      controller: stockController,
-                      keyboardType: TextInputType.number,
-                      autofocus: true,
-                      style: TextStyle(fontSize: isLandscape ? 12 : 14),
-                      decoration: InputDecoration(
-                        labelText: 'Jumlah ditambahkan',
-                        labelStyle: TextStyle(fontSize: isLandscape ? 11 : 13),
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                      ),
-                    ),
-                    SizedBox(height: isLandscape ? 12 : 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          child: Text('Batal',
-                              style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: isLandscape ? 11 : 13)),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {
-                            final qty = int.tryParse(stockController.text);
-                            if (qty == null || qty <= 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('Masukkan jumlah yang valid')));
-                              return;
-                            }
-                            final updatedItem = item.copyWith(
-                                stock: item.stock + qty,
-                                updatedAt: DateTime.now());
-                            context
-                                .read<InventoryBloc>()
-                                .add(UpdateInventoryItemEvent(updatedItem));
-                            Navigator.pop(dialogContext);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(
-                                horizontal: isLandscape ? 16 : 24,
-                                vertical: isLandscape ? 8 : 12),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: Text('Simpan',
-                              style:
-                                  TextStyle(fontSize: isLandscape ? 11 : 13)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 
-  void _showReduceStockDialog(InventoryItem item) {
-    final stockController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-        return Dialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isLandscape ? 12 : 20)),
-          child: Container(
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(isLandscape ? 12 : 20)),
-            constraints: BoxConstraints(maxWidth: isLandscape ? 380 : 400),
-            padding: EdgeInsets.fromLTRB(isLandscape ? 12 : 24, isLandscape ? 8 : 20, isLandscape ? 12 : 24, isLandscape ? 8 : 16),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isLandscape)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Kurangi Stok',
-                                  style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900)),
-                              Text(item.name,
-                                  style: TextStyle(
-                                      fontSize: 9, color: Colors.grey),
-                                  overflow: TextOverflow.ellipsis),
-                              Text('Stok: ${item.stock} ${item.unit}',
-                                  style: const TextStyle(fontSize: 9)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 1,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: stockController,
-                                  keyboardType: TextInputType.number,
-                                  autofocus: true,
-                                  style: const TextStyle(fontSize: 10),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Qty',
-                                    labelStyle: TextStyle(fontSize: 9),
-                                    border: OutlineInputBorder(),
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 4),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              IconButton(
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => Navigator.pop(dialogContext),
-                                icon: const Icon(Icons.close_rounded,
-                                    color: Colors.redAccent, size: 16),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  final qty =
-                                      int.tryParse(stockController.text);
-                                  if (qty == null || qty <= 0) return;
-                                  if (qty > item.stock) {
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(const SnackBar(
-                                            content:
-                                                Text('Stok tidak mencukupi')));
-                                    return;
-                                  }
-                                  final updatedItem = item.copyWith(
-                                      stock: item.stock - qty,
-                                      updatedAt: DateTime.now());
-                                  context.read<InventoryBloc>().add(
-                                      UpdateInventoryItemEvent(updatedItem));
-                                  Navigator.pop(dialogContext);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8),
-                                  minimumSize: const Size(0, 26),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4)),
-                                ),
-                                child: const Text('OK',
-                                    style: TextStyle(fontSize: 9)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  else ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Kurangi Stok',
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w900)),
-                              Text(item.name,
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey),
-                                  overflow: TextOverflow.ellipsis),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text('Stok saat ini: ${item.stock} ${item.unit}',
-                        style: const TextStyle(fontSize: 13)),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: stockController,
-                      keyboardType: TextInputType.number,
-                      autofocus: true,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: const InputDecoration(
-                        labelText: 'Jumlah dikurangi',
-                        labelStyle: TextStyle(fontSize: 13),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text('Batal',
-                              style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 13)),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {
-                            final qty = int.tryParse(stockController.text);
-                            if (qty == null || qty <= 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('Masukkan jumlah yang valid')));
-                              return;
-                            }
-                            if (qty > item.stock) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('Stok tidak mencukupi')));
-                              return;
-                            }
-                            final updatedItem = item.copyWith(
-                                stock: item.stock - qty,
-                                updatedAt: DateTime.now());
-                            context
-                                .read<InventoryBloc>()
-                                .add(UpdateInventoryItemEvent(updatedItem));
-                            Navigator.pop(dialogContext);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: const Text('Simpan',
-                              style:
-                                  TextStyle(fontSize: 13)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
-class _FilterSectionTitle extends StatelessWidget {
-  final String title;
-  final bool isCompact;
-
-  const _FilterSectionTitle({
-    required this.title,
-    this.isCompact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontWeight: FontWeight.w700,
-        fontSize: isCompact ? 12 : 15,
-        color: const Color(0xFF475569),
-      ),
-    );
-  }
-}
-
-class _CustomFilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final bool isCompact;
-  final Function(bool) onSelected;
-
-  const _CustomFilterChip({
-    required this.label,
-    required this.isSelected,
-    required this.onSelected,
-    this.isCompact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      labelStyle: TextStyle(
-        fontSize: isCompact ? 11 : 13,
-        fontWeight: FontWeight.bold,
-        color: isSelected ? Colors.white : const Color(0xFF1E293B),
-      ),
-      selected: isSelected,
-      onSelected: onSelected,
-      selectedColor: const Color(0xFF065F46),
-      backgroundColor: Colors.white,
-      showCheckmark: false,
-      elevation: 0,
-      padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      visualDensity: isCompact
-          ? const VisualDensity(horizontal: -4, vertical: -4)
-          : const VisualDensity(horizontal: -2, vertical: -2),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(isCompact ? 8 : 12),
-        side: BorderSide(
-          color: isSelected ? const Color(0xFF065F46) : const Color(0xFFCBD5E1),
-        ),
-      ),
-    );
-  }
-}

@@ -13,6 +13,8 @@ import 'package:bradpos/presentation/blocs/karyawan_event.dart';
 import 'package:bradpos/core/widgets/main_navigation_rail.dart';
 import 'package:bradpos/presentation/screens/history/history_header_section.dart';
 import 'package:bradpos/presentation/screens/history/history_filter_section.dart';
+import 'package:bradpos/presentation/screens/history/history_mini_stat_card.dart';
+import 'package:bradpos/presentation/screens/history/history_pagination_bar.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -248,103 +250,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildMiniStatCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String value,
-    required bool isLandscape,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(isLandscape ? 6 : 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(isLandscape ? 8 : 16),
-          border: Border.all(color: const Color(0xFFCBD5E1), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: EdgeInsets.all(isLandscape ? 3 : 8),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(isLandscape ? 4 : 8),
-              ),
-              child: Icon(icon, color: iconColor, size: isLandscape ? 12 : 20),
-            ),
-            SizedBox(height: isLandscape ? 3 : 12),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: isLandscape ? 7 : 12,
-                color: const Color(0xFF64748B),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: isLandscape ? 1 : 4),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontSize: isLandscape ? 12 : 22,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF0F172A),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPagination(int totalPages, bool isLandscape) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: isLandscape ? 4 : 8,
-        horizontal: isLandscape ? 12 : 16,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: _currentPage > 0
-                ? () => setState(() => _currentPage--)
-                : null,
-            iconSize: isLandscape ? 16 : 20,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
-          Text(
-            'Halaman ${_currentPage + 1} dari $totalPages',
-            style: TextStyle(fontSize: isLandscape ? 11 : 13),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: _currentPage < totalPages - 1
-                ? () => setState(() => _currentPage++)
-                : null,
-            iconSize: isLandscape ? 16 : 20,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +301,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               child: IntrinsicHeight(
                                 child: Row(
                                   children: [
-                                    _buildMiniStatCard(
+                                    HistoryMiniStatCard(
                                       icon: Icons.account_balance_wallet,
                                       iconColor: const Color(0xFF1A73E8),
                                       title: _selectedDateRange == null
@@ -408,7 +313,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                       isLandscape: isLandscape,
                                     ),
                                     SizedBox(width: isLandscape ? 6 : 12),
-                                    _buildMiniStatCard(
+                                    HistoryMiniStatCard(
                                       icon: Icons.receipt_long,
                                       iconColor: const Color(0xFF10B981),
                                       title: 'Total Transaksi',
@@ -416,7 +321,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                       isLandscape: isLandscape,
                                     ),
                                     SizedBox(width: isLandscape ? 6 : 12),
-                                    _buildMiniStatCard(
+                                    HistoryMiniStatCard(
                                       icon: Icons.trending_up,
                                       iconColor: const Color(0xFF8B5CF6),
                                       title: 'Rata-rata',
@@ -624,8 +529,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                             .toList(),
                                       ),
                           ),
-                          if (filtered.isNotEmpty && totalPages > 1)
-                            _buildPagination(totalPages, isLandscape),
+                            if (filtered.isNotEmpty && totalPages > 1)
+                            HistoryPaginationBar(
+                              currentPage: _currentPage,
+                              totalPages: totalPages,
+                              isLandscape: isLandscape,
+                              onPrevious: _currentPage > 0
+                                  ? () => setState(() => _currentPage--)
+                                  : null,
+                              onNext: _currentPage < totalPages - 1
+                                  ? () => setState(() => _currentPage++)
+                                  : null,
+                            ),
                         ],
                       );
                     }

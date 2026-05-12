@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:math';
@@ -21,28 +19,11 @@ import 'package:bradpos/injection_container.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/screens/inventory/category_picker_modal.dart';
+import 'package:bradpos/presentation/widgets/currency_input_formatter.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_form_image_picker.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_form_common.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_form_fields.dart';
 import 'package:intl/intl.dart';
-
-class CurrencyInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    if (newValue.text.isEmpty) return newValue;
-    try {
-      double value = double.parse(newValue.text.replaceAll('.', ''));
-      final formatter = NumberFormat.decimalPattern('id');
-      String newText = formatter.format(value);
-      return newValue.copyWith(
-        text: newText,
-        selection: TextSelection.collapsed(offset: newText.length),
-      );
-    } catch (e) {
-      return oldValue;
-    }
-  }
-}
 
 class InventoryFormScreen extends StatefulWidget {
   final InventoryItem? item;
@@ -265,21 +246,27 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       children: [
-        _buildSectionHeader(Icons.image_outlined, 'Foto Produk'),
+        buildFormSectionHeader(Icons.image_outlined, 'Foto Produk'),
         const SizedBox(height: 12),
-        _buildImageCard(),
+        InventoryFormImagePicker(
+          imagePath: _imagePath,
+          onPickImage: _pickImage,
+        ),
         const SizedBox(height: 24),
-        _buildSectionHeader(Icons.inventory_2_outlined, 'Informasi Produk'),
+        buildFormSectionHeader(
+          Icons.inventory_2_outlined,
+          'Informasi Produk',
+        ),
         const SizedBox(height: 12),
-        _buildSectionCard([
-          _buildModernTextField(
+        buildFormSectionCard([
+          FormTextField(
             controller: _nameController,
             label: 'Nama Produk',
             icon: Icons.edit_note_rounded,
             hint: 'Contoh: Kopi Susu Aren',
           ),
           const SizedBox(height: 20),
-          _buildPickerField(
+          FormPickerField(
             label: 'Kategori',
             icon: Icons.grid_view_rounded,
             value: _categoryController.text.isEmpty
@@ -289,43 +276,43 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           ),
         ]),
         const SizedBox(height: 24),
-        _buildSectionHeader(Icons.payments_outlined, 'Harga & Stok'),
+        buildFormSectionHeader(Icons.payments_outlined, 'Harga & Stok'),
         const SizedBox(height: 12),
-        _buildSectionCard([
-          _buildModernTextField(
+        buildFormSectionCard([
+          FormTextField(
             controller: _sellingPriceController,
             label: 'Harga Jual',
             icon: Icons.upload_rounded,
             prefix: 'Rp',
-            keyboard: TextInputType.number,
+            keyboardType: TextInputType.number,
             formatters: [CurrencyInputFormatter()],
           ),
           if (_showPurchasePrice) ...[
             const SizedBox(height: 20),
-            _buildModernTextField(
+            FormTextField(
               controller: _purchasePriceController,
               label: 'Harga Beli (Opsional)',
               icon: Icons.download_rounded,
               prefix: 'Rp',
-              keyboard: TextInputType.number,
+              keyboardType: TextInputType.number,
               formatters: [CurrencyInputFormatter()],
             ),
             const SizedBox(height: 20),
-            _buildModernTextField(
+            FormTextField(
               controller: _stockController,
               label: 'Stok Saat Ini',
               icon: Icons.inventory_rounded,
-              keyboard: TextInputType.number,
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 20),
-            _buildPickerField(
+            FormPickerField(
               label: 'Satuan',
               icon: Icons.straighten_rounded,
               value: _unitController.text,
               onTap: _showUnitPicker,
             ),
             const SizedBox(height: 20),
-            _buildModernTextField(
+            FormTextField(
               controller: _barcodeController,
               label: 'Barcode (Opsional)',
               icon: Icons.qr_code_scanner_rounded,
@@ -368,7 +355,11 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           ),
         ]),
         const SizedBox(height: 40),
-        _buildSubmitButton(),
+        buildFormSubmitButton(
+          isSubmitting: _isSubmitting,
+          isEditing: isEditing,
+          onSubmit: _submit,
+        ),
         const SizedBox(height: 30),
       ],
     );
@@ -386,24 +377,28 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader(Icons.image_outlined, 'Foto Produk'),
+              buildFormSectionHeader(Icons.image_outlined, 'Foto Produk'),
               const SizedBox(height: 8),
-              _buildImageCard(isCompact: false),
+              InventoryFormImagePicker(
+                imagePath: _imagePath,
+                isCompact: false,
+                onPickImage: _pickImage,
+              ),
               const SizedBox(height: 16),
-              _buildSectionHeader(
+              buildFormSectionHeader(
                 Icons.inventory_2_outlined,
                 'Informasi Produk',
               ),
               const SizedBox(height: 8),
-              _buildSectionCard([
-                _buildModernTextField(
+              buildFormSectionCard([
+                FormTextField(
                   controller: _nameController,
                   label: 'Nama Produk',
                   icon: Icons.edit_note_rounded,
                   hint: 'Contoh: Kopi Susu Aren',
                 ),
                 const SizedBox(height: 16),
-                _buildPickerField(
+                FormPickerField(
                   label: 'Kategori',
                   icon: Icons.grid_view_rounded,
                   value: _categoryController.text.isEmpty
@@ -422,33 +417,33 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader(
+              buildFormSectionHeader(
                 Icons.payments_outlined,
                 'Harga & Stok',
               ),
               const SizedBox(height: 8),
-              _buildSectionCard([
+              buildFormSectionCard([
                 Row(
                   children: [
                     Expanded(
-                      child: _buildModernTextField(
+                      child: FormTextField(
                         controller: _sellingPriceController,
                         label: 'Harga Jual',
                         icon: Icons.upload_rounded,
                         prefix: 'Rp',
-                        keyboard: TextInputType.number,
+                        keyboardType: TextInputType.number,
                         formatters: [CurrencyInputFormatter()],
                       ),
                     ),
                     if (_showPurchasePrice) ...[
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildModernTextField(
+                        child: FormTextField(
                           controller: _purchasePriceController,
                           label: 'Harga Beli (Opsional)',
                           icon: Icons.download_rounded,
                           prefix: 'Rp',
-                          keyboard: TextInputType.number,
+                          keyboardType: TextInputType.number,
                           formatters: [CurrencyInputFormatter()],
                         ),
                       ),
@@ -461,17 +456,17 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                     children: [
                       Expanded(
                         flex: 2,
-                        child: _buildModernTextField(
+                        child: FormTextField(
                           controller: _stockController,
                           label: 'Stok',
                           icon: Icons.inventory_rounded,
-                          keyboard: TextInputType.number,
+                          keyboardType: TextInputType.number,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 2,
-                        child: _buildPickerField(
+                        child: FormPickerField(
                           label: 'Satuan',
                           icon: Icons.straighten_rounded,
                           value: _unitController.text,
@@ -481,7 +476,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 3,
-                        child: _buildModernTextField(
+                        child: FormTextField(
                           controller: _barcodeController,
                           label: 'Barcode (Opsional)',
                           icon: Icons.qr_code_scanner_rounded,
@@ -530,7 +525,11 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
                 ),
               ]),
               const SizedBox(height: 16),
-              _buildSubmitButton(),
+              buildFormSubmitButton(
+                isSubmitting: _isSubmitting,
+                isEditing: isEditing,
+                onSubmit: _submit,
+              ),
             ],
           ),
         ),
@@ -538,268 +537,6 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
       ),
     );
   }
-
-  Widget _buildSubmitButton({bool isCompact = false}) => Container(
-    width: double.infinity,
-    height: isCompact ? 32 : 56,
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [AppColors.primaryGradientStart, AppColors.primaryGradientEnd],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(isCompact ? 8 : 18),
-      boxShadow: [
-        BoxShadow(
-          color: AppColors.primary.withAlpha(50),
-          blurRadius: isCompact ? 6 : 12,
-          offset: Offset(0, isCompact ? 2 : 4),
-        ),
-      ],
-    ),
-    child: ElevatedButton(
-      onPressed: _submit,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        shadowColor: Colors.transparent,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(isCompact ? 8 : 18),
-        ),
-      ),
-      child: _isSubmitting
-          ? const SizedBox(
-              height: 16,
-              width: 16,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            )
-          : Text(
-              isEditing ? 'SIMPAN PERUBAHAN' : 'TAMBAH PRODUK',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: isCompact ? 10 : 14,
-                letterSpacing: 0.5,
-              ),
-            ),
-    ),
-  );
-
-  Widget _buildImageCard({bool isCompact = false}) {
-    return Container(
-      padding: EdgeInsets.all(isCompact ? 4 : 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(isCompact ? 10 : 24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Center(
-        child: GestureDetector(
-          onTap: _pickImage,
-          child: Container(
-            width: isCompact ? 50 : 120,
-            height: isCompact ? 50 : 120,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(isCompact ? 8 : 24),
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(isCompact ? 8 : 22),
-              child: _imagePath != null
-                  ? (_imagePath!.startsWith('http')
-                        ? CachedNetworkImage(
-                            imageUrl: _imagePath!,
-                            fit: BoxFit.cover,
-                          )
-                        : Image.file(File(_imagePath!), fit: BoxFit.cover))
-                  : Icon(
-                      Icons.add_a_photo_rounded,
-                      size: isCompact ? 18 : 28,
-                      color: AppColors.primary.withAlpha(100),
-                    ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(
-    IconData icon,
-    String title, {
-    bool isCompact = false,
-  }) => Row(
-    children: [
-      Icon(icon, size: isCompact ? 10 : 18, color: AppColors.primary),
-      SizedBox(width: isCompact ? 3 : 8),
-      Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          fontWeight: FontWeight.w900,
-          fontSize: isCompact ? 9 : 11,
-          color: const Color(0xFF64748B),
-          letterSpacing: 0.5,
-        ),
-      ),
-    ],
-  );
-
-  Widget _buildSectionCard(List<Widget> children, {bool isCompact = false}) =>
-      Container(
-        padding: EdgeInsets.all(isCompact ? 8 : 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(isCompact ? 10 : 24),
-          boxShadow: isCompact
-              ? const [
-                  BoxShadow(
-                    color: Color(0x04000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: children,
-        ),
-      );
-
-  Widget _buildModernTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    String? hint,
-    String? prefix,
-    TextInputType? keyboard,
-    List<TextInputFormatter>? formatters,
-    bool isCompact = false,
-  }) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      if (!isCompact) ...[
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF475569),
-          ),
-        ),
-        const SizedBox(height: 4),
-      ],
-      TextFormField(
-        controller: controller,
-        keyboardType: keyboard,
-        inputFormatters: formatters,
-        style: TextStyle(
-          fontSize: isCompact ? 10 : 14,
-          fontWeight: FontWeight.w600,
-        ),
-        decoration: InputDecoration(
-          hintText: isCompact ? label : hint,
-          prefixText: prefix != null ? '$prefix ' : null,
-          prefixIcon: Padding(
-            padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 12),
-            child: Icon(
-              icon,
-              size: isCompact ? 13 : 20,
-              color: AppColors.primary,
-            ),
-          ),
-          prefixIconConstraints: isCompact
-              ? const BoxConstraints(minWidth: 30, minHeight: 0)
-              : null,
-          filled: true,
-          fillColor: const Color(0xFFF8FAFC),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: isCompact ? 8 : 16,
-            vertical: isCompact ? 8 : 16,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(isCompact ? 8 : 16),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    ],
-  );
-
-  Widget _buildPickerField({
-    required String label,
-    required IconData icon,
-    required String value,
-    required VoidCallback onTap,
-    bool isCompact = false,
-  }) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      if (!isCompact) ...[
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF475569),
-          ),
-        ),
-        const SizedBox(height: 4),
-      ],
-      InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isCompact ? 8 : 16,
-            vertical: isCompact ? 8 : 16,
-          ),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(isCompact ? 8 : 16),
-          ),
-          child: Row(
-            children: [
-              Padding(
-                padding: EdgeInsets.only(right: isCompact ? 8 : 12),
-                child: Icon(
-                  icon,
-                  size: isCompact ? 13 : 20,
-                  color: AppColors.primary,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: isCompact ? 10 : 14,
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.keyboard_arrow_down,
-                color: Colors.grey,
-                size: isCompact ? 13 : 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-    ],
-  );
 
   void _showCategoryPicker() {
     sl<CategoryBloc>().add(LoadCategoriesEvent());

@@ -7,6 +7,12 @@ import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/presentation/blocs/cashier_bloc.dart';
 import 'package:bradpos/presentation/widgets/numpad_widget.dart';
 import 'package:bradpos/presentation/widgets/receipt_dialog.dart';
+import 'package:bradpos/presentation/screens/cashier/payment_order_summary_card.dart';
+import 'package:bradpos/presentation/screens/cashier/payment_checkout_card.dart';
+import 'package:bradpos/presentation/screens/cashier/payment_combined_summary_card.dart';
+import 'package:bradpos/presentation/screens/cashier/payment_methods_widget.dart';
+import 'package:bradpos/presentation/screens/cashier/payment_customer_card.dart';
+import 'package:bradpos/presentation/screens/cashier/payment_bottom_actions.dart';
 
 class PaymentScreen extends StatefulWidget {
   final CashierState cashierState;
@@ -55,6 +61,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
     setState(() => _amountReceivedStr = '0');
   }
 
+  void _onPaymentMethodChanged(String method) {
+    setState(() {
+      _selectedMethod = method;
+      if (method == 'QRIS') {
+        _amountReceivedStr = widget.cashierState.total.toInt().toString();
+      }
+    });
+  }
+
   void _onShortcutPressed(double amount) {
     setState(() => _amountReceivedStr = amount.toInt().toString());
   }
@@ -67,6 +82,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final isLandscape = mediaQuery.orientation == Orientation.landscape;
+    final canConfirm =
+        _amountReceived >= _balanceDue || _selectedMethod != 'Cash';
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -83,7 +100,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       padding: const EdgeInsets.all(6),
                       child: Column(
                         children: [
-                          _buildPaymentMethods(isCompact: true),
+                          PaymentMethodsWidget(
+                            selectedMethod: _selectedMethod,
+                            isCompact: true,
+                            onMethodChanged: _onPaymentMethodChanged,
+                          ),
                           const SizedBox(height: 4),
                           Expanded(
                             child: NumpadWidget(
@@ -108,13 +129,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       padding: const EdgeInsets.all(6),
                       child: Column(
                         children: [
-                          _buildCustomerCard(isCompact: true),
-                          const SizedBox(height: 4),
-                          Expanded(
-                            child: _buildOrderSummaryListCard(isCompact: true),
+                          CustomerCard(
+                            controller: _customerController,
+                            isCompact: true,
                           ),
                           const SizedBox(height: 4),
-                          _buildCheckoutCard(isCompact: true),
+                          Expanded(
+                            child: OrderSummaryListCard(
+                              cashierState: widget.cashierState,
+                              currencyFormatter: currencyFormatter,
+                              isCompact: true,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          CheckoutCard(
+                            amountReceived: _amountReceived,
+                            balanceDue: _balanceDue,
+                            change: _change,
+                            currencyFormatter: currencyFormatter,
+                            isCompact: true,
+                            onConfirm: _processPayment,
+                            onCancel: () => Navigator.pop(context),
+                          ),
                         ],
                       ),
                     ),
@@ -126,9 +162,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildCustomerCard(isCompact: false),
+                    CustomerCard(
+                      controller: _customerController,
+                      isCompact: false,
+                    ),
                     const SizedBox(height: 8),
-                    _buildPaymentMethods(isCompact: false),
+                    PaymentMethodsWidget(
+                      selectedMethod: _selectedMethod,
+                      isCompact: false,
+                      onMethodChanged: _onPaymentMethodChanged,
+                    ),
                     const SizedBox(height: 8),
                     Expanded(
                       flex: 5,
@@ -146,383 +189,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     const SizedBox(height: 8),
                     Expanded(
                       flex: 4,
-                      child: _buildCombinedSummaryCard(isCompact: false),
-                    ),
-                  ],
-                ),
-              ),
-      ),
-      bottomNavigationBar: !isLandscape ? _buildBottomActionsPortrait() : null,
-    );
-  }
-
-  Widget _buildOrderSummaryListCard({bool isCompact = false}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isCompact ? 6 : 10,
-              vertical: isCompact ? 3 : 8,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Order Summary',
-                  style: TextStyle(
-                    fontSize: isCompact ? 9 : 12,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF475569),
-                  ),
-                ),
-                Text(
-                  '${widget.cashierState.cartItems.length} Items',
-                  style: TextStyle(
-                    color: const Color(0xFF4338CA),
-                    fontSize: isCompact ? 8 : 11,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Flexible(
-            fit: FlexFit.loose,
-            child: ListView.builder(
-              padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 6 : 10,
-                vertical: isCompact ? 1 : 4,
-              ),
-              itemCount: widget.cashierState.cartItems.length,
-              itemBuilder: (context, index) {
-                final item = widget.cashierState.cartItems[index];
-                return Padding(
-                  padding: EdgeInsets.only(bottom: isCompact ? 1 : 6),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Text(
-                              '${item.quantity}x',
-                              style: TextStyle(
-                                fontSize: isCompact ? 9 : 10,
-                                fontWeight: FontWeight.w900,
-                                color: const Color(0xFF4338CA),
-                              ),
-                            ),
-                            SizedBox(width: isCompact ? 4 : 8),
-                            Expanded(
-                              child: Text(
-                                item.productName,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: isCompact ? 9 : 11,
-                                  color: const Color(0xFF1E293B),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        currencyFormatter.format(item.subtotal),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: isCompact ? 9 : 11,
-                          color: const Color(0xFF0F172A),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCheckoutCard({bool isCompact = false}) {
-    final canConfirm =
-        _amountReceived >= _balanceDue || _selectedMethod != 'Cash';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: EdgeInsets.all(isCompact ? 4 : 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Tagihan',
-                style: TextStyle(
-                  color: const Color(0xFF64748B),
-                  fontWeight: FontWeight.w800,
-                  fontSize: isCompact ? 8 : 10,
-                ),
-              ),
-              Text(
-                currencyFormatter.format(_balanceDue),
-                style: TextStyle(
-                  fontSize: isCompact ? 10 : 13,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF0F172A),
-                ),
-              ),
-            ],
-          ),
-          if (!isCompact) const SizedBox(height: 2),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _change >= 0 ? 'Kembalian' : 'Kurang',
-                style: TextStyle(
-                  color: const Color(0xFF64748B),
-                  fontWeight: FontWeight.w800,
-                  fontSize: isCompact ? 8 : 10,
-                ),
-              ),
-              Text(
-                currencyFormatter.format(_change.abs()),
-                style: TextStyle(
-                  fontSize: isCompact ? 10 : 13,
-                  fontWeight: FontWeight.w900,
-                  color: _change >= 0
-                      ? const Color(0xFF059669)
-                      : const Color(0xFFEF4444),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isCompact ? 2 : 6),
-          SizedBox(
-            width: double.infinity,
-            height: isCompact ? 20 : 36,
-            child: ElevatedButton(
-              onPressed: canConfirm ? _processPayment : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF059669),
-                elevation: 0,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(isCompact ? 4 : 8),
-                ),
-              ),
-              child: Text(
-                'Confirm',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: isCompact ? 9 : 12,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: isCompact ? 2 : 4),
-          SizedBox(
-            width: double.infinity,
-            height: isCompact ? 18 : 28,
-            child: TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(isCompact ? 4 : 8),
-                ),
-              ),
-              child: Text(
-                'Cancel Order',
-                style: TextStyle(
-                  color: const Color(0xFFEF4444),
-                  fontWeight: FontWeight.w800,
-                  fontSize: isCompact ? 8 : 11,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCombinedSummaryCard({bool isCompact = false}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Order Summary',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF475569),
-                  ),
-                ),
-                Text(
-                  '${widget.cashierState.cartItems.length} Items',
-                  style: const TextStyle(
-                    color: Color(0xFF4338CA),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              itemCount: widget.cashierState.cartItems.length,
-              itemBuilder: (context, index) {
-                final item = widget.cashierState.cartItems[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Text(
-                        '${item.quantity}x',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF4338CA),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          item.productName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                            color: Color(0xFF1E293B),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        currencyFormatter.format(item.subtotal),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Tagihan',
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      currencyFormatter.format(_balanceDue),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
+                      child: CombinedSummaryCard(
+                        cashierState: widget.cashierState,
+                        currencyFormatter: currencyFormatter,
+                        balanceDue: _balanceDue,
+                        change: _change,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _change >= 0 ? 'Kembalian' : 'Kurang',
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      currencyFormatter.format(_change.abs()),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: _change >= 0
-                            ? const Color(0xFF059669)
-                            : const Color(0xFFEF4444),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+              ),
       ),
+      bottomNavigationBar: !isLandscape
+          ? PaymentBottomActions(
+              canConfirm: canConfirm,
+              onConfirm: _processPayment,
+              onCancel: () => Navigator.pop(context),
+            )
+          : null,
     );
   }
 
@@ -551,192 +235,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ),
       );
     }
-
-  Widget _buildPaymentMethods({bool isCompact = false}) {
-    return Container(
-      padding: EdgeInsets.all(isCompact ? 4 : 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
-      ),
-      child: Row(
-        children: [
-          _methodCard('Cash', Icons.payments_outlined, isCompact: isCompact),
-          SizedBox(width: isCompact ? 4 : 8),
-          _methodCard('QRIS', Icons.qr_code_rounded, isCompact: isCompact),
-        ],
-      ),
-    );
-  }
-
-  Widget _methodCard(String label, IconData icon, {bool isCompact = false}) {
-    final isSelected = _selectedMethod == label;
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedMethod = label;
-            if (label == 'QRIS') {
-              _amountReceivedStr = widget.cashierState.total.toInt().toString();
-            }
-          });
-        },
-        child: Container(
-          height: isCompact ? 24 : 36,
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFECFDF5) : Colors.white,
-            borderRadius: BorderRadius.circular(isCompact ? 4 : 8),
-            border: Border.all(
-              color: isSelected
-                  ? const Color(0xFF10B981)
-                  : const Color(0xFFE2E8F0),
-              width: isSelected ? 2 : 1,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: isSelected
-                    ? const Color(0xFF059669)
-                    : const Color(0xFF475569),
-                size: isCompact ? 11 : 16,
-              ),
-              SizedBox(width: isCompact ? 2 : 6),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: isCompact ? 8 : 13,
-                    fontWeight: FontWeight.w900,
-                    color: isSelected
-                        ? const Color(0xFF065F46)
-                        : const Color(0xFF475569),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCustomerCard({bool isCompact = false}) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 6 : 12,
-        vertical: isCompact ? 2 : 12,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.person_outline_rounded,
-            size: isCompact ? 12 : 22,
-            color: const Color(0xFF64748B),
-          ),
-          SizedBox(width: isCompact ? 3 : 8),
-          Expanded(
-            child: TextField(
-              controller: _customerController,
-              decoration: InputDecoration(
-                hintText: 'Nama Pelanggan',
-                hintStyle: TextStyle(
-                  fontSize: isCompact ? 8 : 13,
-                  color: const Color(0xFF94A3B8),
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              style: TextStyle(
-                fontSize: isCompact ? 9 : 14,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _buildBottomActionsPortrait() {
-    final canConfirm =
-        _amountReceived >= _balanceDue || _selectedMethod != 'Cash';
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: canConfirm ? _processPayment : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF059669),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Confirm Payment',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              height: 32,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Cancel Order',
-                  style: TextStyle(
-                    color: Color(0xFFEF4444),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _processPayment() {
     if (MediaQuery.of(context).orientation == Orientation.landscape) {
