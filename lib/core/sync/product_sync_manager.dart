@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:uuid/uuid.dart';
 import 'package:bradpos/data/data_sources/inventory_local_data_source.dart';
 import 'package:bradpos/data/data_sources/inventory_remote_data_source.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
 
 class ProductSyncManager {
   final InventoryLocalDataSource localDataSource;
@@ -13,38 +13,36 @@ class ProductSyncManager {
   });
 
   Future<void> push(String userId) async {
-    final unsyncedItems = await localDataSource.getUnsyncedItems();
-    if (unsyncedItems.isEmpty) return;
+    final unsynced = await localDataSource.getUnsyncedItems();
+    if (unsynced.isEmpty) return;
 
-    debugPrint("ProductSync: Menemukan ${unsyncedItems.length} produk yang perlu push");
+    debugPrint("ProductSync: Menemukan ${unsynced.length} produk yang perlu push");
 
-    for (var itemMap in unsyncedItems) {
+    for (var itemMap in unsynced) {
       try {
         final status = itemMap['sync_status'] as String;
         String id = itemMap['id'] as String;
         final ownerId = itemMap['owner_id'] as String?;
         final name = itemMap['name'] as String? ?? 'Tanpa Nama';
 
-        // Hanya push data milik user ini (Filter Guest data)
-        if (ownerId != userId) {
-          debugPrint("ProductSync: Skip push '$name' (Data milik $ownerId, bukan $userId)");
+        if (ownerId == null) continue;
+        if (SyncUtils.belongsToOtherUser(ownerId, userId)) {
+          debugPrint("ProductSync: Skip push '$name' (milik $ownerId, bukan $userId)");
           continue;
         }
 
         if (id.isEmpty) continue;
 
-        // UUID Fix
-        if (id.length != 36 || !id.contains('-')) {
-          final oldId = id;
-          final newUuid = const Uuid().v4();
-          debugPrint("ProductSync: Fix ID non-UUID '$oldId' ($name) -> $newUuid");
-          await localDataSource.fixInvalidId(oldId, newUuid);
+        if (SyncUtils.isInvalidUuid(id)) {
+          final (oldId, newId) = SyncUtils.fixUuid(id);
+          debugPrint("ProductSync: Fix ID non-UUID '$oldId' ($name) -> $newId");
+          await localDataSource.fixInvalidId(oldId, newId);
           itemMap = Map<String, dynamic>.from(itemMap);
-          itemMap['id'] = newUuid;
-          id = newUuid;
+          itemMap['id'] = newId;
+          id = newId;
         }
 
-        if (ownerId == 'offline_guest' || ownerId == null || ownerId.isEmpty) {
+        if (SyncUtils.isGuestOwner(ownerId)) {
           itemMap = Map<String, dynamic>.from(itemMap);
           itemMap['owner_id'] = userId;
         }
@@ -56,7 +54,7 @@ class ProductSyncManager {
             await localDataSource.updateItemImage(id, newImageUrl);
           }
           await localDataSource.updateSyncStatus(id, 'synced');
-        } else if (status == 'updated' || status == 'pending_update') {
+        } else if (SyncUtils.shouldPush(status)) {
           debugPrint("ProductSync: Push (updated) produk '$name' ($id)");
           final newImageUrl = await remoteDataSource.pushUpdatedItem(itemMap);
           if (newImageUrl != null) {
@@ -71,26 +69,22 @@ class ProductSyncManager {
   }
 
   Future<void> pull(String userId, {int? limit, int? offset}) async {
-    try {
-      final lastSync = await localDataSource.getLastSyncTime('produk', userId);
-      debugPrint("ProductSync: Pulling products from server (Last Sync: $lastSync)...");
-      
-      final remoteItems = await remoteDataSource.getInventory(
-        userId,
-        limit: limit,
-        offset: offset,
-        lastSync: lastSync,
-      );
-      
-      if (remoteItems.isEmpty) {
-        debugPrint("ProductSync: Tidak ada produk baru di server.");
-        return;
-      }
+    final lastSync = await localDataSource.getLastSyncTime('produk', userId);
+    debugPrint("ProductSync: Pulling products from server (Last Sync: $lastSync)...");
 
-      debugPrint("ProductSync: Berhasil menarik ${remoteItems.length} produk");
-      await localDataSource.saveInventoryItems(remoteItems);
-    } catch (e) {
-      debugPrint("ProductSync Pull Failed: $e");
+    final remoteItems = await remoteDataSource.getInventory(
+      userId,
+      limit: limit,
+      offset: offset,
+      lastSync: lastSync,
+    );
+
+    if (remoteItems.isEmpty) {
+      debugPrint("ProductSync: Tidak ada produk baru di server.");
+      return;
     }
+
+    debugPrint("ProductSync: Berhasil menarik ${remoteItems.length} produk");
+    await localDataSource.saveInventoryItems(remoteItems);
   }
 }

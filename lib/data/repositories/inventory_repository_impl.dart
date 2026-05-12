@@ -1,6 +1,5 @@
 import 'package:dartz/dartz.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/domain/entities/category.dart';
@@ -11,6 +10,8 @@ import 'package:bradpos/data/data_sources/category_local_data_source.dart';
 import 'package:bradpos/data/models/inventory_item_model.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
 import 'package:bradpos/core/sync/sync_service.dart';
+import 'package:uuid/uuid.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
 
 class InventoryRepositoryImpl implements InventoryRepository {
   final SupabaseClient supabase;
@@ -29,15 +30,6 @@ class InventoryRepositoryImpl implements InventoryRepository {
     required this.syncService,
   });
 
-  Future<String?> _getUserId() async {
-    final userResult = await authRepository.getCurrentUser();
-    return userResult.fold((failure) => 'offline_guest', (user) {
-      if (user == null) return 'offline_guest';
-      if (user.role == 'karyawan') return user.ownerId;
-      return user.id;
-    });
-  }
-
   @override
   Future<Either<String, List<InventoryItem>>> getInventory({
     int? limit,
@@ -48,7 +40,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     bool skipSync = false,
   }) async {
     try {
-      final userId = await _getUserId() ?? 'offline_guest';
+      final userId = await SyncUtils.getUserId(authRepository);
       final localItems = await localDataSource.getInventory(
         userId,
         limit: limit,
@@ -70,7 +62,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     String? stockStatus,
   }) async {
     try {
-      final userId = await _getUserId() ?? 'offline_guest';
+      final userId = await SyncUtils.getUserId(authRepository);
       final count = await localDataSource.getInventoryCount(
         userId,
         searchQuery: searchQuery,
@@ -108,7 +100,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     InventoryItem item,
   ) async {
     try {
-      final userId = await _getUserId() ?? 'offline_guest';
+      final userId = await SyncUtils.getUserId(authRepository);
       var newItem = item.copyWith(ownerId: userId);
 
       if (newItem.categoryId == null && newItem.category.isNotEmpty) {
@@ -129,7 +121,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     InventoryItem item,
   ) async {
     try {
-      final userId = await _getUserId() ?? 'offline_guest';
+      final userId = await SyncUtils.getUserId(authRepository);
       var updatedItem = item;
 
       if (updatedItem.categoryId == null && updatedItem.category.isNotEmpty) {
@@ -148,10 +140,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<Either<String, void>> deleteInventoryItem(String id) async {
     try {
-      final userId = await _getUserId() ?? 'offline_guest';
+      final userId = await SyncUtils.getUserId(authRepository);
       await localDataSource.deleteInventoryItem(id, userId);
-      if (userId != 'offline_guest') {
-        _pushDeletedItemToRemote(id, userId);
+      if (userId != SyncUtils.offlineGuest) {
+        await _pushDeletedItemToRemote(id, userId);
       }
       return const Right(null);
     } catch (e) {
@@ -161,8 +153,8 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   @override
   Future<bool> isProductNameExists(String name, {String? excludeId}) async {
-    final userId = await _getUserId();
-    if (userId == null) return false;
+    final userId = await SyncUtils.getUserId(authRepository);
+    if (userId == SyncUtils.offlineGuest) return false;
     return await localDataSource.isProductNameExists(
       name,
       userId,
@@ -173,7 +165,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<bool> hasOfflineData() async {
     try {
-      final items = await localDataSource.getInventory('offline_guest');
+      final items = await localDataSource.getInventory(SyncUtils.offlineGuest);
       return items.isNotEmpty;
     } catch (e) {
       return false;
@@ -186,7 +178,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) return const Left("Harus login untuk sinkronisasi.");
       await localDataSource.migrateOfflineData(userId);
-      syncService.syncAll();
+      await syncService.syncAll();
       return const Right(null);
     } catch (e) {
       return Left("Gagal sinkronisasi data offline: $e");
@@ -195,7 +187,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   Future<void> _pushItemToRemote(InventoryItem item) async {
     try {
-      if (item.ownerId == 'offline_guest') return;
+      if (item.ownerId == SyncUtils.offlineGuest) return;
       final itemMap = InventoryItemModel.fromEntity(item).toMap();
       itemMap.remove('sync_status');
       itemMap.remove('updated_at');

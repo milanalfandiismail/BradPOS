@@ -3,8 +3,7 @@ import 'package:bradpos/domain/entities/karyawan.dart';
 import 'package:bradpos/domain/repositories/karyawan_repository.dart';
 import 'package:bradpos/data/models/karyawan_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
+import 'package:bradpos/core/sync/sync_utils.dart';
 import 'package:bradpos/data/data_sources/karyawan_local_data_source.dart';
 import 'package:bradpos/data/data_sources/karyawan_remote_data_source.dart';
 
@@ -53,7 +52,7 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) return const Left("Akses ditolak.");
 
-      final hashedPassword = _hashPassword(karyawan.password);
+      final hashedPassword = SyncUtils.hashPassword(karyawan.password);
       
       // 1. Simpan ke Remote (Supabase)
       final remoteResult = await remoteDataSource.createKaryawan({
@@ -126,7 +125,7 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
       };
 
       if (karyawan.password.isNotEmpty) {
-        updateData["password_hash"] = _hashPassword(karyawan.password);
+        updateData["password_hash"] = SyncUtils.hashPassword(karyawan.password);
       }
 
       // 2. Update Remote
@@ -137,7 +136,7 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
       final localMap = KaryawanModel.fromEntity(updatedKaryawan).toMap();
       
       if (karyawan.password.isNotEmpty) {
-        localMap['password_hash'] = _hashPassword(karyawan.password);
+        localMap['password_hash'] = SyncUtils.hashPassword(karyawan.password);
       } else {
         final allLocal = await localDataSource.getKaryawans(userId);
         final existing = allLocal.firstWhere((e) => e['id'] == karyawan.id);
@@ -176,9 +175,4 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
     }
   }
 
-  String _hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
 }

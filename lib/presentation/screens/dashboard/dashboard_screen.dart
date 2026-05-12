@@ -9,11 +9,12 @@ import 'package:bradpos/presentation/widgets/stat_card.dart';
 import 'package:bradpos/presentation/widgets/quick_action_button.dart';
 import 'package:bradpos/presentation/widgets/quick_action_card.dart';
 import 'package:bradpos/presentation/widgets/low_stock_banner.dart';
+import 'package:bradpos/presentation/widgets/sales_chart_widget.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
-import 'package:bradpos/presentation/screens/karyawan_list_screen.dart';
-import 'package:bradpos/presentation/screens/inventory_screen.dart';
-import 'package:bradpos/presentation/screens/cashier_screen.dart';
-import 'package:bradpos/presentation/screens/history_screen.dart';
+import 'package:bradpos/presentation/screens/karyawan/karyawan_screen.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_screen.dart';
+import 'package:bradpos/presentation/screens/cashier/cashier_screen.dart';
+import 'package:bradpos/presentation/screens/history/history_screen.dart';
 import 'package:bradpos/core/widgets/main_bottom_nav_bar.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
@@ -54,14 +55,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 children: [
                   BlocBuilder<AuthBloc, AuthState>(
-                    builder: (context, state) {
-                      String shopName = 'BradPOS';
-                      if (state is AuthAuthenticated) {
-                        shopName = state.user.shopName ?? 'BradPOS';
-                      }
-                      return BradHeader(
-                        title: 'Beranda',
-                        subtitle: shopName,
+                    builder: (context, state) => BradHeader(
+                      title: 'Beranda',
+                      subtitle: state.displayShopName,
                         leadingIcon: Icons.home_rounded,
                         showBottomBorder: true,
                         onSettingsTap: () => SettingsModal.show(context),
@@ -107,8 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ]
                             : null,
-                      );
-                    },
+                    ),
                   ),
                   Expanded(
                     child: LayoutBuilder(
@@ -193,10 +188,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             DashboardState>(
                                           builder: (context, state) {
                                             if (state is DashboardLoaded) {
-                                              return _buildSalesPerformance(
-                                                state.stats.dailySales,
-                                                isCompact: true,
-                                              );
+                                              return SalesChartWidget(
+  dailySales: state.stats.dailySales,
+  isCompact: true,
+);
                                             }
                                             return const SizedBox();
                                           },
@@ -245,8 +240,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         ),
                                         _buildStats(state.stats),
                                         const SizedBox(height: 24),
-                                        _buildSalesPerformance(
-                                          state.stats.dailySales,
+                                        SalesChartWidget(
+                                          dailySales: state.stats.dailySales,
                                         ),
                                       ],
                                     );
@@ -293,26 +288,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
               'RINGKASAN TOKO',
               style: TextStyle(
-                fontSize: isCompact ? 9 : 11,
+                fontSize: isCompact ? 12 : 11,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFF64748B),
                 letterSpacing: 1,
               ),
             ),
-            SizedBox(height: isCompact ? 4 : 8),
+            SizedBox(height: isCompact ? 6 : 8),
             Text(
               'Halo, $userName! 👋',
               style: TextStyle(
-                fontSize: isCompact ? 18 : 26,
+                fontSize: isCompact ? 24 : 26,
                 fontWeight: FontWeight.w900,
                 color: const Color(0xFF0F172A),
               ),
             ),
-            SizedBox(height: isCompact ? 2 : 4),
+            SizedBox(height: isCompact ? 4 : 4),
             Text(
               "Berikut laporan performa toko Anda hari ini.",
               style: TextStyle(
-                fontSize: isCompact ? 11 : 14,
+                fontSize: isCompact ? 14 : 14,
                 color: const Color(0xFF64748B),
               ),
             ),
@@ -346,7 +341,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 backgroundColor: const Color(0xFFE0F2FE),
                 foregroundColor: const Color(0xFF0369A1),
                 onTap: () =>
-                    AppNavigator.push(context, const KaryawanListScreen()),
+                    AppNavigator.push(context, const KaryawanScreen()),
               ),
             ],
           ],
@@ -404,119 +399,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Column(children: cards);
-  }
-
-  Widget _buildSalesPerformance(
-    List<double> dailySales, {
-    bool isCompact = false,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(isCompact ? 14 : 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFCBD5E1),
-          width: 1.2,
-        ), // Consistent border for chart
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05), // Consistent shadow
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Grafik Penjualan',
-            style: TextStyle(
-              fontSize: isCompact ? 14 : 16,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF1E293B),
-            ),
-          ),
-          if (!isCompact)
-            const Text(
-              'Trend per hari',
-              style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-            ),
-          SizedBox(height: isCompact ? 12 : 30),
-          SizedBox(
-            height: isCompact ? 100 : 140,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(7, (index) {
-                final sales = index < dailySales.length
-                    ? dailySales[index]
-                    : 0.0;
-
-                double maxSales = dailySales.fold(0.0, (m, v) => v > m ? v : m);
-                if (maxSales == 0) maxSales = 1.0;
-
-                final barMaxHeight = isCompact ? 65.0 : 100.0;
-                final barHeight = (sales / maxSales) * barMaxHeight;
-
-                final days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-                final now = DateTime.now();
-                final date = now.subtract(Duration(days: 6 - index));
-                final dayLabel = days[date.weekday - 1];
-
-                String formatCompact(double value) {
-                  if (value <= 0) return '';
-                  if (value >= 1000000) {
-                    return '${(value / 1000000).toStringAsFixed(1)}jt';
-                  }
-                  if (value >= 1000) {
-                    return '${(value / 1000).toStringAsFixed(0)}rb';
-                  }
-                  return value.toStringAsFixed(0);
-                }
-
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      formatCompact(sales),
-                      style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                        color: index == 6
-                            ? AppColors.primary
-                            : const Color(0xFF94A3B8),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Container(
-                      width: isCompact ? 18 : 28,
-                      height: barHeight < 4 ? 4 : barHeight,
-                      decoration: BoxDecoration(
-                        color: index == 6
-                            ? AppColors.primary
-                            : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(isCompact ? 3 : 6),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      dayLabel,
-                      style: TextStyle(
-                        fontSize: isCompact ? 8 : 9,
-                        color: const Color(0xFF94A3B8),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildBottomActions(BuildContext context, {bool isCompact = false}) {

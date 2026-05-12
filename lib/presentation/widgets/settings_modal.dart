@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
-import 'package:bradpos/presentation/screens/profile_screen.dart';
-import 'package:bradpos/presentation/screens/personal_profile_screen.dart';
+import 'package:bradpos/presentation/screens/profile/profile_screen.dart';
+import 'package:bradpos/presentation/screens/profile/personal_profile_screen.dart';
 
 class SettingsModal {
   static void show(BuildContext context) {
@@ -160,28 +160,10 @@ class SettingsModal {
                                   builder: (_) => const PersonalProfileScreen()));
                             },
                           ),
-                        ListTile(
-                          dense: isLandscape,
-                          visualDensity: isLandscape
-                              ? VisualDensity.compact
-                              : VisualDensity.standard,
-                          leading: _buildIcon(
-                              Icons.help_outline_rounded, Colors.orange,
-                              isLandscape: isLandscape),
-                          title: Text('Bantuan',
-                              style: TextStyle(
-                                  fontSize: labelSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF1E293B))),
-                          subtitle: Text('Pusat bantuan & panduan',
-                              style: TextStyle(fontSize: subLabelSize)),
-                          onTap: () => Navigator.pop(context),
-                        ),
                       ],
                     ),
                   ),
-                  Divider(
-                      height: isLandscape ? 1 : 1, indent: 20, endIndent: 20),
+                  const Divider(height: 1, indent: 20, endIndent: 20),
                   ListTile(
                     dense: isLandscape,
                     visualDensity: isLandscape

@@ -4,7 +4,7 @@ import 'package:bradpos/core/services/stock_alert_service.dart';
 import 'package:bradpos/domain/entities/dashboard_stats.dart';
 import 'package:bradpos/domain/repositories/dashboard_repository.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
-import 'dashboard_state.dart';
+import 'package:bradpos/presentation/blocs/dashboard_state.dart';
 
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final DashboardRepository repository;
@@ -43,23 +43,24 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     });
   }
 
-  Future<int> _getLowStockCount() async {
+  Future<String?> _getUserId() async {
     final userResult = await authRepository.getCurrentUser();
     final user = userResult.getOrElse(() => null);
-    if (user == null) return 0;
-    final userId = (user.isKaryawan && user.ownerId != null)
+    if (user == null) return null;
+    return (user.isKaryawan && user.ownerId != null)
         ? user.ownerId!
         : user.id;
+  }
+
+  Future<int> _getLowStockCount() async {
+    final userId = await _getUserId();
+    if (userId == null) return 0;
     return stockAlertService.getLowStockCount(userId);
   }
 
   Future<int> _getOutOfStockCount() async {
-    final userResult = await authRepository.getCurrentUser();
-    final user = userResult.getOrElse(() => null);
-    if (user == null) return 0;
-    final userId = (user.isKaryawan && user.ownerId != null)
-        ? user.ownerId!
-        : user.id;
+    final userId = await _getUserId();
+    if (userId == null) return 0;
     return stockAlertService.getOutOfStockCount(userId);
   }
 }

@@ -319,20 +319,14 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                 ],
               ),
               child: BlocBuilder<AuthBloc, AuthState>(
-                builder: (context, state) {
-                  String shopName = 'BradPOS';
-                  if (state is AuthAuthenticated) {
-                    shopName = state.user.shopName ?? 'BradPOS';
-                  }
-                  return BradHeader(
-                    title: isEditing ? 'Ubah Karyawan' : 'Tambah Karyawan',
-                    subtitle: shopName,
+                builder: (context, state) => BradHeader(
+                  title: isEditing ? 'Ubah Karyawan' : 'Tambah Karyawan',
+                  subtitle: state.displayShopName,
                     showBackButton: true,
                     leadingIcon: Icons.person_add_rounded,
                     showSettings: false,
-                  );
-                },
-              ),
+                  ),
+                ),
             ),
             Expanded(
               child: Form(

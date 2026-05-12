@@ -159,24 +159,6 @@ class BradHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 20),
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: const Text('Profil Saya'),
-            onTap: () => Navigator.pop(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.help_outline),
-            title: const Text('Bantuan'),
-            onTap: () => Navigator.pop(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Logout', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
           const SizedBox(height: 32),
         ],
       ),

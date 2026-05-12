@@ -5,17 +5,18 @@ import 'package:bradpos/core/widgets/main_bottom_nav_bar.dart';
 import 'package:bradpos/presentation/blocs/inventory_bloc.dart';
 import 'package:bradpos/presentation/blocs/inventory_event.dart';
 import 'package:bradpos/presentation/blocs/inventory_state.dart';
-import 'package:bradpos/presentation/widgets/inventory_item_card.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_item_card.dart';
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
-import 'package:bradpos/presentation/screens/inventory_form_screen.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_form_screen.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
 import 'package:bradpos/injection_container.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/utils/app_navigator.dart';
 import 'package:bradpos/core/widgets/main_navigation_rail.dart';
-import 'package:bradpos/presentation/screens/category_list_screen.dart';
+import 'package:bradpos/presentation/screens/category/category_screen.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_pagination_bar.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -121,14 +122,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }).toList();
   }
 
-  void _openForm({InventoryItem? item}) {
-    AppNavigator.push(
+  Future<void> _openForm({InventoryItem? item}) async {
+    final inventoryBloc = context.read<InventoryBloc>();
+    await AppNavigator.push(
       context,
       BlocProvider.value(
-        value: context.read<InventoryBloc>(),
+        value: inventoryBloc,
         child: InventoryFormScreen(item: item),
       ),
     );
+    inventoryBloc.add(const LoadInventoryCategoriesEvent());
   }
 
   @override
@@ -198,14 +201,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return Column(
       children: [
         BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            String shopName = 'BradPOS';
-            if (state is AuthAuthenticated) {
-              shopName = state.user.shopName ?? 'BradPOS';
-            }
-            return BradHeader(
-              title: 'Produk | Inventory',
-              subtitle: shopName,
+          builder: (context, state) => BradHeader(
+            title: 'Produk | Inventory',
+            subtitle: state.displayShopName,
               leadingIcon: Icons.inventory_2_rounded,
               showBottomBorder: true,
               showSettings: !isLandscape,
@@ -221,8 +219,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
               },
               actions: [
                 IconButton(
-                  onPressed: () =>
-                      AppNavigator.push(context, const CategoryListScreen()),
+                  onPressed: () async {
+                    final inventoryBloc = context.read<InventoryBloc>();
+                    await AppNavigator.push(context, const CategoryScreen());
+                    inventoryBloc.add(const LoadInventoryCategoriesEvent());
+                  },
                   icon: Icon(
                     Icons.category_rounded,
                     color: const Color(0xFF64748B),
@@ -258,9 +259,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                   ),
               ],
-            );
-          },
-        ),
+            ),
+          ),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -298,84 +298,82 @@ class _InventoryScreenState extends State<InventoryScreen> {
           children: [
             Expanded(
               child: SizedBox(
-                height: 22,
+                height: 48,
                 child: TextField(
                   textAlignVertical: TextAlignVertical.center,
                   controller: _searchController,
-                  style: const TextStyle(fontSize: 8),
+                  style: const TextStyle(fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Cari produk...',
-                    hintStyle: const TextStyle(color: Colors.grey, fontSize: 8),
+                    hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                     prefixIcon: const Icon(
                       Icons.search_rounded,
                       color: Colors.grey,
-                      size: 12,
+                      size: 20,
                     ),
                     prefixIconConstraints: const BoxConstraints(
-                      minWidth: 24,
-                      minHeight: 22,
+                      minWidth: 40,
+                      minHeight: 48,
                     ),
                     filled: true,
                     fillColor: const Color(0xFFF1F5F9),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
                     ),
                     isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 8),
             SizedBox(
-              height: 22,
+              height: 40,
               child: OutlinedButton.icon(
                 onPressed: () => _showFilterSheet(),
-                icon: const Icon(Icons.tune, size: 10),
-                label: const Text('Filter', style: TextStyle(fontSize: 8)),
+                icon: const Icon(Icons.tune, size: 18),
+                label: const Text('Filter', style: TextStyle(fontSize: 13)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF334155),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   side: const BorderSide(color: Color(0xFFE2E8F0)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   backgroundColor: Colors.white,
-                  visualDensity:
-                      const VisualDensity(horizontal: -4, vertical: -4),
+                  visualDensity: VisualDensity.comfortable,
                 ),
               ),
             ),
             if (!_isKaryawan) ...[
               const SizedBox(width: 8),
               SizedBox(
-                height: 22,
+                height: 40,
                 child: ElevatedButton.icon(
                   onPressed: () => _openForm(),
-                  icon: const Icon(Icons.add, size: 10),
+                  icon: const Icon(Icons.add, size: 18),
                   label: const Text(
                     'Tambah',
-                    style: TextStyle(fontSize: 8),
+                    style: TextStyle(fontSize: 13),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF065F46),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     elevation: 0,
-                    visualDensity:
-                        const VisualDensity(horizontal: -4, vertical: -4),
+                    visualDensity: VisualDensity.comfortable,
                   ),
                 ),
               ),
@@ -502,7 +500,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
         _buildInventorySliver(displayItems),
         if (totalPages > 1)
           SliverToBoxAdapter(
-            child: _buildPaginationControls(totalPages),
+            child: InventoryPaginationBar(
+  currentPage: _currentPage,
+  totalPages: totalPages,
+  onPrevious: _currentPage > 1
+      ? () {
+          setState(() => _currentPage--);
+          _loadPage();
+        }
+      : null,
+  onNext: _currentPage < totalPages
+      ? () {
+          setState(() => _currentPage++);
+          _loadPage();
+        }
+      : null,
+),
           ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
       ],
@@ -521,7 +534,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             crossAxisCount: 4,
             crossAxisSpacing: 4,
             mainAxisSpacing: 4,
-            mainAxisExtent: 130,
+            mainAxisExtent: 160,
           ),
           delegate: SliverChildBuilderDelegate(
             (context, index) {
@@ -574,80 +587,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _buildPaginationControls(int totalPages) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: isLandscape ? 8 : 12,
-        horizontal: 16,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildPageButton(
-            onPressed: _currentPage > 1
-                ? () {
-                    setState(() => _currentPage--);
-                    _loadPage();
-                  }
-                : null,
-            icon: Icons.chevron_left_rounded,
-            isCompact: isLandscape,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '$_currentPage / $totalPages',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-              fontSize: isLandscape ? 12 : 14,
-            ),
-          ),
-          const SizedBox(width: 12),
-          _buildPageButton(
-            onPressed: _currentPage < totalPages
-                ? () {
-                    setState(() => _currentPage++);
-                    _loadPage();
-                  }
-                : null,
-            icon: Icons.chevron_right_rounded,
-            isCompact: isLandscape,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPageButton({
-    VoidCallback? onPressed,
-    required IconData icon,
-    bool isCompact = false,
-  }) => Material(
-    color: onPressed == null
-        ? Colors.grey.shade50
-        : AppColors.primary.withValues(alpha: 0.1),
-    borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
-    child: InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
-      child: Container(
-        width: isCompact ? 32 : 40,
-        height: isCompact ? 32 : 40,
-        alignment: Alignment.center,
-        child: Icon(
-          icon,
-          size: isCompact ? 18 : 22,
-          color: onPressed == null ? Colors.grey.shade300 : AppColors.primary,
-        ),
-      ),
-    ),
-  );
 
   Widget _buildEmptyState() => ListView(
     physics: const AlwaysScrollableScrollPhysics(),

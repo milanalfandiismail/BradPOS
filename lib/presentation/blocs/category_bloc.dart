@@ -1,10 +1,9 @@
-import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/domain/entities/category.dart';
 import 'package:bradpos/domain/repositories/category_repository.dart';
 import 'package:bradpos/core/sync/sync_service.dart';
-import 'category_event.dart';
-import 'category_state.dart';
+import 'package:bradpos/presentation/blocs/category_event.dart';
+import 'package:bradpos/presentation/blocs/category_state.dart';
 
 class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
   final CategoryRepository repository;
@@ -56,61 +55,37 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
     UpdateCategoryEvent event,
     Emitter<CategoryState> emit,
   ) async {
-    debugPrint("DEBUG _onUpdateCategory: START, id=${event.id}, name=${event.newName}");
-    try {
-      final result = await repository.updateCategory(
-        Category(
-          id: event.id,
-          ownerId: '',
-          name: event.newName,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      debugPrint("DEBUG update result: $result");
-      await result.fold(
-        (failure) async {
-          debugPrint("DEBUG update failure: $failure");
-          emit(CategoryError(failure));
-        },
-        (_) async {
-          emit(CategoryOperationSuccess("Kategori berhasil diperbarui"));
-          syncService.syncAll();
-          final loadResult = await repository.getCategories();
-          debugPrint("DEBUG loadResult: ${loadResult.fold((l)=>l, (r)=>r.length)}");
-          loadResult.fold(
-            (failure) => emit(CategoryError(failure)),
-            (categories) => emit(CategoryLoaded(categories)),
-          );
-        },
-      );
-    } catch (e) {
-      debugPrint("DEBUG update exception: $e");
-      emit(CategoryError("Error: $e"));
-    }
+    final result = await repository.updateCategory(
+      Category(
+        id: event.id,
+        ownerId: '',
+        name: event.newName,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    await result.fold(
+      (failure) async => emit(CategoryError(failure)),
+      (_) async {
+        emit(CategoryOperationSuccess("Kategori berhasil diperbarui"));
+        add(LoadCategoriesEvent());
+        syncService.syncAll();
+      },
+    );
   }
 
   Future<void> _onDeleteCategory(
     DeleteCategoryEvent event,
     Emitter<CategoryState> emit,
   ) async {
-    debugPrint("DEBUG _onDeleteCategory: START, id=${event.id}, name=${event.name}");
     final result = await repository.deleteCategory(event.id, event.name);
-    debugPrint("DEBUG delete result: $result");
     await result.fold(
-      (failure) async {
-        debugPrint("DEBUG delete failure: $failure");
-        emit(CategoryError(failure));
-      },
+      (failure) async => emit(CategoryError(failure)),
       (_) async {
-        debugPrint("DEBUG emit success");
         emit(CategoryOperationSuccess("Kategori berhasil dihapus"));
+        add(LoadCategoriesEvent());
         syncService.syncAll();
-        final loadResult = await repository.getCategories();
-        debugPrint("DEBUG loadResult categories: ${loadResult.getOrElse(() => []).length}");
-        emit(CategoryLoaded(loadResult.getOrElse(() => [])));
       },
     );
-    debugPrint("DEBUG _onDeleteCategory: DONE");
   }
 }

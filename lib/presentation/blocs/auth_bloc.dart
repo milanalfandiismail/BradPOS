@@ -182,3 +182,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     return super.close();
   }
 }
+
+extension AuthStateX on AuthState {
+  String get displayShopName =>
+      this is AuthAuthenticated ? (this as AuthAuthenticated).user.shopName ?? 'BradPOS' : 'BradPOS';
+}

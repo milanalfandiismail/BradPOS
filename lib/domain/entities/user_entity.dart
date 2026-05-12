@@ -46,6 +46,34 @@ class UserEntity extends Equatable {
   /// Helper untuk mengecek apakah user dalam mode Guest.
   bool get isGuest => role == 'guest';
 
+  UserEntity copyWith({
+    String? id,
+    String? email,
+    String? name,
+    String? shopName,
+    String? shopId,
+    String? role,
+    String? ownerId,
+    String? remoteImage,
+    String? localImage,
+    String? address,
+    String? phone,
+  }) {
+    return UserEntity(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      name: name ?? this.name,
+      shopName: shopName ?? this.shopName,
+      shopId: shopId ?? this.shopId,
+      role: role ?? this.role,
+      ownerId: ownerId ?? this.ownerId,
+      remoteImage: remoteImage ?? this.remoteImage,
+      localImage: localImage ?? this.localImage,
+      address: address ?? this.address,
+      phone: phone ?? this.phone,
+    );
+  }
+
   factory UserEntity.fromMap(Map<String, dynamic> map) {
     return UserEntity(
       id: map['id'],

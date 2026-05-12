@@ -519,23 +519,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       title: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          String shopName = 'BradPOS';
-          if (state is AuthAuthenticated) {
-            shopName = state.user.shopName ?? 'BradPOS';
-          }
-          return Text(
-            shopName,
-            style: TextStyle(
+        builder: (context, state) => Text(
+          state.displayShopName,
+          style: TextStyle(
               color: const Color(0xFF0F172A),
               fontSize: isLandscape ? 11 : 14,
               fontWeight: FontWeight.w900,
             ),
-          );
-        },
-      ),
-    );
-  }
+          ),
+        ),
+      );
+    }
 
   Widget _buildPaymentMethods({bool isCompact = false}) {
     return Container(
@@ -1138,11 +1132,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   void _printReceipt() {
     final state = context.read<AuthBloc>().state;
-    String shopName = 'BradPOS';
+    final shopName = state.displayShopName;
     String? shopAddress;
     String? shopPhone;
     if (state is AuthAuthenticated) {
-      shopName = state.user.shopName ?? 'BradPOS';
       shopAddress = state.user.address;
       shopPhone = state.user.phone;
     }

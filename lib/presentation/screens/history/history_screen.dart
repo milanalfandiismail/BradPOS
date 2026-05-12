@@ -5,9 +5,9 @@ import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/presentation/blocs/history/history_bloc.dart';
 import 'package:bradpos/presentation/blocs/history/history_event.dart';
 import 'package:bradpos/presentation/blocs/history/history_state.dart';
-import 'package:bradpos/domain/entities/transaction.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/presentation/screens/report/transaction_detail_screen.dart';
+import 'package:bradpos/presentation/screens/history/history_transaction_card.dart';
 import 'package:bradpos/core/widgets/main_bottom_nav_bar.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
@@ -645,251 +645,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
             _isSameDay(range.end, last7Days.end);
   }
 
-  Widget _buildTransactionCard(
-    Transaction trx,
-    bool isLandscape,
-    BuildContext ctx,
-  ) {
-    if (isLandscape) {
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => Navigator.push(
-              ctx,
-              MaterialPageRoute(
-                builder: (context) =>
-                    TransactionDetailScreen(transaction: trx),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.receipt_long,
-                        size: 14,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          trx.transactionNumber,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time,
-                        size: 9,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        DateFormat('dd MMM yyyy, HH:mm').format(trx.createdAt),
-                        style: const TextStyle(fontSize: 9),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    trx.cashierName ?? 'System',
-                    style: const TextStyle(fontSize: 9, color: Colors.grey),
-                  ),
-                  Text(
-                    trx.customerName != null && trx.customerName!.isNotEmpty
-                        ? trx.customerName!
-                        : '-',
-                    style: const TextStyle(fontSize: 9, color: Colors.grey),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        currencyFormatter.format(trx.total),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                      BlocBuilder<AuthBloc, AuthState>(
-                        builder: (context, authState) {
-                          if (authState is AuthAuthenticated &&
-                              authState.user.role == 'owner') {
-                            return InkWell(
-                              onTap: () => _confirmDelete(context, trx.id),
-                              child: const Icon(
-                                Icons.delete_outline,
-                                color: Colors.redAccent,
-                                size: 16,
-                              ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.push(
-            ctx,
-            MaterialPageRoute(
-              builder: (context) =>
-                  TransactionDetailScreen(transaction: trx),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.receipt_long,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        trx.transactionNumber,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    currencyFormatter.format(trx.total),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Kasir: ${trx.cashierName ?? 'System'}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.access_time,
-                                size: 12,
-                                color: Colors.grey.shade500,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                DateFormat('dd MMM yyyy, HH:mm')
-                                    .format(trx.createdAt),
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    BlocBuilder<AuthBloc, AuthState>(
-                      builder: (context, authState) {
-                        if (authState is AuthAuthenticated &&
-                            authState.user.role == 'owner') {
-                          return IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.redAccent,
-                              size: 20,
-                            ),
-                            onPressed: () =>
-                                _confirmDelete(context, trx.id),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildMiniStatCard({
     required IconData icon,
     required Color iconColor,
@@ -1197,10 +952,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                         ),
                                         itemCount: displayed.length,
                                         itemBuilder: (context, index) {
-                                          return _buildTransactionCard(
-                                            displayed[index],
-                                            isLandscape,
-                                            context,
+                                          final trx = displayed[index];
+                                          return HistoryTransactionCard(
+                                            transaction: trx,
+                                            isLandscape: isLandscape,
+                                            currencyFormatter: currencyFormatter,
+                                            onTap: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => TransactionDetailScreen(transaction: trx),
+                                              ),
+                                            ),
+                                            onDelete: (ctx) => _confirmDelete(ctx, trx.id),
                                           );
                                         },
                                       )
@@ -1212,10 +975,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                         ),
                                         children: displayed
                                             .map(
-                                              (trx) => _buildTransactionCard(
-                                                trx,
-                                                isLandscape,
-                                                context,
+                                              (trx) => HistoryTransactionCard(
+                                                transaction: trx,
+                                                isLandscape: isLandscape,
+                                                currencyFormatter: currencyFormatter,
+                                                onTap: () => Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) => TransactionDetailScreen(transaction: trx),
+                                                  ),
+                                                ),
+                                                onDelete: (ctx) => _confirmDelete(ctx, trx.id),
                                               ),
                                             )
                                             .toList(),
@@ -1244,14 +1014,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Column(
       children: [
         BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            String shopName = 'BradPOS';
-            if (state is AuthAuthenticated) {
-              shopName = state.user.shopName ?? 'BradPOS';
-            }
-            return BradHeader(
-              title: 'Riwayat Transaksi',
-              subtitle: shopName,
+          builder: (context, state) => BradHeader(
+            title: 'Riwayat Transaksi',
+            subtitle: state.displayShopName,
               leadingIcon: Icons.history_rounded,
               showBottomBorder: true,
               showSettings: !isLandscape,
@@ -1283,9 +1048,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                     ]
                   : null,
-            );
-          },
-        ),
+            ),
+          ),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -1308,28 +1072,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   children: [
                     Expanded(
                       child: SizedBox(
-                        height: isLandscape ? 22 : 56,
+                        height: isLandscape ? 48 : 56,
                         child: TextField(
                           textAlignVertical: TextAlignVertical.center,
                           controller: _searchController,
                           style: TextStyle(
-                            fontSize: isLandscape ? 8 : 14,
+                            fontSize: isLandscape ? 14 : 14,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Cari nomor transaksi...',
                             hintStyle: TextStyle(
-                              fontSize: isLandscape ? 8 : 14,
+                              fontSize: isLandscape ? 14 : 14,
                               color: Colors.grey,
                             ),
                             prefixIcon: Icon(
                               Icons.search_rounded,
                               color: Colors.grey,
-                              size: isLandscape ? 12 : 20,
+                              size: isLandscape ? 20 : 20,
                             ),
                             prefixIconConstraints: isLandscape
                                 ? const BoxConstraints(
-                                    minWidth: 24,
-                                    minHeight: 22,
+                                    minWidth: 40,
+                                    minHeight: 48,
                                   )
                                 : null,
                             suffixIcon: _searchQuery.isNotEmpty
@@ -1356,7 +1120,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             fillColor: const Color(0xFFF1F5F9),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
-                                isLandscape ? 8 : 16,
+                                isLandscape ? 12 : 16,
                               ),
                               borderSide: const BorderSide(
                                 color: Color(0xFFE2E8F0),
@@ -1364,7 +1128,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
-                                isLandscape ? 8 : 16,
+                                isLandscape ? 12 : 16,
                               ),
                               borderSide: const BorderSide(
                                 color: Color(0xFFE2E8F0),
@@ -1372,7 +1136,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
-                                isLandscape ? 8 : 16,
+                                isLandscape ? 12 : 16,
                               ),
                               borderSide: const BorderSide(
                                 color: Color(0xFFCBD5E1),
@@ -1380,7 +1144,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             ),
                             isDense: isLandscape,
                             contentPadding: isLandscape
-                                ? EdgeInsets.zero
+                                ? const EdgeInsets.symmetric(horizontal: 12)
                                 : const EdgeInsets.symmetric(
                                     vertical: 16,
                                   ),
@@ -1397,20 +1161,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     SizedBox(width: isLandscape ? 6 : 8),
                     if (isLandscape)
                       SizedBox(
-                        height: 22,
+                        height: 40,
                         child: OutlinedButton.icon(
                           onPressed: _showFilterModal,
-                          icon: const Icon(Icons.tune, size: 10),
+                          icon: const Icon(Icons.tune, size: 18),
                           label: const Text('Filter',
-                              style: TextStyle(fontSize: 8)),
+                              style: TextStyle(fontSize: 13)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF334155),
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             side: const BorderSide(color: Color(0xFFE2E8F0)),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             backgroundColor: Colors.white,
+                            visualDensity: VisualDensity.comfortable,
                           ),
                         ),
                       )

@@ -1,6 +1,5 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter/foundation.dart' hide Category;
-import 'package:uuid/uuid.dart';
 import 'package:bradpos/domain/entities/category.dart';
 import 'package:bradpos/domain/repositories/category_repository.dart';
 import 'package:bradpos/data/data_sources/category_local_data_source.dart';
@@ -8,6 +7,8 @@ import 'package:bradpos/data/data_sources/category_remote_data_source.dart';
 import 'package:bradpos/data/data_sources/inventory_local_data_source.dart';
 import 'package:bradpos/data/models/category_model.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
+import 'package:uuid/uuid.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
 
 class CategoryRepositoryImpl implements CategoryRepository {
   final CategoryLocalDataSource localDataSource;
@@ -22,21 +23,12 @@ class CategoryRepositoryImpl implements CategoryRepository {
     required this.authRepository,
   });
 
-  Future<String?> _getUserId() async {
-    final userResult = await authRepository.getCurrentUser();
-    return userResult.fold((failure) => 'offline_guest', (user) {
-      if (user == null) return 'offline_guest';
-      if (user.role == 'karyawan') return user.ownerId;
-      return user.id;
-    });
-  }
-
   String _generateUuid() => const Uuid().v4();
 
   @override
   Future<Either<String, List<Category>>> getCategories() async {
     try {
-      final userId = await _getUserId() ?? 'offline_guest';
+      final userId = await SyncUtils.getUserId(authRepository);
       final local = await localDataSource.getCategories(userId);
       final fixed = <Category>[];
       for (var cat in local) {
@@ -59,13 +51,25 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Either<String, Category>> addCategory(Category category) async {
     try {
-      final userId = await _getUserId();
+      final userId = await SyncUtils.getUserId(authRepository);
+      
+      // Prevent duplicate names locally
+      final existingResult = await getCategories();
+      final exists = existingResult.fold(
+        (_) => false,
+        (cats) => cats.any((c) => c.name.toLowerCase() == category.name.toLowerCase()),
+      );
+      
+      if (exists) {
+        return Left('Kategori "${category.name}" sudah ada');
+      }
+
       final newCat = category.copyWith(
         id: category.id.isEmpty ? _generateUuid() : category.id,
         ownerId: userId,
       );
       await localDataSource.addCategory(newCat);
-      if (userId != 'offline_guest' && userId != null) {
+      if (userId != SyncUtils.offlineGuest && userId.isNotEmpty) {
         await remoteDataSource.pushCreatedCategory(
           CategoryModel.fromEntity(newCat).toMap(),
         );
@@ -79,7 +83,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Either<String, Category>> updateCategory(Category category) async {
     try {
-      final userId = await _getUserId();
+      final userId = await SyncUtils.getUserId(authRepository);
       var cat = category.copyWith(ownerId: userId);
 
       // Get old name before update to propagate to products
@@ -97,7 +101,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
       await localDataSource.updateCategory(cat);
 
       // Propagate category name change to existing products
-      if (oldName != null && oldName != cat.name && userId != null) {
+      if (oldName != null && oldName != cat.name && userId.isNotEmpty) {
         await inventoryLocalDataSource.updateProductsCategoryName(
           oldName,
           cat.name,
@@ -105,7 +109,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
         );
       }
 
-      if (userId != 'offline_guest' && userId != null) {
+      if (userId != SyncUtils.offlineGuest && userId.isNotEmpty) {
         await remoteDataSource.pushUpdatedCategory(
           CategoryModel.fromEntity(cat).toMap(),
         );
@@ -119,9 +123,9 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Either<String, void>> deleteCategory(String id, String name) async {
     try {
-      final userId = await _getUserId();
-      await localDataSource.deleteCategory(id, userId!, name: name);
-      if (userId != 'offline_guest' && id.isNotEmpty) {
+      final userId = await SyncUtils.getUserId(authRepository);
+      await localDataSource.deleteCategory(id, userId, name: name);
+      if (userId != SyncUtils.offlineGuest && id.isNotEmpty) {
         try {
           await remoteDataSource.updateProductsCategoryToNull(id, userId);
           await remoteDataSource.pushDeletedCategory(id, userId);

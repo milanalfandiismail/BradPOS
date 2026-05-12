@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
-import 'package:bradpos/presentation/screens/login_screen.dart';
-import 'package:bradpos/presentation/screens/dashboard_screen.dart';
+import 'package:bradpos/presentation/screens/login/login_screen.dart';
+import 'package:bradpos/presentation/screens/dashboard/dashboard_screen.dart';
 import 'package:bradpos/core/sync/sync_service.dart';
 import '../../injection_container.dart';
 import '../app_colors.dart';
@@ -56,9 +56,6 @@ class _SplashPageState extends State<SplashPage> {
     } catch (e) {
       debugPrint("Splash: sync error: $e");
     }
-
-    // Fake loading biar estetik
-    await Future.delayed(const Duration(seconds: 3));
 
     _goToDashboard();
   }

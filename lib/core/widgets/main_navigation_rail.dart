@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import '../utils/app_navigator.dart';
 import 'package:bradpos/presentation/widgets/stock_alert_badge.dart';
-import 'package:bradpos/presentation/screens/dashboard_screen.dart';
-import 'package:bradpos/presentation/screens/cashier_screen.dart';
-import 'package:bradpos/presentation/screens/inventory_screen.dart';
-import 'package:bradpos/presentation/screens/history_screen.dart';
+import 'package:bradpos/presentation/screens/dashboard/dashboard_screen.dart';
+import 'package:bradpos/presentation/screens/cashier/cashier_screen.dart';
+import 'package:bradpos/presentation/screens/inventory/inventory_screen.dart';
+import 'package:bradpos/presentation/screens/history/history_screen.dart';
 import 'package:bradpos/injection_container.dart' as di;
 import 'package:bradpos/core/services/stock_alert_service.dart';
 import 'package:bradpos/presentation/widgets/settings_modal.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
-import 'package:bradpos/presentation/screens/login_screen.dart';
+import 'package:bradpos/presentation/screens/login/login_screen.dart';
 
 class MainNavigationRail extends StatelessWidget {
   final String activeLabel;

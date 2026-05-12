@@ -112,7 +112,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       'produk',
       where: clause,
       whereArgs: args,
-      orderBy: 'category ASC, name ASC',
+      orderBy: 'name ASC',
       limit: limit,
       offset: offset,
     );

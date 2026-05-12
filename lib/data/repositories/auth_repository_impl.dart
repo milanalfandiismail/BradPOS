@@ -7,8 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bradpos/domain/entities/user_entity.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
 import 'package:bradpos/data/data_sources/profile_local_data_source.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
 import 'package:bradpos/data/data_sources/profile_remote_data_source.dart';
-import 'package:crypto/crypto.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final SupabaseClient supabase;
@@ -317,7 +317,7 @@ class AuthRepositoryImpl implements AuthRepository {
       // Handle Password Change
       if (newPassword != null && newPassword.isNotEmpty) {
         if (user.role == 'karyawan') {
-          final hashedPassword = _hashPassword(newPassword);
+          final hashedPassword = SyncUtils.hashPassword(newPassword);
           await supabase
               .from('karyawan')
               .update({'password_hash': hashedPassword})
@@ -383,13 +383,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  @override
-  Future<void> syncProfile() async {
-    // Profile sync moved to ProfileSyncManager.
-    // Method kept for backward compatibility with AuthRepository interface.
-    // SyncService now uses ProfileSyncManager directly.
-  }
-
   // ==================== Guest AUTH (Offline Mode) ====================
 
   @override
@@ -432,7 +425,7 @@ class AuthRepositoryImpl implements AuthRepository {
         params: {
           'p_shop_id': shopId,
           'p_full_name': name,
-          'p_password': _hashPassword(password)
+          'p_password': SyncUtils.hashPassword(password)
         },
       );
 
@@ -485,7 +478,7 @@ class AuthRepositoryImpl implements AuthRepository {
         'create_karyawan_v2',
         params: {
           'p_full_name': fullName,
-          'p_password': _hashPassword(password),
+          'p_password': SyncUtils.hashPassword(password),
         },
       );
       return Right(response.toString());
@@ -509,9 +502,4 @@ class AuthRepositoryImpl implements AuthRepository {
     });
   }
 
-  String _hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
 }

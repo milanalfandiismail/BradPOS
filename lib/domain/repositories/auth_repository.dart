@@ -37,9 +37,6 @@ abstract class AuthRepository {
     String? newPassword,
   });
 
-  /// Sinkronisasi profil lengkap dari server (Nama Toko, Alamat, HP, Gambar).
-  Future<void> syncProfile();
-
   // ==================== Guest Auth (Offline Mode) ====================
 
   /// Login sebagai Guest (Offline Mode)

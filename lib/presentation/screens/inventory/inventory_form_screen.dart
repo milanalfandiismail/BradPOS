@@ -12,14 +12,15 @@ import 'package:bradpos/domain/entities/category.dart';
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/presentation/blocs/inventory_bloc.dart';
 import 'package:bradpos/presentation/blocs/inventory_event.dart';
-import 'package:bradpos/presentation/blocs/inventory_state.dart';
 import 'package:bradpos/presentation/blocs/category_bloc.dart';
 import 'package:bradpos/presentation/blocs/category_event.dart';
+import 'package:bradpos/presentation/blocs/category_state.dart';
 import 'package:bradpos/domain/repositories/inventory_repository.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
 import 'package:bradpos/injection_container.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
+import 'package:bradpos/presentation/screens/inventory/category_picker_modal.dart';
 import 'package:intl/intl.dart';
 
 class CurrencyInputFormatter extends TextInputFormatter {
@@ -132,8 +133,8 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
   }
 
   List<Category> _getCategories() {
-    final state = context.read<InventoryBloc>().state;
-    return state is InventoryLoaded ? state.categories : [];
+    final state = sl<CategoryBloc>().state;
+    return state is CategoryLoaded ? state.categories : [];
   }
 
   double _parseCurrency(String text) =>
@@ -220,26 +221,38 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
         child: Column(
           children: [
             BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, state) {
-                String shopName = 'BradPOS';
-                if (state is AuthAuthenticated) {
-                  shopName = state.user.shopName ?? 'BradPOS';
-                }
-                return BradHeader(
-                  title: isEditing ? 'Ubah Produk' : 'Tambah Produk Baru',
-                  subtitle: shopName,
+              builder: (context, state) => BradHeader(
+                title: isEditing ? 'Ubah Produk' : 'Tambah Produk Baru',
+                subtitle: state.displayShopName,
                   showBackButton: true,
                   leadingIcon: Icons.inventory_2_rounded,
                   showSettings: false,
-                );
-              },
-            ),
+                ),
+              ),
             Expanded(
-              child: Form(
-                key: _formKey,
-                child: isLandscape
-                    ? _buildLandscapeLayout()
-                    : _buildPortraitLayout(),
+              child: BlocProvider.value(
+                value: sl<CategoryBloc>(),
+                child: BlocListener<CategoryBloc, CategoryState>(
+                  listener: (context, state) {
+                    if (state is CategoryLoaded) {
+                      final newCatName = _categoryController.text.trim();
+                      if (newCatName.isNotEmpty) {
+                        final found = state.categories.where((c) => c.name == newCatName);
+                        if (found.isNotEmpty) {
+                          setState(() {
+                            _selectedCategoryId = found.first.id;
+                          });
+                        }
+                      }
+                    }
+                  },
+                  child: Form(
+                    key: _formKey,
+                    child: isLandscape
+                        ? _buildLandscapeLayout()
+                        : _buildPortraitLayout(),
+                  ),
+                ),
               ),
             ),
           ],
@@ -365,182 +378,163 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 4,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionHeader(
-                  Icons.image_outlined,
-                  'Foto Produk',
-                  isCompact: true,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(Icons.image_outlined, 'Foto Produk'),
+              const SizedBox(height: 8),
+              _buildImageCard(isCompact: false),
+              const SizedBox(height: 16),
+              _buildSectionHeader(
+                Icons.inventory_2_outlined,
+                'Informasi Produk',
+              ),
+              const SizedBox(height: 8),
+              _buildSectionCard([
+                _buildModernTextField(
+                  controller: _nameController,
+                  label: 'Nama Produk',
+                  icon: Icons.edit_note_rounded,
+                  hint: 'Contoh: Kopi Susu Aren',
                 ),
-                const SizedBox(height: 4),
-                _buildImageCard(isCompact: true),
-                const SizedBox(height: 10),
-                _buildSectionHeader(
-                  Icons.inventory_2_outlined,
-                  'Informasi Produk',
-                  isCompact: true,
+                const SizedBox(height: 16),
+                _buildPickerField(
+                  label: 'Kategori',
+                  icon: Icons.grid_view_rounded,
+                  value: _categoryController.text.isEmpty
+                      ? 'Pilih Kategori'
+                      : _categoryController.text,
+                  onTap: _showCategoryPicker,
                 ),
-                const SizedBox(height: 4),
-                _buildSectionCard([
-                  _buildModernTextField(
-                    controller: _nameController,
-                    label: 'Nama Produk',
-                    icon: Icons.edit_note_rounded,
-                    hint: 'Contoh: Kopi Susu Aren',
-                    isCompact: true,
-                  ),
-                  const SizedBox(height: 6),
-                  _buildPickerField(
-                    label: 'Kategori',
-                    icon: Icons.grid_view_rounded,
-                    value: _categoryController.text.isEmpty
-                        ? 'Pilih Kategori'
-                        : _categoryController.text,
-                    onTap: _showCategoryPicker,
-                    isCompact: true,
-                  ),
-                ], isCompact: true),
-              ],
-            ),
+              ]),
+            ],
           ),
-          const SizedBox(width: 20),
-          Expanded(
-            flex: 6,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionHeader(
-                  Icons.payments_outlined,
-                  'Harga & Stok',
-                  isCompact: true,
-                ),
-                const SizedBox(height: 6),
-                _buildSectionCard([
-                  Row(
-                    children: [
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          flex: 6,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(
+                Icons.payments_outlined,
+                'Harga & Stok',
+              ),
+              const SizedBox(height: 8),
+              _buildSectionCard([
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildModernTextField(
+                        controller: _sellingPriceController,
+                        label: 'Harga Jual',
+                        icon: Icons.upload_rounded,
+                        prefix: 'Rp',
+                        keyboard: TextInputType.number,
+                        formatters: [CurrencyInputFormatter()],
+                      ),
+                    ),
+                    if (_showPurchasePrice) ...[
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _buildModernTextField(
-                          controller: _sellingPriceController,
-                          label: 'Harga Jual',
-                          icon: Icons.upload_rounded,
+                          controller: _purchasePriceController,
+                          label: 'Harga Beli (Opsional)',
+                          icon: Icons.download_rounded,
                           prefix: 'Rp',
                           keyboard: TextInputType.number,
                           formatters: [CurrencyInputFormatter()],
-                          isCompact: true,
                         ),
                       ),
-                      if (_showPurchasePrice) ...[
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: _buildModernTextField(
-                            controller: _purchasePriceController,
-                            label: 'Harga Beli (Opsional)',
-                            icon: Icons.download_rounded,
-                            prefix: 'Rp',
-                            keyboard: TextInputType.number,
-                            formatters: [CurrencyInputFormatter()],
-                            isCompact: true,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
-                  if (_showPurchasePrice) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: _buildModernTextField(
-                            controller: _stockController,
-                            label: 'Stok',
-                            icon: Icons.inventory_rounded,
-                            keyboard: TextInputType.number,
-                            isCompact: true,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          flex: 2,
-                          child: _buildPickerField(
-                            label: 'Satuan',
-                            icon: Icons.straighten_rounded,
-                            value: _unitController.text,
-                            onTap: _showUnitPicker,
-                            isCompact: true,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          flex: 3,
-                          child: _buildModernTextField(
-                            controller: _barcodeController,
-                            label: 'Barcode (Opsional)',
-                            icon: Icons.qr_code_scanner_rounded,
-                            isCompact: true,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
-                  const Divider(height: 12),
+                ),
+                if (_showPurchasePrice) ...[
+                  const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.storefront_rounded,
-                        size: 10,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Mode Retail',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                                color: Color(0xFF475569),
-                              ),
-                            ),
-                            Text(
-                              'Input harga beli & stok',
-                              style: TextStyle(
-                                fontSize: 8,
-                                color: Color(0xFF94A3B8),
-                              ),
-                            ),
-                          ],
+                      Expanded(
+                        flex: 2,
+                        child: _buildModernTextField(
+                          controller: _stockController,
+                          label: 'Stok',
+                          icon: Icons.inventory_rounded,
+                          keyboard: TextInputType.number,
                         ),
                       ),
-                      SizedBox(
-                        height: 18,
-                        child: Transform.scale(
-                          scale: 0.6,
-                          child: Switch(
-                            value: _showPurchasePrice,
-                            onChanged: _toggleRetailMode,
-                            activeTrackColor: AppColors.primary,
-                          ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: _buildPickerField(
+                          label: 'Satuan',
+                          icon: Icons.straighten_rounded,
+                          value: _unitController.text,
+                          onTap: _showUnitPicker,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 3,
+                        child: _buildModernTextField(
+                          controller: _barcodeController,
+                          label: 'Barcode (Opsional)',
+                          icon: Icons.qr_code_scanner_rounded,
                         ),
                       ),
                     ],
                   ),
-                ], isCompact: true),
-                const SizedBox(height: 12),
-                _buildSubmitButton(isCompact: true),
-              ],
-            ),
+                ],
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.storefront_rounded,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mode Retail',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Color(0xFF475569),
+                            ),
+                          ),
+                          Text(
+                            'Aktifkan untuk input harga beli & stok',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _showPurchasePrice,
+                      onChanged: _toggleRetailMode,
+                      activeTrackColor: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ]),
+              const SizedBox(height: 16),
+              _buildSubmitButton(),
+            ],
           ),
-        ],
+        ),
+      ],
       ),
     );
   }
@@ -808,6 +802,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
   );
 
   void _showCategoryPicker() {
+    sl<CategoryBloc>().add(LoadCategoriesEvent());
     final cats = _getCategories();
     final items =
         (cats.map((c) => c.name).toList()
@@ -823,7 +818,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          child: _PickerModal(
+          child: PickerModal(
             title: 'Pilih Kategori',
             items: items,
             onSelect: (val) => _handleCategorySelect(val, cats),
@@ -838,7 +833,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        builder: (context) => _PickerModal(
+        builder: (context) => PickerModal(
           title: 'Pilih Kategori',
           items: items,
           onSelect: (val) => _handleCategorySelect(val, cats),
@@ -858,6 +853,8 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
 
   void _handleCategoryAdd(String name) {
     sl<CategoryBloc>().add(AddCategoryEvent(name));
+    // Refresh InventoryBloc's categories so the filter on InventoryScreen is updated
+    context.read<InventoryBloc>().add(const LoadInventoryCategoriesEvent());
     setState(() {
       _categoryController.text = name;
       _selectedCategoryId = null;
@@ -879,7 +876,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          child: _PickerModal(
+          child: PickerModal(
             title: 'Pilih Satuan',
             items: items,
             onSelect: _handleUnitSelect,
@@ -895,7 +892,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        builder: (context) => _PickerModal(
+        builder: (context) => PickerModal(
           title: 'Pilih Satuan',
           items: items,
           onSelect: _handleUnitSelect,
@@ -1006,258 +1003,3 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
   }
 }
 
-class _PickerModal extends StatefulWidget {
-  final String title;
-  final List<String> items;
-  final Function(String) onSelect;
-  final Function(String) onAddNew;
-
-  const _PickerModal({
-    required this.title,
-    required this.items,
-    required this.onSelect,
-    required this.onAddNew,
-  });
-
-  @override
-  State<_PickerModal> createState() => _PickerModalState();
-}
-
-class _PickerModalState extends State<_PickerModal> {
-  late List<String> currentItems;
-
-  @override
-  void initState() {
-    super.initState();
-    currentItems = List.from(widget.items);
-  }
-
-  void _handleAddNew() {
-    final ctrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(widget.title.replaceFirst('Pilih', 'Tambah')),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Nama baru...'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (ctrl.text.trim().isNotEmpty) {
-                final val = ctrl.text.trim();
-                widget.onAddNew(val);
-                setState(() {
-                  currentItems.insert(currentItems.length - 1, val);
-                  // Sort all items except the last one (+ Tambah Baru)
-                  final addButton = currentItems.removeLast();
-                  currentItems.sort(
-                    (a, b) => a.toLowerCase().compareTo(b.toLowerCase()),
-                  );
-                  currentItems.add(addButton);
-                });
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Tambah'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    return Container(
-      padding: EdgeInsets.fromLTRB(24, 20, 24, isLandscape ? 12 : 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      constraints: BoxConstraints(
-        maxHeight:
-            MediaQuery.of(context).size.height * (isLandscape ? 0.85 : 0.6),
-        maxWidth: isLandscape
-            ? MediaQuery.of(context).size.width * 0.75
-            : double.infinity,
-        minWidth: isLandscape ? MediaQuery.of(context).size.width * 0.75 : 0.0,
-      ),
-      child: SafeArea(
-        bottom: !isLandscape,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                widget.title.toUpperCase(),
-                style: TextStyle(
-                  fontSize: isLandscape ? 12 : 15,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              if (isLandscape)
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 2,
-            width: 30,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withAlpha(50),
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ),
-          SizedBox(height: isLandscape ? 12 : 24),
-          Flexible(
-            child: isLandscape
-                ? GridView.builder(
-                    shrinkWrap: true,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 4,
-                          childAspectRatio: 2.8,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                    itemCount: currentItems.length,
-                    itemBuilder: (context, index) =>
-                        _buildPickerItem(currentItems[index], true),
-                  )
-                : ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: currentItems.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 8),
-                    itemBuilder: (context, index) =>
-                        _buildPickerItem(currentItems[index], false),
-                  ),
-          ),
-          if (!isLandscape) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  backgroundColor: const Color(0xFFF1F5F9),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'TUTUP',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPickerItem(String label, bool isCompact) {
-    final isAdd = label == '+ Tambah Baru';
-    return InkWell(
-      onTap: () {
-        if (isAdd) {
-          _handleAddNew();
-        } else {
-          Navigator.pop(context);
-          widget.onSelect(label);
-        }
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: isCompact ? 6 : 16,
-        ),
-        decoration: BoxDecoration(
-          gradient: isAdd
-              ? const LinearGradient(
-                  colors: [
-                    AppColors.primaryGradientStart,
-                    AppColors.primaryGradientEnd,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isAdd ? null : const Color(0xFFF8FAFC),
-          border: Border.all(
-            color: isAdd ? Colors.transparent : const Color(0xFFE2E8F0),
-            width: 1,
-          ),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: isAdd
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withAlpha(40),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            if (isAdd)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: Icon(
-                  Icons.add_circle_outline_rounded,
-                  size: isCompact ? 14 : 20,
-                  color: Colors.white,
-                ),
-              ),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: isAdd ? FontWeight.w800 : FontWeight.w600,
-                  fontSize: isCompact ? 10 : 14,
-                  color: isAdd ? Colors.white : AppColors.textPrimary,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (!isAdd)
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: isCompact ? 8 : 12,
-                color: AppColors.textMuted,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}

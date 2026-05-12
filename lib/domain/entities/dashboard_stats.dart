@@ -34,6 +34,26 @@ class DashboardStats extends Equatable {
     this.dailySales = const [],
   });
 
+  DashboardStats copyWith({
+    double? totalSales,
+    double? salesGrowth,
+    int? totalTransactions,
+    double? transactionsGrowth,
+    double? avgTicketSize,
+    double? ticketSizeGrowth,
+    List<double>? dailySales,
+  }) {
+    return DashboardStats(
+      totalSales: totalSales ?? this.totalSales,
+      salesGrowth: salesGrowth ?? this.salesGrowth,
+      totalTransactions: totalTransactions ?? this.totalTransactions,
+      transactionsGrowth: transactionsGrowth ?? this.transactionsGrowth,
+      avgTicketSize: avgTicketSize ?? this.avgTicketSize,
+      ticketSizeGrowth: ticketSizeGrowth ?? this.ticketSizeGrowth,
+      dailySales: dailySales ?? this.dailySales,
+    );
+  }
+
   @override
   List<Object?> get props => [
     totalSales,

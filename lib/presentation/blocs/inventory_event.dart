@@ -60,16 +60,8 @@ class DeleteInventoryItemEvent extends InventoryEvent {
   List<Object?> get props => [id];
 }
 
-class LoadCategoriesEvent extends InventoryEvent {
-  const LoadCategoriesEvent();
-}
-
-class RefreshAfterSyncEvent extends InventoryEvent {
-  const RefreshAfterSyncEvent();
-}
-
-class SyncOfflineDataEvent extends InventoryEvent {
-  const SyncOfflineDataEvent();
+class LoadInventoryCategoriesEvent extends InventoryEvent {
+  const LoadInventoryCategoriesEvent();
 }
 
 class SyncAllEvent extends InventoryEvent {

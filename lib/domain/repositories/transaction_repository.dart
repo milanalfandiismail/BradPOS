@@ -1,6 +1,6 @@
 import 'package:dartz/dartz.dart';
-import 'package:bradpos/domain/entities/transaction.dart';
-import 'package:bradpos/domain/entities/transaction_item.dart';
+import '../entities/transaction.dart';
+import '../entities/transaction_item.dart';
 
 abstract class TransactionRepository {
   Future<Either<String, Transaction>> createTransaction(

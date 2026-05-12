@@ -1,7 +1,5 @@
 import 'package:equatable/equatable.dart';
 
-enum KaryawanRole { owner, cashier, staff }
-
 /// Entitas utama Karyawan.
 /// Merepresentasikan data seorang karyawan/staf toko dalam sistem BradPOS.
 class Karyawan extends Equatable {

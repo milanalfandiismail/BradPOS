@@ -7,6 +7,13 @@ class DatabaseHelper {
   static const int _databaseVersion = 16;
   static Database? _database;
 
+  static const String _idType = 'TEXT PRIMARY KEY';
+  static const String _textType = 'TEXT NOT NULL';
+  static const String _textNullable = 'TEXT';
+  static const String _integerType = 'INTEGER NOT NULL';
+  static const String _realType = 'REAL NOT NULL';
+  static const String _boolType = 'INTEGER NOT NULL';
+
   DatabaseHelper._init();
 
   Future<Database> get database async {
@@ -141,41 +148,35 @@ class DatabaseHelper {
   }
 
   Future _createDB(Database db, int version) async {
-    const idType = 'TEXT PRIMARY KEY';
-    const textType = 'TEXT NOT NULL';
-    const textNullable = 'TEXT';
-    const integerType = 'INTEGER NOT NULL';
-    const realType = 'REAL NOT NULL';
-
     await db.execute('''
 CREATE TABLE produk (
-  id $idType,
-  owner_id $textType,
-  category_id $textNullable,
-  name $textType,
-  category $textType,
-  purchase_price $realType DEFAULT 0,
-  selling_price $realType DEFAULT 0,
-  stock $integerType,
-  unit $textType DEFAULT 'pcs',
-  barcode $textNullable,
-  image_url $textNullable,
+  id $_idType,
+  owner_id $_textType,
+  category_id $_textNullable,
+  name $_textType,
+  category $_textType,
+  purchase_price $_realType DEFAULT 0,
+  selling_price $_realType DEFAULT 0,
+  stock $_integerType,
+  unit $_textType DEFAULT 'pcs',
+  barcode $_textNullable,
+  image_url $_textNullable,
   is_active INTEGER DEFAULT 1,
-  created_at $textNullable,
-  sync_status $textType DEFAULT 'synced',
-  updated_at $textNullable
+  created_at $_textNullable,
+  sync_status $_textType DEFAULT 'synced',
+  updated_at $_textNullable
 )
 ''');
 
     await db.execute('''
 CREATE TABLE categories (
-  id $idType,
-  owner_id $textType,
-  name $textType,
-  description $textNullable,
-  created_at $textNullable,
-  sync_status $textType DEFAULT 'synced',
-  updated_at $textNullable
+  id $_idType,
+  owner_id $_textType,
+  name $_textType,
+  description $_textNullable,
+  created_at $_textNullable,
+  sync_status $_textType DEFAULT 'synced',
+  updated_at $_textNullable
 )
 ''');
 
@@ -185,74 +186,60 @@ CREATE TABLE categories (
   }
 
   Future<void> _createKaryawanTable(Database db) async {
-    const idType = 'TEXT PRIMARY KEY';
-    const textType = 'TEXT NOT NULL';
-    const textNullable = 'TEXT';
-    const boolType = 'INTEGER NOT NULL';
-
     await db.execute('''
 CREATE TABLE karyawan (
-  id $idType,
-  owner_id $textType,
-  full_name $textType,
-  password_hash $textType,
-  is_active $boolType DEFAULT 1,
-  remote_image $textNullable,
-  local_image $textNullable,
-  created_at $textNullable,
-  sync_status $textType DEFAULT 'synced',
-  updated_at $textNullable
+  id $_idType,
+  owner_id $_textType,
+  full_name $_textType,
+  password_hash $_textType,
+  is_active $_boolType DEFAULT 1,
+  remote_image $_textNullable,
+  local_image $_textNullable,
+  created_at $_textNullable,
+  sync_status $_textType DEFAULT 'synced',
+  updated_at $_textNullable
 )
 ''');
   }
 
   Future<void> _createTransactionsTable(Database db) async {
-    const idType = 'TEXT PRIMARY KEY';
-    const textType = 'TEXT NOT NULL';
-    const textNullable = 'TEXT';
-    const realType = 'REAL NOT NULL';
-
     await db.execute('''
 CREATE TABLE transactions (
-  id $idType,
-  owner_id $textType,
-  karyawan_id $textNullable,
-  cashier_name $textNullable,
-  transaction_number $textType,
-  customer_name $textNullable,
-  customer_phone $textNullable,
-  shop_name $textNullable,
-  subtotal $realType,
-  discount $realType,
-  tax $realType,
-  total $realType,
-  payment_method $textType,
-  payment_amount $realType,
-  change_amount $realType,
-  notes $textNullable,
-  status $textType,
-  items $textType,
-  created_at $textNullable,
-  sync_status $textType DEFAULT 'created',
-  updated_at $textNullable
+  id $_idType,
+  owner_id $_textType,
+  karyawan_id $_textNullable,
+  cashier_name $_textNullable,
+  transaction_number $_textType,
+  customer_name $_textNullable,
+  customer_phone $_textNullable,
+  shop_name $_textNullable,
+  subtotal $_realType,
+  discount $_realType,
+  tax $_realType,
+  total $_realType,
+  payment_method $_textType,
+  payment_amount $_realType,
+  change_amount $_realType,
+  notes $_textNullable,
+  status $_textType,
+  items $_textType,
+  created_at $_textNullable,
+  sync_status $_textType DEFAULT 'created',
+  updated_at $_textNullable
 )
 ''');
   }
 
   Future<void> _createProfilesTable(Database db) async {
-    const idType = 'TEXT PRIMARY KEY';
-    const textType = 'TEXT NOT NULL';
-    const textNullable = 'TEXT';
-
     await db.execute('''
 CREATE TABLE profiles (
-  id $idType,
-  shop_id $textNullable,
-  shop_name $textType,
-  full_name $textNullable,
-  remote_image $textNullable,
-  local_image $textNullable,
-  updated_at $textNullable
+  id $_idType,
+  shop_id $_textNullable,
+  shop_name $_textType,
+  full_name $_textNullable,
+  remote_image $_textNullable,
+  local_image $_textNullable,
+  updated_at $_textNullable
 )
 ''');
   }

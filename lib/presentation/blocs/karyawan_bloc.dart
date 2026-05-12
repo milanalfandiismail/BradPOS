@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/domain/repositories/karyawan_repository.dart';
-import 'karyawan_event.dart';
-import 'karyawan_state.dart';
+import 'package:bradpos/presentation/blocs/karyawan_event.dart';
+import 'package:bradpos/presentation/blocs/karyawan_state.dart';
 
 /// Bloc untuk mengelola logika bisnis Manajemen Karyawan.
 /// Menangani alur data dari UI ke Repository langsung (Layered Architecture).

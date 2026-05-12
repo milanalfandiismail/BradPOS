@@ -52,6 +52,8 @@ class ProcessPayment extends CashierEvent {
 class UpdateCustomerName extends CashierEvent {
   final String name;
   const UpdateCustomerName(this.name);
+  @override
+  List<Object?> get props => [name];
 }
 
 // --- States ---

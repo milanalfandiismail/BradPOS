@@ -5,7 +5,7 @@ import 'dart:io';
 import 'dart:ui';
 
 /// Widget Card untuk menampilkan ringkasan data Karyawan.
-/// Digunakan di KaryawanListScreen.
+/// Digunakan di KaryawanScreen.
 class KaryawanCard extends StatelessWidget {
   final Karyawan karyawan;
   final VoidCallback onEdit;

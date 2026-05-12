@@ -8,7 +8,7 @@ import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
 import 'package:bradpos/presentation/blocs/inventory_bloc.dart';
 import 'package:bradpos/presentation/blocs/cashier_bloc.dart';
 import 'package:bradpos/presentation/blocs/history/history_bloc.dart';
-import 'package:bradpos/presentation/screens/login_screen.dart';
+import 'package:bradpos/presentation/screens/login/login_screen.dart';
 import 'package:bradpos/core/widgets/splash_page.dart';
 import 'package:bradpos/core/utils/app_navigator.dart';
 import 'package:intl/date_symbol_data_local.dart';
