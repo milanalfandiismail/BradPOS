@@ -9,6 +9,8 @@ import 'package:bradpos/presentation/blocs/transaction_detail/transaction_detail
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/presentation/widgets/receipt_dialog.dart';
 import 'package:bradpos/injection_container.dart';
+import 'package:bradpos/presentation/screens/report/transaction_info_row.dart';
+import 'package:bradpos/presentation/screens/report/transaction_price_row.dart';
 
 class TransactionDetailScreen extends StatelessWidget {
   final ent.Transaction transaction;
@@ -174,18 +176,18 @@ class TransactionDetailScreen extends StatelessWidget {
             style: TextStyle(color: Colors.grey, fontSize: isLandscape ? 9 : 14),
           ),
           Divider(height: isLandscape ? 16 : 32),
-          _buildInfoRow(
-            'Status',
-            transaction.status.toUpperCase(),
+          TransactionInfoRow(
+            label: 'Status',
+            value: transaction.status.toUpperCase(),
             isStatus: true,
             isLandscape: isLandscape,
           ),
-          _buildInfoRow('Kasir', transaction.cashierName ?? 'System', isLandscape: isLandscape),
+          TransactionInfoRow(label: 'Kasir', value: transaction.cashierName ?? 'System', isLandscape: isLandscape),
           if (transaction.customerName != null)
-            _buildInfoRow('Pelanggan', transaction.customerName!, isLandscape: isLandscape),
-          _buildInfoRow(
-            'Metode Bayar',
-            transaction.paymentMethod.toUpperCase(),
+            TransactionInfoRow(label: 'Pelanggan', value: transaction.customerName!, isLandscape: isLandscape),
+          TransactionInfoRow(
+            label: 'Metode Bayar',
+            value: transaction.paymentMethod.toUpperCase(),
             isLandscape: isLandscape,
           ),
         ],
@@ -273,46 +275,46 @@ class TransactionDetailScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildPriceRow(
-            'Subtotal',
-            transaction.subtotal,
-            currencyFormatter,
+          TransactionPriceRow(
+            label: 'Subtotal',
+            value: transaction.subtotal,
+            formatter: currencyFormatter,
             isLandscape: isLandscape,
           ),
           if (transaction.discount > 0)
-            _buildPriceRow(
-              'Diskon',
-              -transaction.discount,
-              currencyFormatter,
+            TransactionPriceRow(
+              label: 'Diskon',
+              value: -transaction.discount,
+              formatter: currencyFormatter,
               isDiscount: true,
               isLandscape: isLandscape,
             ),
           if (transaction.tax > 0)
-            _buildPriceRow(
-              'Pajak',
-              transaction.tax,
-              currencyFormatter,
+            TransactionPriceRow(
+              label: 'Pajak',
+              value: transaction.tax,
+              formatter: currencyFormatter,
               isLandscape: isLandscape,
             ),
           Divider(height: isLandscape ? 12 : 24),
-          _buildPriceRow(
-            'Total',
-            transaction.total,
-            currencyFormatter,
+          TransactionPriceRow(
+            label: 'Total',
+            value: transaction.total,
+            formatter: currencyFormatter,
             isTotal: true,
             isLandscape: isLandscape,
           ),
           SizedBox(height: isLandscape ? 4 : 12),
-          _buildPriceRow(
-            'Bayar',
-            transaction.paymentAmount,
-            currencyFormatter,
+          TransactionPriceRow(
+            label: 'Bayar',
+            value: transaction.paymentAmount,
+            formatter: currencyFormatter,
             isLandscape: isLandscape,
           ),
-          _buildPriceRow(
-            'Kembali',
-            transaction.changeAmount,
-            currencyFormatter,
+          TransactionPriceRow(
+            label: 'Kembali',
+            value: transaction.changeAmount,
+            formatter: currencyFormatter,
             isLandscape: isLandscape,
           ),
         ],
@@ -388,58 +390,4 @@ class TransactionDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isStatus = false, bool isLandscape = false}) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: isLandscape ? 2 : 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: Colors.grey, fontSize: isLandscape ? 9 : 14)),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: isLandscape ? 9 : 14,
-              color: isStatus ? Colors.green : Colors.black,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPriceRow(
-    String label,
-    double value,
-    NumberFormat formatter, {
-    bool isTotal = false,
-    bool isDiscount = false,
-    bool isLandscape = false,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: isLandscape ? 2 : 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isTotal ? (isLandscape ? 14 : 18) : (isLandscape ? 9 : 14),
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          Text(
-            formatter.format(value),
-            style: TextStyle(
-              fontSize: isTotal ? (isLandscape ? 14 : 18) : (isLandscape ? 9 : 14),
-              fontWeight: FontWeight.bold,
-              color: isDiscount
-                  ? Colors.red
-                  : (isTotal ? AppColors.primary : Colors.black),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

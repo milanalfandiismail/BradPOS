@@ -1,10 +1,11 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/profile_text_field.dart';
+import 'package:bradpos/presentation/widgets/full_screen_image_viewer.dart';
+import 'package:bradpos/presentation/widgets/image_source_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -51,133 +52,29 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     super.dispose();
   }
 
-  void _showFullScreenImage(
+  Future<void> _showFullScreenImage(
     String? remoteUrl,
     String? localPath,
     bool isOwner,
     bool isEditable,
   ) {
-    showGeneralDialog(
+    return FullScreenImageViewer.show(
       context: context,
-      useRootNavigator: true,
-      barrierDismissible: true,
-      barrierLabel: 'Profile Picture',
-      barrierColor: Colors.black.withValues(alpha: 0.7),
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.white),
-          actions: [
-            if (!isOwner && isEditable)
-              IconButton(
-                icon: const Icon(Icons.edit_rounded),
-                onPressed: () {
-                  Navigator.pop(context);
-                  _showPickerPopup();
-                },
-              ),
-          ],
-        ),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(color: Colors.transparent),
-                ),
-              ),
-            ),
-            Center(
-              child: Hero(
-                tag: 'profile_avatar',
-                child: InteractiveViewer(
-                  minScale: 0.5,
-                  maxScale: 4.0,
-                  child: ClipOval(
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.8,
-                      height: MediaQuery.of(context).size.width * 0.8,
-                      decoration: const BoxDecoration(shape: BoxShape.circle),
-                      child: (localPath != null && File(localPath).existsSync())
-                          ? Image.file(
-                              File(localPath),
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildAvatarFallback(),
-                            )
-                          : remoteUrl != null && remoteUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: remoteUrl,
-                              fit: BoxFit.cover,
-                              placeholder: (_, _) => _buildAvatarPlaceholder(),
-                              errorWidget: (context, url, error) =>
-                                  _buildAvatarFallback(),
-                            )
-                          : _buildAvatarFallback(),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      localImagePath: localPath,
+      remoteImageUrl: remoteUrl,
+      heroTag: 'profile_avatar',
+      onEdit: (!isOwner && isEditable) ? _showPickerPopup : null,
     );
   }
 
-  Future<void> _showPickerPopup() {
-    return showModalBottomSheet(
+  Future<void> _showPickerPopup() async {
+    final source = await ImageSourcePicker.show(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Ganti Foto Profil',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 24),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded),
-              title: const Text('Ambil dari Kamera'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAndUploadImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.image_rounded),
-              title: const Text('Pilih dari Galeri'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAndUploadImage(ImageSource.gallery);
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+      title: 'Ganti Foto Profil',
     );
+    if (source != null && mounted) {
+      _pickAndUploadImage(source);
+    }
   }
 
   Future<void> _pickAndUploadImage(ImageSource source) async {

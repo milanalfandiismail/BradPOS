@@ -6,9 +6,7 @@ import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
 import 'package:bradpos/presentation/widgets/profile_text_field.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
+import 'package:bradpos/presentation/widgets/profile_image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -25,7 +23,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
   bool _notificationsEnabled = true;
-  final ImagePicker _picker = ImagePicker();
   bool _isUploadingImage = false;
 
   @override
@@ -67,57 +64,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 50,
-      );
-      if (image == null) return;
-      if (!mounted) return;
+    final localPath = await pickProfileImage(context);
+    if (localPath == null) return;
+    if (!mounted) return;
 
-      final dir = await getApplicationDocumentsDirectory();
-      final localPath =
-          '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}${p.extension(image.path)}';
-      await File(image.path).copy(localPath);
-      if (!mounted) return;
+    final authBloc = context.read<AuthBloc>();
+    final oldRemoteImage = authBloc.state is AuthAuthenticated
+        ? (authBloc.state as AuthAuthenticated).user.remoteImage
+        : null;
 
-      final authBloc = context.read<AuthBloc>();
-      final oldRemoteImage = authBloc.state is AuthAuthenticated
-          ? (authBloc.state as AuthAuthenticated).user.remoteImage
-          : null;
+    setState(() => _isUploadingImage = true);
+    authBloc.add(
+      UpdateProfileEvent(
+        localImage: localPath,
+        shopName: _nameController.text,
+        shopId: _shopIdController.text,
+        address: _addressController.text,
+        phone: _phoneController.text,
+      ),
+    );
 
-      setState(() => _isUploadingImage = true);
-      authBloc.add(
-        UpdateProfileEvent(
-          localImage: localPath,
-          shopName: _nameController.text,
-          shopId: _shopIdController.text,
-          address: _addressController.text,
-          phone: _phoneController.text,
-        ),
-      );
-
-      authBloc.stream
-          .firstWhere(
-            (s) =>
-                s is AuthAuthenticated && s.user.remoteImage != oldRemoteImage,
-          )
-          .timeout(const Duration(seconds: 15))
-          .then((_) {
-            if (mounted) setState(() => _isUploadingImage = false);
-          })
-          .catchError((_) {
-            if (mounted) setState(() => _isUploadingImage = false);
-          });
-    } catch (e) {
-      debugPrint("ProfileScreen: Error: $e");
-      if (mounted) {
-        setState(() => _isUploadingImage = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal mengambil gambar: $e')));
-      }
-    }
+    authBloc.stream
+        .firstWhere(
+          (s) =>
+              s is AuthAuthenticated && s.user.remoteImage != oldRemoteImage,
+        )
+        .timeout(const Duration(seconds: 15))
+        .then((_) {
+          if (mounted) setState(() => _isUploadingImage = false);
+        })
+        .catchError((_) {
+          if (mounted) setState(() => _isUploadingImage = false);
+        });
   }
 
   @override
