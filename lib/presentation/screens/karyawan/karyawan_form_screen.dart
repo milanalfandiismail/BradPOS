@@ -7,6 +7,7 @@ import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
 import 'package:bradpos/presentation/blocs/karyawan_event.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
+import 'package:bradpos/presentation/widgets/avatar_picker_widget.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
@@ -158,7 +159,7 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                                 File(_localImagePath!),
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) =>
-                                    _buildAvatarFallback(),
+                                    buildAvatarFallback(),
                               )
                             : _remoteImageUrl != null &&
                                   _remoteImageUrl!.isNotEmpty
@@ -171,9 +172,9 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                                   ),
                                 ),
                                 errorWidget: (context, url, error) =>
-                                    _buildAvatarFallback(),
+                                    buildAvatarFallback(),
                               )
-                            : _buildAvatarFallback(),
+                            : buildAvatarFallback(),
                       ),
                     ),
                   ),
@@ -183,13 +184,6 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildAvatarFallback() {
-    return Container(
-      color: Colors.grey[200],
-      child: const Icon(Icons.person, size: 100, color: Colors.grey),
     );
   }
 
@@ -341,7 +335,22 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                             child: ListView(
                               padding: const EdgeInsets.all(16),
                               children: [
-                                _buildAvatarPicker(isCompact: true),
+                                AvatarPickerWidget(
+                                  localImagePath: _localImagePath,
+                                  remoteImageUrl: _remoteImageUrl,
+                                  heroTag: 'karyawan_avatar_${widget.karyawan?.id ?? 'new'}',
+                                  isCompact: true,
+                                  onTap: () {
+                                    if ((_localImagePath != null &&
+                                            File(_localImagePath!).existsSync()) ||
+                                        (_remoteImageUrl != null && _remoteImageUrl!.isNotEmpty)) {
+                                      _showFullScreenImage();
+                                    } else {
+                                      _pickImage();
+                                    }
+                                  },
+                                  onCameraTap: _pickImage,
+                                ),
                                 const SizedBox(height: 16),
                                 _buildStatusSwitch(isCompact: true),
                               ],
@@ -366,7 +375,22 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
                     : ListView(
                         padding: const EdgeInsets.all(20),
                         children: [
-                          _buildAvatarPicker(isCompact: false),
+                          AvatarPickerWidget(
+                            localImagePath: _localImagePath,
+                            remoteImageUrl: _remoteImageUrl,
+                            heroTag: 'karyawan_avatar_${widget.karyawan?.id ?? 'new'}',
+                            isCompact: false,
+                            onTap: () {
+                              if ((_localImagePath != null &&
+                                      File(_localImagePath!).existsSync()) ||
+                                  (_remoteImageUrl != null && _remoteImageUrl!.isNotEmpty)) {
+                                _showFullScreenImage();
+                              } else {
+                                _pickImage();
+                              }
+                            },
+                            onCameraTap: _pickImage,
+                          ),
                           const SizedBox(height: 32),
                           _buildNameInput(isCompact: false),
                           const SizedBox(height: 16),
@@ -380,116 +404,6 @@ class _KaryawanFormScreenState extends State<KaryawanFormScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatarPicker({required bool isCompact}) {
-    return Center(
-      child: GestureDetector(
-        onTap: () {
-          if ((_localImagePath != null &&
-                  File(_localImagePath!).existsSync()) ||
-              (_remoteImageUrl != null && _remoteImageUrl!.isNotEmpty)) {
-            _showFullScreenImage();
-          } else {
-            _pickImage();
-          }
-        },
-        child: Hero(
-          tag: 'karyawan_avatar_${widget.karyawan?.id ?? 'new'}',
-          child: Stack(
-            children: [
-              Container(
-                width: isCompact ? 80 : 100,
-                height: isCompact ? 80 : 100,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child:
-                      (_localImagePath != null &&
-                          File(_localImagePath!).existsSync())
-                      ? Image.file(
-                          File(_localImagePath!),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return _remoteImageUrl != null
-                                ? CachedNetworkImage(
-                                    imageUrl: _remoteImageUrl!,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => const Center(
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        const Icon(
-                                          Icons.person,
-                                          size: 50,
-                                          color: Colors.grey,
-                                        ),
-                                  )
-                                : const Icon(
-                                    Icons.person,
-                                    size: 50,
-                                    color: Colors.grey,
-                                  );
-                          },
-                        )
-                      : (_remoteImageUrl != null && _remoteImageUrl!.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: _remoteImageUrl!,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                                errorWidget: (context, url, error) =>
-                                    const Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: Colors.grey,
-                                    ),
-                              )
-                            : const Icon(
-                                Icons.person,
-                                size: 50,
-                                color: Colors.grey,
-                              )),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: isCompact ? 12 : 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:path/path.dart' as path;
 import 'package:bradpos/data/models/inventory_item_model.dart';
+import 'package:bradpos/data/data_sources/inventory_image_uploader.dart';
 
 abstract class InventoryRemoteDataSource {
   Future<List<InventoryItemModel>> getInventory(
@@ -27,7 +26,8 @@ abstract class InventoryRemoteDataSource {
   Future<void> pushDeletedItem(String id, String userId);
 }
 
-class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
+class InventoryRemoteDataSourceImpl with InventoryImageUploader implements InventoryRemoteDataSource {
+  @override
   final SupabaseClient supabase;
 
   InventoryRemoteDataSourceImpl({required this.supabase});
@@ -111,113 +111,6 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     return 0;
   }
 
-  Future<void> _deleteOldImageByUrl(String? imageUrl) async {
-    if (imageUrl == null ||
-        imageUrl.isEmpty ||
-        !imageUrl.contains('produk_images')) {
-      return;
-    }
-
-    try {
-      debugPrint("Storage: Analisis URL untuk dihapus -> $imageUrl");
-
-      // Cara yang lebih mantap: Cari posisi nama bucket
-      const bucketName = 'produk_images';
-      final bucketPattern = '/$bucketName/';
-      final bucketIndex = imageUrl.indexOf(bucketPattern);
-
-      if (bucketIndex != -1) {
-        // Ambil semua teks setelah '/produk_images/'
-        // Contoh: https://.../produk_images/userId/file.jpg -> userId/file.jpg
-        String filePath = imageUrl.substring(
-          bucketIndex + bucketPattern.length,
-        );
-
-        // Buang query parameter jika ada (seperti ?v=123)
-        if (filePath.contains('?')) {
-          filePath = filePath.split('?')[0];
-        }
-
-        // Decode URL encoding (misal %20 jadi spasi)
-        filePath = Uri.decodeComponent(filePath);
-
-        debugPrint("Storage: Mencoba hapus file dengan path -> '$filePath'");
-
-        final List<FileObject> response = await supabase.storage
-            .from(bucketName)
-            .remove([filePath]);
-
-        if (response.isEmpty) {
-          debugPrint(
-            "Storage Warning: Supabase melaporkan tidak ada file yang dihapus. Cek Path atau Policy!",
-          );
-        } else {
-          debugPrint("Storage Success: File '$filePath' berhasil dihapus");
-        }
-      } else {
-        debugPrint("Storage Error: Tidak menemukan pola /$bucketName/ di URL");
-      }
-    } catch (e) {
-      debugPrint("Storage Exception saat hapus file lama: $e");
-    }
-  }
-
-  Future<String?> _uploadImage(
-    String localPath,
-    String ownerId,
-    String productId,
-    DateTime updatedAt,
-  ) async {
-    if (localPath.isEmpty) return null;
-
-    try {
-      debugPrint("Storage: Mencoba upload gambar dari $localPath");
-      final file = File(localPath);
-
-      if (!await file.exists()) {
-        debugPrint("Storage Error: File tidak ditemukan di path: $localPath");
-        return null;
-      }
-
-      final extension = path.extension(localPath).toLowerCase();
-      String contentType = 'image/jpeg';
-      if (extension == '.png') contentType = 'image/png';
-      if (extension == '.gif') contentType = 'image/gif';
-      if (extension == '.webp') contentType = 'image/webp';
-
-      // Gunakan timestamp dari updatedAt (STABIL) bukan DateTime.now() (BERUBAH-UBAH)
-      // Ini memastikan jika ada pemanggilan ganda untuk data yang sama, nama filenya tetap sama.
-      final timestamp = updatedAt.millisecondsSinceEpoch;
-      final targetFileName = 'prod_${productId}_$timestamp$extension';
-      final filePath = '$ownerId/$targetFileName';
-
-      debugPrint(
-        "Storage: Mengupload ke bucket 'produk_images' | Path: $filePath | Type: $contentType",
-      );
-
-      await supabase.storage
-          .from('produk_images')
-          .upload(
-            filePath,
-            file,
-            fileOptions: FileOptions(upsert: true, contentType: contentType),
-          );
-      final String publicUrl = supabase.storage
-          .from('produk_images')
-          .getPublicUrl(filePath);
-      debugPrint("Storage Success: URL Public didapat -> $publicUrl");
-      return publicUrl;
-    } on StorageException catch (e) {
-      debugPrint(
-        "Storage Exception (Supabase): ${e.message} | Status: ${e.statusCode}",
-      );
-      return null;
-    } catch (e) {
-      debugPrint("Storage Exception (General): $e");
-      return null;
-    }
-  }
-
   // ── Private helper: cleans up payload + uploads local image ──
   Future<({Map<String, dynamic> payload, String? remoteUrl})> _preparePayload(
     Map<String, dynamic> itemMap, {
@@ -230,8 +123,8 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
     final String id = payload['id'];
 
     if (imageUrl != null && imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
-      if (oldImageUrl != null) await _deleteOldImageByUrl(oldImageUrl);
-      remoteUrl = await _uploadImage(
+      if (oldImageUrl != null) await deleteOldImageByUrl(oldImageUrl);
+      remoteUrl = await uploadImage(
         imageUrl,
         payload['owner_id'],
         id,
@@ -307,7 +200,7 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
       final oldImageUrl = oldData?['image_url'] as String?;
 
       // 2. Hapus gambar dari storage
-      await _deleteOldImageByUrl(oldImageUrl);
+      await deleteOldImageByUrl(oldImageUrl);
     } catch (e) {
       debugPrint("PushDeletedItem Warning (Storage): $e");
     }

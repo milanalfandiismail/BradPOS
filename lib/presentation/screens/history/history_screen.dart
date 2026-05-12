@@ -5,16 +5,14 @@ import 'package:bradpos/core/app_colors.dart';
 import 'package:bradpos/presentation/blocs/history/history_bloc.dart';
 import 'package:bradpos/presentation/blocs/history/history_event.dart';
 import 'package:bradpos/presentation/blocs/history/history_state.dart';
-import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/presentation/screens/report/transaction_detail_screen.dart';
 import 'package:bradpos/presentation/screens/history/history_transaction_card.dart';
 import 'package:bradpos/core/widgets/main_bottom_nav_bar.dart';
-import 'package:bradpos/core/widgets/brad_header.dart';
-import 'package:bradpos/presentation/widgets/settings_modal.dart';
 import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
 import 'package:bradpos/presentation/blocs/karyawan_event.dart';
-import 'package:bradpos/presentation/blocs/karyawan_state.dart';
 import 'package:bradpos/core/widgets/main_navigation_rail.dart';
+import 'package:bradpos/presentation/screens/history/history_header_section.dart';
+import 'package:bradpos/presentation/screens/history/history_filter_section.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -170,10 +168,31 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ),
                   Flexible(
-                    child: _buildFilterContent(setSheetState, onApply: () {
-                      _loadData();
-                      Navigator.pop(context);
-                    }),
+                    child: HistoryFilterContent(
+                      selectedDateRange: _selectedDateRange,
+                      selectedCashierId: _selectedCashierId,
+                      setSheetState: setSheetState,
+                      onApply: () {
+                        _loadData();
+                        Navigator.pop(context);
+                      },
+                      onReset: () {
+                        setState(() {
+                          _selectedDateRange = null;
+                          _selectedCashierId = null;
+                        });
+                        _searchController.clear();
+                        _searchQuery = '';
+                      },
+                      onSelectDateRange: _selectDateRange,
+                      onDateRangeChanged: (range) {
+                        setState(() => _selectedDateRange = range);
+                      },
+                      onCashierChanged: (id) {
+                        setState(() => _selectedCashierId = id);
+                      },
+                      onLoadData: _loadData,
+                    ),
                   ),
                 ],
               ),
@@ -196,453 +215,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
           width: 400, // Fixed width for dialog in landscape
           child: StatefulBuilder(
             builder: (context, setSheetState) {
-              return _buildFilterContent(setSheetState, onApply: () {
-                _loadData();
-                Navigator.pop(context);
-              }, isCompact: true);
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterContent(
-    StateSetter setSheetState, {
-    VoidCallback? onApply,
-    bool isCompact = false,
-  }) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isCompact ? 16 : 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Filter Transaksi',
-                style: TextStyle(
-                  fontSize: isCompact ? 16 : 20,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF0F172A),
-                ),
-              ),
-              Row(
-                children: [
-                  if (isCompact)
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
-                    ),
-                  TextButton(
-                    onPressed: () {
-                      setSheetState(() {});
-                      setState(() {
-                        _selectedDateRange = null;
-                        _selectedCashierId = null;
-                      });
-                      _searchController.clear();
-                      _searchQuery = '';
-                    },
-                    child: const Text(
-                      'Reset',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.redAccent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: isCompact ? 12 : 24),
-          Text(
-            'Rentang Waktu',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: isCompact ? 12 : 15,
-              color: const Color(0xFF475569),
-            ),
-          ),
-          SizedBox(height: isCompact ? 8 : 12),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _buildFilterChip(
-                'Semua',
-                null,
-                isCompact: isCompact,
-                overrideSelected: _selectedDateRange == null,
-                onTap: () {
-                  setSheetState(() {});
-                  setState(() => _selectedDateRange = null);
+              return HistoryFilterContent(
+                selectedDateRange: _selectedDateRange,
+                selectedCashierId: _selectedCashierId,
+                isCompact: true,
+                setSheetState: setSheetState,
+                onApply: () {
                   _loadData();
+                  Navigator.pop(context);
                 },
-              ),
-              _buildFilterChip(
-                'Hari Ini',
-                DateTimeRange(
-                  start: DateTime(
-                    DateTime.now().year,
-                    DateTime.now().month,
-                    DateTime.now().day,
-                  ),
-                  end: DateTime(
-                    DateTime.now().year,
-                    DateTime.now().month,
-                    DateTime.now().day,
-                  ),
-                ),
-                isCompact: isCompact,
-                overrideSelected: _selectedDateRange != null &&
-                    _isSameDay(_selectedDateRange!.start, DateTime.now()),
-                onTap: () {
-                  setSheetState(() {});
-                  setState(
-                    () => _selectedDateRange = DateTimeRange(
-                      start: DateTime(
-                        DateTime.now().year,
-                        DateTime.now().month,
-                        DateTime.now().day,
-                      ),
-                      end: DateTime(
-                        DateTime.now().year,
-                        DateTime.now().month,
-                        DateTime.now().day,
-                      ),
-                    ),
-                  );
-                  _loadData();
+                onReset: () {
+                  setState(() {
+                    _selectedDateRange = null;
+                    _selectedCashierId = null;
+                  });
+                  _searchController.clear();
+                  _searchQuery = '';
                 },
-              ),
-              _buildFilterChip(
-                'Kemarin',
-                DateTimeRange(
-                  start: DateTime(
-                    DateTime.now().year,
-                    DateTime.now().month,
-                    DateTime.now().day,
-                  ).subtract(const Duration(days: 1)),
-                  end: DateTime(
-                    DateTime.now().year,
-                    DateTime.now().month,
-                    DateTime.now().day,
-                  ).subtract(const Duration(days: 1)),
-                ),
-                isCompact: isCompact,
-                overrideSelected: _selectedDateRange != null &&
-                    _isSameDay(
-                      _selectedDateRange!.start,
-                      DateTime.now().subtract(const Duration(days: 1)),
-                    ),
-                onTap: () {
-                  setSheetState(() {});
-                  setState(
-                    () => _selectedDateRange = DateTimeRange(
-                      start: DateTime(
-                        DateTime.now().year,
-                        DateTime.now().month,
-                        DateTime.now().day,
-                      ).subtract(const Duration(days: 1)),
-                      end: DateTime(
-                        DateTime.now().year,
-                        DateTime.now().month,
-                        DateTime.now().day,
-                      ).subtract(const Duration(days: 1)),
-                    ),
-                  );
-                  _loadData();
+                onSelectDateRange: _selectDateRange,
+                onDateRangeChanged: (range) {
+                  setState(() => _selectedDateRange = range);
                 },
-              ),
-              _buildFilterChip(
-                '7 Hari',
-                DateTimeRange(
-                  start: DateTime(
-                    DateTime.now().year,
-                    DateTime.now().month,
-                    DateTime.now().day,
-                  ).subtract(const Duration(days: 6)),
-                  end: DateTime(
-                    DateTime.now().year,
-                    DateTime.now().month,
-                    DateTime.now().day,
-                  ),
-                ),
-                isCompact: isCompact,
-                overrideSelected: _selectedDateRange != null &&
-                    _isSameDay(
-                      _selectedDateRange!.start,
-                      DateTime.now().subtract(const Duration(days: 6)),
-                    ),
-                onTap: () {
-                  setSheetState(() {});
-                  setState(
-                    () => _selectedDateRange = DateTimeRange(
-                      start: DateTime(
-                        DateTime.now().year,
-                        DateTime.now().month,
-                        DateTime.now().day,
-                      ).subtract(const Duration(days: 6)),
-                      end: DateTime(
-                        DateTime.now().year,
-                        DateTime.now().month,
-                        DateTime.now().day,
-                      ),
-                    ),
-                  );
-                  _loadData();
+                onCashierChanged: (id) {
+                  setState(() => _selectedCashierId = id);
                 },
-              ),
-              _buildFilterChip(
-                _selectedDateRange != null &&
-                        !_isQuickRange(_selectedDateRange!)
-                    ? '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM').format(_selectedDateRange!.end)}'
-                    : 'Pilih Tanggal',
-                null,
-                isCompact: isCompact,
-                isDatePicker: true,
-                overrideSelected: false,
-                onTap: () async {
-                  final picked = await showDateRangePicker(
-                    context: context,
-                    firstDate: DateTime(2023),
-                    lastDate: DateTime.now(),
-                    initialDateRange: _selectedDateRange,
-                    builder: (context, child) {
-                      return Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: ColorScheme.light(
-                            primary: AppColors.primary,
-                            onPrimary: Colors.white,
-                            onSurface: AppColors.primary,
-                          ),
-                        ),
-                        child: child!,
-                      );
-                    },
-                  );
-                  if (picked != null) {
-                    setSheetState(() {});
-                    setState(() => _selectedDateRange = picked);
-                    _loadData();
-                  }
-                },
-              ),
-            ],
-          ),
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (ctx, authState) {
-              final bool isOwner = authState is AuthAuthenticated &&
-                  authState.user.role == 'owner';
-              if (!isOwner) return const SizedBox.shrink();
-
-              return BlocBuilder<KaryawanBloc, KaryawanState>(
-                builder: (ctx, state) {
-                  if (state is! KaryawanListLoaded) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: isCompact ? 12 : 24),
-                      Text(
-                        'Kasir',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: isCompact ? 12 : 15,
-                          color: const Color(0xFF475569),
-                        ),
-                      ),
-                      SizedBox(height: isCompact ? 8 : 12),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          _buildFilterChip(
-                            'Semua Kasir',
-                            null,
-                            isCompact: isCompact,
-                            isCashier: true,
-                            cashierId: null,
-                            overrideSelected: _selectedCashierId == null,
-                            onTap: () {
-                              setSheetState(() {});
-                              setState(() => _selectedCashierId = null);
-                              _loadData();
-                            },
-                          ),
-                          ...state.karyawanList.map((k) {
-                            return _buildFilterChip(
-                              k.name,
-                              null,
-                              isCompact: isCompact,
-                              isCashier: true,
-                              cashierId: k.id,
-                              overrideSelected: _selectedCashierId == k.id,
-                              onTap: () {
-                                setSheetState(() {});
-                                setState(() => _selectedCashierId = k.id);
-                                _loadData();
-                              },
-                            );
-                          }),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+                onLoadData: _loadData,
               );
             },
           ),
-          SizedBox(height: isCompact ? 16 : 32),
-          SizedBox(
-            width: double.infinity,
-            height: isCompact ? 40 : 56,
-            child: ElevatedButton(
-              onPressed: onApply,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(isCompact ? 10 : 16),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                'Terapkan Filter',
-                style: TextStyle(
-                  fontSize: isCompact ? 13 : 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
-  }
-
-  Widget _buildFilterChip(
-    String label,
-    DateTimeRange? range, {
-    bool isCompact = false,
-    bool isDatePicker = false,
-    bool isCashier = false,
-    String? cashierId,
-    bool? overrideSelected,
-    VoidCallback? onTap,
-  }) {
-    final bool isSelected = overrideSelected ??
-        (isCashier
-            ? _selectedCashierId == cashierId
-            : isDatePicker
-                ? _selectedDateRange != null &&
-                    !_isQuickRange(_selectedDateRange!)
-                : (_selectedDateRange == null && range == null) ||
-                    (_selectedDateRange != null &&
-                        range != null &&
-                        _isSameDay(_selectedDateRange!.start, range.start) &&
-                        _isSameDay(_selectedDateRange!.end, range.end)));
-
-    return Padding(
-      padding: EdgeInsets.only(right: isCompact ? 4 : 8),
-      child: ChoiceChip(
-        showCheckmark: false,
-        avatar: isDatePicker
-            ? Icon(
-                Icons.date_range,
-                size: isCompact ? 11 : 14,
-                color: isSelected ? Colors.white : const Color(0xFF065F46),
-              )
-            : null,
-        label: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF1E293B),
-            fontSize: isCompact ? 8 : 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        labelPadding: EdgeInsets.zero,
-        selected: isSelected,
-        selectedColor: const Color(0xFF065F46),
-        backgroundColor: Colors.white,
-        visualDensity: isCompact
-            ? const VisualDensity(horizontal: -4, vertical: -4)
-            : null,
-        padding: EdgeInsets.symmetric(
-          horizontal: isCompact ? 6 : 10,
-          vertical: 0,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(isCompact ? 6 : 12),
-          side: BorderSide(
-            color: isSelected ? Colors.transparent : const Color(0xFFCBD5E1),
-          ),
-        ),
-        elevation: 0,
-        onSelected: onTap != null
-            ? (_) => onTap()
-            : isDatePicker
-                ? (_) => _selectDateRange()
-                : isCashier
-                    ? (selected) {
-                        if (selected) {
-                          setState(() => _selectedCashierId = cashierId);
-                          _loadData();
-                        }
-                      }
-                    : (selected) {
-                        if (selected) {
-                          setState(() {
-                            _selectedDateRange = range;
-                          });
-                          _loadData();
-                        }
-                      },
-      ),
-    );
-  }
-
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  bool _isQuickRange(DateTimeRange range) {
-    final now = DateTime.now();
-    final today = DateTimeRange(
-      start: DateTime(now.year, now.month, now.day),
-      end: DateTime(now.year, now.month, now.day),
-    );
-    final yesterdayDate = now.subtract(const Duration(days: 1));
-    final yesterday = DateTimeRange(
-      start: DateTime(
-        yesterdayDate.year,
-        yesterdayDate.month,
-        yesterdayDate.day,
-      ),
-      end: DateTime(yesterdayDate.year, yesterdayDate.month, yesterdayDate.day),
-    );
-    final last7Days = DateTimeRange(
-      start: DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(const Duration(days: 6)),
-      end: DateTime(now.year, now.month, now.day),
-    );
-
-    return _isSameDay(range.start, today.start) &&
-            _isSameDay(range.end, today.end) ||
-        _isSameDay(range.start, yesterday.start) &&
-            _isSameDay(range.end, yesterday.end) ||
-        _isSameDay(range.start, last7Days.start) &&
-            _isSameDay(range.end, last7Days.end);
   }
 
   Widget _buildMiniStatCard({
@@ -762,11 +365,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 headerSliverBuilder: (context, innerBoxIsScrolled) {
                   return [
                     SliverToBoxAdapter(
-                      child: _buildHeaderSection(isLandscape),
+                      child: HistoryHeaderSection(
+                        searchController: _searchController,
+                        searchQuery: _searchQuery,
+                        isLandscape: isLandscape,
+                        onFilterTap: _showFilterModal,
+                        onSyncTap: _loadData,
+                        onSearchChanged: (v) {
+                          setState(() {
+                            _searchQuery = v;
+                            _currentPage = 0;
+                          });
+                        },
+                        onClearSearch: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      ),
                     ),
                     BlocBuilder<HistoryBloc, HistoryState>(
                       builder: (context, state) {
-                        if (state is HistoryLoaded && state.transactions.isNotEmpty) {
+                        if (state is HistoryLoaded &&
+                            state.transactions.isNotEmpty) {
                           return SliverToBoxAdapter(
                             child: Padding(
                               padding: EdgeInsets.symmetric(
@@ -814,7 +434,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             ),
                           );
                         }
-                        return const SliverToBoxAdapter(child: SizedBox.shrink());
+                        return const SliverToBoxAdapter(
+                          child: SizedBox.shrink(),
+                        );
                       },
                     ),
                   ];
@@ -862,17 +484,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       final filtered = _searchQuery.isEmpty
                           ? state.transactions
                           : state.transactions
-                                .where(
-                                  (t) => t.transactionNumber
-                                      .toLowerCase()
-                                      .contains(_searchQuery.toLowerCase()),
-                                )
-                                .toList();
+                              .where(
+                                (t) => t.transactionNumber
+                                    .toLowerCase()
+                                    .contains(_searchQuery.toLowerCase()),
+                              )
+                              .toList();
                       final itemsPerPage = isLandscape ? 20 : 10;
                       final totalPages = filtered.isEmpty
                           ? 1
                           : (filtered.length + itemsPerPage - 1) ~/
-                                itemsPerPage;
+                              itemsPerPage;
                       final startIndex = (_currentPage * itemsPerPage)
                           .clamp(0, filtered.length);
                       final endIndex = (startIndex + itemsPerPage).clamp(
@@ -956,14 +578,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                           return HistoryTransactionCard(
                                             transaction: trx,
                                             isLandscape: isLandscape,
-                                            currencyFormatter: currencyFormatter,
+                                            currencyFormatter:
+                                                currencyFormatter,
                                             onTap: () => Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (_) => TransactionDetailScreen(transaction: trx),
+                                                builder: (_) =>
+                                                    TransactionDetailScreen(
+                                                  transaction: trx,
+                                                ),
                                               ),
                                             ),
-                                            onDelete: (ctx) => _confirmDelete(ctx, trx.id),
+                                            onDelete: (ctx) =>
+                                                _confirmDelete(ctx, trx.id),
                                           );
                                         },
                                       )
@@ -975,17 +602,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                         ),
                                         children: displayed
                                             .map(
-                                              (trx) => HistoryTransactionCard(
+                                              (trx) =>
+                                                  HistoryTransactionCard(
                                                 transaction: trx,
                                                 isLandscape: isLandscape,
-                                                currencyFormatter: currencyFormatter,
+                                                currencyFormatter:
+                                                    currencyFormatter,
                                                 onTap: () => Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
-                                                    builder: (_) => TransactionDetailScreen(transaction: trx),
+                                                    builder: (_) =>
+                                                        TransactionDetailScreen(
+                                                      transaction: trx,
+                                                    ),
                                                   ),
                                                 ),
-                                                onDelete: (ctx) => _confirmDelete(ctx, trx.id),
+                                                onDelete: (ctx) =>
+                                                    _confirmDelete(ctx, trx.id),
                                               ),
                                             )
                                             .toList(),
@@ -1007,221 +640,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       bottomNavigationBar: isLandscape
           ? null
           : const MainBottomNavBar(activeLabel: 'HISTORY'),
-    );
-  }
-
-  Widget _buildHeaderSection(bool isLandscape) {
-    return Column(
-      children: [
-        BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) => BradHeader(
-            title: 'Riwayat Transaksi',
-            subtitle: state.displayShopName,
-              leadingIcon: Icons.history_rounded,
-              showBottomBorder: true,
-              showSettings: !isLandscape,
-              onSettingsTap: () => SettingsModal.show(context),
-              onSyncTap: () {
-                context.read<AuthBloc>().syncService.syncAll();
-                _loadData();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Menyingkronkan data...'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              },
-              actions: isLandscape
-                  ? [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.sync_rounded,
-                          color: Color(0xFF64748B),
-                          size: 18,
-                        ),
-                        onPressed: _loadData,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
-                      ),
-                    ]
-                  : null,
-            ),
-          ),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: isLandscape
-                    ? const EdgeInsets.fromLTRB(8, 4, 8, 4)
-                    : const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: isLandscape ? 48 : 56,
-                        child: TextField(
-                          textAlignVertical: TextAlignVertical.center,
-                          controller: _searchController,
-                          style: TextStyle(
-                            fontSize: isLandscape ? 14 : 14,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'Cari nomor transaksi...',
-                            hintStyle: TextStyle(
-                              fontSize: isLandscape ? 14 : 14,
-                              color: Colors.grey,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.search_rounded,
-                              color: Colors.grey,
-                              size: isLandscape ? 20 : 20,
-                            ),
-                            prefixIconConstraints: isLandscape
-                                ? const BoxConstraints(
-                                    minWidth: 40,
-                                    minHeight: 48,
-                                  )
-                                : null,
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: Icon(
-                                      Icons.clear,
-                                      size: isLandscape ? 12 : 18,
-                                      color: Colors.grey,
-                                    ),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(
-                                        () => _searchQuery = '',
-                                      );
-                                    },
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 24,
-                                      minHeight: 24,
-                                    ),
-                                  )
-                                : null,
-                            filled: true,
-                            fillColor: const Color(0xFFF1F5F9),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                isLandscape ? 12 : 16,
-                              ),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE2E8F0),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                isLandscape ? 12 : 16,
-                              ),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE2E8F0),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                isLandscape ? 12 : 16,
-                              ),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                              ),
-                            ),
-                            isDense: isLandscape,
-                            contentPadding: isLandscape
-                                ? const EdgeInsets.symmetric(horizontal: 12)
-                                : const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                          ),
-                          onChanged: (v) {
-                            setState(() {
-                              _searchQuery = v;
-                              _currentPage = 0;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: isLandscape ? 6 : 8),
-                    if (isLandscape)
-                      SizedBox(
-                        height: 40,
-                        child: OutlinedButton.icon(
-                          onPressed: _showFilterModal,
-                          icon: const Icon(Icons.tune, size: 18),
-                          label: const Text('Filter',
-                              style: TextStyle(fontSize: 13)),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF334155),
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            side: const BorderSide(color: Color(0xFFE2E8F0)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            backgroundColor: Colors.white,
-                            visualDensity: VisualDensity.comfortable,
-                          ),
-                        ),
-                      )
-                    else
-                      SizedBox(
-                        height: 56,
-                        child: Material(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(16),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: _showFilterModal,
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              alignment: Alignment.center,
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.tune,
-                                    color: Color(0xFF64748B),
-                                    size: 24,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Filter',
-                                    style: TextStyle(
-                                      color: Color(0xFF64748B),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

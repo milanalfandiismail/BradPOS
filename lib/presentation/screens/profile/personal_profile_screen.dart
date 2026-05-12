@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
+import 'package:bradpos/presentation/widgets/profile_text_field.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -529,55 +530,14 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     bool readOnly = false,
     bool obscureText = false,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          if (!readOnly)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        readOnly: readOnly,
-        obscureText: obscureText,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: readOnly ? const Color(0xFF64748B) : const Color(0xFF0F172A),
-        ),
-        decoration: InputDecoration(
-          hintText: hint,
-          prefixIcon: icon != null
-              ? Icon(icon, size: 22, color: const Color(0xFF94A3B8))
-              : null,
-          filled: true,
-          fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF006D44), width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
-          ),
-        ),
-      ),
+    return ProfileTextField(
+      controller: controller,
+      hint: hint,
+      maxLines: maxLines,
+      icon: icon,
+      readOnly: readOnly,
+      obscureText: obscureText,
+      borderRadius: 16,
     );
   }
 }

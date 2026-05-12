@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
 import 'package:bradpos/core/widgets/brad_header.dart';
+import 'package:bradpos/presentation/widgets/profile_text_field.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -490,34 +491,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     IconData? icon,
     bool readOnly = false,
   }) {
-    return TextFormField(
+    return ProfileTextField(
       controller: controller,
+      hint: hint,
       maxLines: maxLines,
+      icon: icon,
       readOnly: readOnly,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: icon != null
-            ? Icon(icon, size: 20, color: Colors.grey)
-            : null,
-        filled: true,
-        fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF006D44), width: 2),
-        ),
-      ),
     );
   }
 }

@@ -9,10 +9,14 @@ import 'package:bradpos/domain/repositories/auth_repository.dart';
 import 'package:bradpos/data/data_sources/profile_local_data_source.dart';
 import 'package:bradpos/core/sync/sync_utils.dart';
 import 'package:bradpos/data/data_sources/profile_remote_data_source.dart';
+import 'package:bradpos/data/repositories/auth_karyawan_repository_impl.dart';
 
-class AuthRepositoryImpl implements AuthRepository {
+class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
+  @override
   final SupabaseClient supabase;
+  @override
   final SharedPreferences prefs;
+  @override
   final ProfileLocalDataSource profileLocalDataSource;
   final ProfileRemoteDataSource profileRemoteDataSource;
 
@@ -409,85 +413,6 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   bool isGuestMode() {
     return prefs.getBool(_guestSessionKey) ?? false;
-  }
-
-  // ==================== Karyawan AUTH (Custom Database) ====================
-
-  @override
-  Future<Either<String, UserEntity>> signInAsKaryawan(
-    String shopId,
-    String name,
-    String password,
-  ) async {
-    try {
-      final response = await supabase.rpc(
-        'verify_karyawan_login_v2',
-        params: {
-          'p_shop_id': shopId,
-          'p_full_name': name,
-          'p_password': SyncUtils.hashPassword(password)
-        },
-      );
-
-      if (response == null || (response as List).isEmpty) {
-        return const Left('Shop ID, Nama, atau password salah');
-      }
-
-      final karyawanData = response[0];
-
-      String shopName = 'BradPOS';
-      String? dbShopId;
-      try {
-        final ownerProfile = await supabase
-            .from('profiles')
-            .select('shop_name, shop_id')
-            .eq('id', karyawanData['owner_id'])
-            .single();
-        shopName = ownerProfile['shop_name'] ?? 'BradPOS';
-        dbShopId = ownerProfile['shop_id'];
-      } catch (_) {}
-
-      final user = UserEntity(
-        id: karyawanData['id'],
-        email: '', // No email for employee
-        name: karyawanData['full_name'],
-        shopName: shopName,
-        shopId: dbShopId ?? shopId,
-        role: 'karyawan',
-        ownerId: karyawanData['owner_id'],
-        remoteImage: karyawanData['remote_image'],
-        localImage: karyawanData['local_image'],
-      );
-
-      await _saveLocalProfile(user);
-      await prefs.setString(_karyawanSessionKey, jsonEncode(user.toMap()));
-
-      return Right(user);
-    } catch (e) {
-      return Left('Gagal login: ${e.toString()}');
-    }
-  }
-
-  @override
-  Future<Either<String, String>> createKaryawan(
-    String fullName,
-    String password,
-  ) async {
-    try {
-      final response = await supabase.rpc(
-        'create_karyawan_v2',
-        params: {
-          'p_full_name': fullName,
-          'p_password': SyncUtils.hashPassword(password),
-        },
-      );
-      return Right(response.toString());
-    } catch (e) {
-      if (e.toString().contains('duplicate')) {
-        return const Left('Email karyawan sudah terdaftar');
-      }
-      return Left('Gagal membuat akun karyawan: ${e.toString()}');
-    }
   }
 
   Future<void> _saveLocalProfile(UserEntity user) async {
