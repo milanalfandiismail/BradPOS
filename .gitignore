@@ -127,3 +127,4 @@ app.*.symbols
 .agents/
 .claude/
 tags
+web/
