@@ -13,6 +13,8 @@ import 'package:bradpos/core/widgets/splash_page.dart';
 import 'package:bradpos/core/utils/app_navigator.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'package:bradpos/presentation/widgets/sync_status_indicator.dart';
+
 /// Entry point aplikasi BradPOS.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,7 +82,8 @@ class MyApp extends StatelessWidget {
         builder: (context, child) {
           return BlocListener<AuthBloc, AuthState>(
             listenWhen: (previous, current) =>
-                previous is! AuthUnauthenticated && current is AuthUnauthenticated,
+                previous is! AuthUnauthenticated &&
+                current is AuthUnauthenticated,
             listener: (context, state) {
               if (state is AuthUnauthenticated) {
                 AppNavigator.navigatorKey.currentState?.pushAndRemoveUntil(
@@ -89,7 +92,12 @@ class MyApp extends StatelessWidget {
                 );
               }
             },
-            child: child!,
+            child: Stack(
+              children: [
+                child!,
+                const SyncStatusIndicator(),
+              ],
+            ),
           );
         },
         home: const SplashPage(),

@@ -113,17 +113,12 @@ class HistoryHeaderSection extends StatelessWidget {
                                 : null,
                             suffixIcon: searchQuery.isNotEmpty
                                 ? IconButton(
-                                    icon: Icon(
+                                    icon: const Icon(
                                       Icons.clear,
-                                      size: isLandscape ? 12 : 18,
+                                      size: 20,
                                       color: Colors.grey,
                                     ),
                                     onPressed: onClearSearch,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 24,
-                                      minHeight: 24,
-                                    ),
                                   )
                                 : null,
                             filled: true,

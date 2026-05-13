@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart' hide Category;
 import 'package:bradpos/core/database/db_utils.dart';
 import 'package:bradpos/core/database/database_helper.dart';
 import 'package:bradpos/data/models/category_model.dart';
 import 'package:bradpos/domain/entities/category.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
 
 abstract class CategoryLocalDataSource {
   Future<List<CategoryModel>> getCategories(String userId);
@@ -32,13 +32,10 @@ class CategoryLocalDataSourceImpl implements CategoryLocalDataSource {
       orderBy: 'name ASC',
     );
 
-    for (var m in maps) {
-      debugPrint(
-        "DEBUG DB category: id=${m['id']}, name=${m['name']}, sync_status=${m['sync_status']}",
-      );
-    }
-
-    return maps.map((map) => CategoryModel.fromMap(map)).toList().cast<CategoryModel>();
+    return maps
+        .map((map) => CategoryModel.fromMap(map))
+        .toList()
+        .cast<CategoryModel>();
   }
 
   @override
@@ -60,6 +57,7 @@ class CategoryLocalDataSourceImpl implements CategoryLocalDataSource {
     final model = CategoryModel.fromEntity(category);
     final map = model.toMap();
     map['sync_status'] = 'created';
+    map['updated_at'] = SyncUtils.formatWebDate(DateTime.now());
 
     await db.insert(
       'categories',
@@ -75,6 +73,7 @@ class CategoryLocalDataSourceImpl implements CategoryLocalDataSource {
     final model = CategoryModel.fromEntity(category);
     final map = model.toMap();
     map['sync_status'] = 'updated';
+    map['updated_at'] = SyncUtils.formatWebDate(DateTime.now());
 
     await db.update(
       'categories',

@@ -152,7 +152,7 @@ class InventoryItemCardNormal extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!isUnlimited)
+                if (!isUnlimited && !isKaryawan)
                   Row(
                     children: [
                       Expanded(
@@ -188,7 +188,7 @@ class InventoryItemCardNormal extends StatelessWidget {
                       ),
                     ],
                   ),
-                if (!isUnlimited) const SizedBox(height: 8),
+                if (!isUnlimited && !isKaryawan) const SizedBox(height: 8),
                 if (!isKaryawan)
                   Row(
                     children: [

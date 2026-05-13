@@ -103,7 +103,7 @@ class CheckoutCard extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Confirm',
+                'Konfirmasi',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -125,7 +125,7 @@ class CheckoutCard extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Cancel Order',
+                'Batal',
                 style: TextStyle(
                   color: const Color(0xFFEF4444),
                   fontWeight: FontWeight.w800,

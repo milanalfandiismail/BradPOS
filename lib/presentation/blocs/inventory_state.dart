@@ -22,6 +22,7 @@ class InventoryLoaded extends InventoryState {
   final String? searchQuery;
   final String? category;
   final String? stockStatus;
+  final bool isSyncing;
 
   const InventoryLoaded(
     this.items, {
@@ -32,7 +33,32 @@ class InventoryLoaded extends InventoryState {
     this.searchQuery,
     this.category,
     this.stockStatus,
+    this.isSyncing = false,
   });
+
+  InventoryLoaded copyWith({
+    List<InventoryItem>? items,
+    List<Category>? categories,
+    int? totalItems,
+    int? currentPage,
+    int? limit,
+    String? searchQuery,
+    String? category,
+    String? stockStatus,
+    bool? isSyncing,
+  }) {
+    return InventoryLoaded(
+      items ?? this.items,
+      categories: categories ?? this.categories,
+      totalItems: totalItems ?? this.totalItems,
+      currentPage: currentPage ?? this.currentPage,
+      limit: limit ?? this.limit,
+      searchQuery: searchQuery ?? this.searchQuery,
+      category: category ?? this.category,
+      stockStatus: stockStatus ?? this.stockStatus,
+      isSyncing: isSyncing ?? this.isSyncing,
+    );
+  }
 
   @override
   List<Object?> get props => [
@@ -44,6 +70,7 @@ class InventoryLoaded extends InventoryState {
     searchQuery,
     category,
     stockStatus,
+    isSyncing,
   ];
 }
 
@@ -57,8 +84,9 @@ class InventoryError extends InventoryState {
 
 class InventoryOperationSuccess extends InventoryState {
   final String message;
-  const InventoryOperationSuccess(this.message);
+  final String? addedItemName;
+  const InventoryOperationSuccess(this.message, {this.addedItemName});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, addedItemName];
 }

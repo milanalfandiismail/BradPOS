@@ -20,11 +20,12 @@ class KaryawanScreen extends StatefulWidget {
 }
 
 class _KaryawanScreenState extends State<KaryawanScreen> {
+  int _selectedStatusFilter = 0; // 0: Semua, 1: Aktif, 2: Tidak Aktif
   @override
   void initState() {
     super.initState();
     // Meminta BLoC untuk memuat daftar karyawan saat halaman dibuka
-    context.read<KaryawanBloc>().add(LoadKaryawanList());
+    context.read<KaryawanBloc>().add(const LoadKaryawanList(filterStatus: 0));
   }
 
   @override
@@ -172,19 +173,92 @@ class _KaryawanScreenState extends State<KaryawanScreen> {
             Expanded(
               child: SizedBox(
                 height: isCompact ? 22 : 46,
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: Icon(Icons.tune, size: isCompact ? 10 : 18),
-                  label: Text('Filter',
-                      style: TextStyle(fontSize: isCompact ? 8 : 13)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    shape: RoundedRectangleBorder(
+                child: PopupMenuButton<int>(
+                  initialValue: _selectedStatusFilter,
+                  tooltip: 'Filter Status',
+                  onSelected: (int value) {
+                    setState(() {
+                      _selectedStatusFilter = value;
+                    });
+                    context.read<KaryawanBloc>().add(LoadKaryawanList(
+                      filterStatus: value,
+                      timestamp: DateTime.now(),
+                    ));
+                  },
+                  offset: const Offset(0, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 0,
+                      child: Row(
+                        children: [
+                          Icon(Icons.people_outline, 
+                               size: 18, 
+                               color: _selectedStatusFilter == 0 ? AppColors.primary : Colors.grey),
+                          const SizedBox(width: 8),
+                          const Text('Semua Status'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 1,
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle_outline, 
+                               size: 18, 
+                               color: _selectedStatusFilter == 1 ? AppColors.primary : Colors.grey),
+                          const SizedBox(width: 8),
+                          const Text('Aktif'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 2,
+                      child: Row(
+                        children: [
+                          Icon(Icons.highlight_off, 
+                               size: 18, 
+                               color: _selectedStatusFilter == 2 ? AppColors.primary : Colors.grey),
+                          const SizedBox(width: 8),
+                          const Text('Tidak Aktif'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _selectedStatusFilter != 0 
+                          ? AppColors.primary.withValues(alpha: 0.1) 
+                          : const Color(0xFFF1F5F9),
+                      border: Border.all(
+                        color: _selectedStatusFilter != 0 
+                            ? AppColors.primary 
+                            : const Color(0xFFE2E8F0)
+                      ),
                       borderRadius: BorderRadius.circular(isCompact ? 8 : 12),
                     ),
-                    backgroundColor: const Color(0xFFF1F5F9),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _selectedStatusFilter != 0 ? Icons.filter_alt_rounded : Icons.tune, 
+                          size: isCompact ? 10 : 18,
+                          color: _selectedStatusFilter != 0 ? AppColors.primary : AppColors.textPrimary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _selectedStatusFilter == 0 
+                              ? 'Filter' 
+                              : (_selectedStatusFilter == 1 ? 'Aktif' : 'Tidak Aktif'),
+                          style: TextStyle(
+                            fontSize: isCompact ? 8 : 13,
+                            color: _selectedStatusFilter != 0 ? AppColors.primary : AppColors.textPrimary,
+                            fontWeight: _selectedStatusFilter != 0 ? FontWeight.bold : FontWeight.normal,
+                          )
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -234,6 +308,7 @@ class _KaryawanScreenState extends State<KaryawanScreen> {
 
     if (isLandscape) {
       return GridView.builder(
+        key: UniqueKey(), // Paksa rebuild total
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
@@ -265,6 +340,7 @@ class _KaryawanScreenState extends State<KaryawanScreen> {
     }
 
     return ListView.builder(
+      key: UniqueKey(), // Paksa rebuild total
       padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: karyawanList.length,
       itemBuilder: (context, index) {

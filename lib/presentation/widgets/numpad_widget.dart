@@ -208,9 +208,9 @@ class NumpadWidget extends StatelessWidget {
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: const Color(0xFFEEF2FF),
+            color: const Color(0xFFECFDF5),
             borderRadius: BorderRadius.circular(isCompact ? 3 : 6),
-            border: Border.all(color: const Color(0xFFC7D2FE)),
+            border: Border.all(color: const Color(0xFFD1FAE5)),
           ),
           child: FittedBox(
             fit: BoxFit.scaleDown,
@@ -219,7 +219,7 @@ class NumpadWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: isCompact ? 8 : 11,
                 fontWeight: FontWeight.w900,
-                color: const Color(0xFF4338CA),
+                color: const Color(0xFF059669),
               ),
             ),
           ),

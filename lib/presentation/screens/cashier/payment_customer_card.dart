@@ -41,7 +41,7 @@ class CustomerCard extends StatelessWidget {
             child: TextField(
               controller: controller,
               decoration: InputDecoration(
-                hintText: 'Nama Pelanggan',
+                hintText: 'Nama Pelanggan (Opsional)',
                 hintStyle: TextStyle(
                   fontSize: isCompact ? 8 : 13,
                   color: const Color(0xFF94A3B8),

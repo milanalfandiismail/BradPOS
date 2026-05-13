@@ -24,6 +24,7 @@ class CashierScreen extends StatefulWidget {
 
 class _CashierScreenState extends State<CashierScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp',
@@ -31,20 +32,41 @@ class _CashierScreenState extends State<CashierScreen> {
   );
   String _activeCategory = 'All Items';
   List<ent.Category> _categories = [];
+  bool _isInit = false;
 
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
+    // Data loaded via didChangeDependencies logic
   }
 
-  void _loadInitialData() => _doSync();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_isInit) {
+      _doSync();
+      _isInit = true;
+    }
+  }
 
   void _doSync() {
     context.read<InventoryBloc>().add(
-      const LoadInventory(page: 1, limit: 10, skipSync: true),
-    );
+          LoadInventory(
+            searchQuery: _searchController.text.isEmpty ? null : _searchController.text,
+            category: _activeCategory == 'All Items' ? null : _activeCategory,
+            limit: 1000, // Ambil semua barang sekaligus
+            skipSync: true,
+          ),
+        );
     context.read<InventoryBloc>().add(LoadInventoryCategoriesEvent());
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -92,85 +114,51 @@ class _CashierScreenState extends State<CashierScreen> {
                           );
                         }
                       },
-                      child: NestedScrollView(
-                        headerSliverBuilder: (context, innerBoxIsScrolled) {
-                          return [
-                            SliverToBoxAdapter(
-                              child: Column(
-                                children: [
-                                  BlocBuilder<AuthBloc, AuthState>(
-                                    builder: (context, state) => BradHeader(
-                                      title: 'Kasir',
-                                      subtitle: state.displayShopName,
-                                        leadingIcon:
-                                            Icons.point_of_sale_rounded,
-                                        showBottomBorder: true,
-                                        showSettings: !isLandscape,
-                                        onSettingsTap: () =>
-                                            SettingsModal.show(context),
-                                        onSyncTap: () {
-                                          _doSync();
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Menyingkronkan data...',
-                                              ),
-                                              duration: Duration(seconds: 1),
+                      child: BlocBuilder<InventoryBloc, InventoryState>(
+                        builder: (context, invState) {
+                          return CustomScrollView(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            slivers: [
+                              SliverToBoxAdapter(
+                                child: Column(
+                                  children: [
+                                    BlocBuilder<AuthBloc, AuthState>(
+                                      builder: (context, state) => BradHeader(
+                                        title: 'Kasir',
+                                        subtitle: state.displayShopName,
+                                          leadingIcon: Icons.point_of_sale_rounded,
+                                          showBottomBorder: true,
+                                          showSettings: !isLandscape,
+                                          onSettingsTap: () => SettingsModal.show(context),
+                                          onSyncTap: _doSync,
+                                          actions: isLandscape ? [
+                                            IconButton(
+                                              onPressed: _doSync,
+                                              icon: const Icon(Icons.sync_rounded, color: Color(0xFF64748B), size: 18),
+                                              tooltip: 'Sync',
                                             ),
-                                          );
-                                        },
-                                        actions: isLandscape
-                                            ? [
-                                                IconButton(
-                                                  onPressed: () {
-                                                    _doSync();
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          'Menyingkronkan data...',
-                                                        ),
-                                                        duration: Duration(
-                                                          seconds: 1,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                  icon: const Icon(
-                                                    Icons.sync_rounded,
-                                                    color: Color(0xFF64748B),
-                                                    size: 18,
-                                                  ),
-                                                  tooltip: 'Sync',
-                                                  padding: EdgeInsets.zero,
-                                                  constraints:
-                                                      const BoxConstraints(
-                                                        minWidth: 32,
-                                                        minHeight: 32,
-                                                      ),
-                                                ),
-                                              ]
-                                            : null,
+                                          ] : null,
+                                      ),
                                     ),
-                                  ),
-                                  _buildSearchBar(isCompact: isLandscape),
-                                  if (isLandscape) const SizedBox(height: 4),
-                                  _buildCategories(isCompact: isLandscape),
-                                  const SizedBox(height: 12),
-                                ],
+                                    _buildSearchBar(isCompact: isLandscape),
+                                    if (isLandscape) const SizedBox(height: 4),
+                                    _buildCategories(isCompact: isLandscape),
+                                    const SizedBox(height: 12),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ];
+                              _buildProductGridSliver(
+                                constraints.maxWidth -
+                                    (showSidebar ? sidebarWidth : 0) -
+                                    (isLandscape ? railWidth : 0),
+                                isLandscape: isLandscape,
+                                invState: invState,
+                              ),
+                              const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+                            ],
+                          );
                         },
-                        body: _buildProductGrid(
-                          constraints.maxWidth -
-                              (showSidebar ? sidebarWidth : 0) -
-                              (isLandscape ? railWidth : 0),
-                          isLandscape: isLandscape,
-                        ),
                       ),
                     ),
                   ),
@@ -244,20 +232,34 @@ class _CashierScreenState extends State<CashierScreen> {
               borderRadius: BorderRadius.circular(isCompact ? 8 : 16),
               borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
             ),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    onPressed: () {
+                      _searchController.clear();
+                      context.read<InventoryBloc>().add(
+                            LoadInventory(
+                              page: 1,
+                              limit: 10,
+                              skipSync: true,
+                              searchQuery: null,
+                              category: _activeCategory == 'All Items'
+                                  ? null
+                                  : _activeCategory,
+                            ),
+                          );
+                      setState(() {});
+                    },
+                  )
+                : null,
             isDense: isCompact,
             contentPadding: isCompact
                 ? const EdgeInsets.symmetric(horizontal: 12)
                 : const EdgeInsets.symmetric(vertical: 16),
           ),
-          onChanged: (val) => context.read<InventoryBloc>().add(
-            LoadInventory(
-              page: 1,
-              limit: 10,
-              skipSync: true,
-              searchQuery: val.isEmpty ? null : val,
-              category: _activeCategory == 'All Items' ? null : _activeCategory,
-            ),
-          ),
+          onChanged: (val) {
+            _doSync();
+          },
         ),
       ),
     );
@@ -290,15 +292,10 @@ class _CashierScreenState extends State<CashierScreen> {
                   : null,
               visualDensity: isCompact ? VisualDensity.comfortable : null,
               onSelected: (val) {
-                setState(() => _activeCategory = cat);
-                context.read<InventoryBloc>().add(
-                  LoadInventory(
-                    page: 1,
-                    limit: 10,
-                    skipSync: true,
-                    category: cat == 'All Items' ? null : cat,
-                  ),
-                );
+                setState(() {
+                  _activeCategory = cat;
+                });
+                _doSync();
               },
               selectedColor: const Color(0xFF065F46),
               backgroundColor: Colors.white,
@@ -327,7 +324,8 @@ class _CashierScreenState extends State<CashierScreen> {
     );
   }
 
-  Widget _buildProductGrid(double availableWidth, {bool isLandscape = false}) {
+  Widget _buildProductGridSliver(double availableWidth,
+      {bool isLandscape = false, required InventoryState invState}) {
     int crossAxisCount = 2;
     double aspectRatio = 0.65;
 
@@ -344,27 +342,36 @@ class _CashierScreenState extends State<CashierScreen> {
       }
     }
 
-    return BlocBuilder<InventoryBloc, InventoryState>(
-      builder: (context, invState) {
-        if (invState is InventoryLoading) {
-          return const Center(
+    if (invState is InventoryLoading) {
+      return const SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.only(top: 100),
             child: CircularProgressIndicator(color: Color(0xFF065F46)),
-          );
-        }
-        if (invState is InventoryLoaded) {
-          return BlocBuilder<CashierBloc, CashierState>(
-            builder: (context, cashierState) {
-              return GridView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.all(isLandscape ? 4 : 20),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  childAspectRatio: aspectRatio,
-                  crossAxisSpacing: isLandscape ? 4 : 16,
-                  mainAxisSpacing: isLandscape ? 4 : 16,
-                ),
-                itemCount: invState.items.length,
-                itemBuilder: (context, index) {
+          ),
+        ),
+      );
+    }
+
+    if (invState is InventoryLoaded) {
+      return BlocBuilder<CashierBloc, CashierState>(
+        builder: (context, cashierState) {
+          return SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              isLandscape ? 4 : 20,
+              isLandscape ? 4 : 4,
+              isLandscape ? 4 : 20,
+              20,
+            ),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: aspectRatio,
+                crossAxisSpacing: isLandscape ? 4 : 16,
+                mainAxisSpacing: isLandscape ? 4 : 16,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
                   final product = invState.items[index];
                   final cartIdx = cashierState.cartItems.indexWhere(
                     (i) => i.produkId == product.id,
@@ -373,26 +380,29 @@ class _CashierScreenState extends State<CashierScreen> {
                       ? cashierState.cartItems[cartIdx].quantity
                       : 0;
                   final authState = context.read<AuthBloc>().state;
-                  final isGuest =
-                      authState is AuthAuthenticated && authState.user.isGuest;
+                  final isGuest = authState is AuthAuthenticated &&
+                      authState.user.isGuest;
                   return CashierProductCard(
                     product: product,
                     qty: qty,
                     isGuest: isGuest,
                     isCompact: isLandscape,
                     currencyFormatter: currencyFormatter,
-                    onAddToCart: (p) => context.read<CashierBloc>().add(AddToCart(p)),
-                    onUpdateQuantity: (p, delta) =>
-                        context.read<CashierBloc>().add(UpdateCartQuantity(p.id, delta)),
+                    onAddToCart: (p) =>
+                        context.read<CashierBloc>().add(AddToCart(p)),
+                    onUpdateQuantity: (p, delta) => context
+                        .read<CashierBloc>()
+                        .add(UpdateCartQuantity(p.id, delta)),
                   );
                 },
-              );
-            },
+                childCount: invState.items.length,
+              ),
+            ),
           );
-        }
-        return const SizedBox();
-      },
-    );
+        },
+      );
+    }
+    return const SliverToBoxAdapter(child: SizedBox());
   }
 
   Widget _buildFAB() {

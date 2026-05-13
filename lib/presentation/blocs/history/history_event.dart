@@ -8,18 +8,20 @@ abstract class HistoryEvent extends Equatable {
 
 class LoadHistoryEvent extends HistoryEvent {
   final String? cashierId;
-  const LoadHistoryEvent({this.cashierId});
+  final bool skipSync;
+  const LoadHistoryEvent({this.cashierId, this.skipSync = false});
   @override
-  List<Object?> get props => [cashierId];
+  List<Object?> get props => [cashierId, skipSync];
 }
 
 class LoadHistoryByRangeEvent extends HistoryEvent {
   final DateTime startDate;
   final DateTime endDate;
   final String? cashierId;
-  const LoadHistoryByRangeEvent(this.startDate, this.endDate, {this.cashierId});
+  final bool skipSync;
+  const LoadHistoryByRangeEvent(this.startDate, this.endDate, {this.cashierId, this.skipSync = false});
   @override
-  List<Object?> get props => [startDate, endDate, cashierId];
+  List<Object?> get props => [startDate, endDate, cashierId, skipSync];
 }
 
 class DeleteTransactionEvent extends HistoryEvent {

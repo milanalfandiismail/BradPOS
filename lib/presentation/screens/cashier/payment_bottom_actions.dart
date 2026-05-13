@@ -37,7 +37,7 @@ class PaymentBottomActions extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  'Confirm Payment',
+                  'Konfirmasi Pembayaran',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
@@ -58,7 +58,7 @@ class PaymentBottomActions extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  'Cancel Order',
+                  'Batal Transaksi',
                   style: TextStyle(
                     color: Color(0xFFEF4444),
                     fontWeight: FontWeight.w800,

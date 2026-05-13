@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:bradpos/core/database/db_utils.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
+
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
@@ -87,7 +89,7 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
       // 1. Simpan Transaction (Header + Items dalam JSON)
       await db.insert(
         'transactions',
-        trxModel.toMap(),
+        {...trxModel.toMap(), 'updated_at': SyncUtils.formatWebDate(DateTime.now())},
         conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
       );
 

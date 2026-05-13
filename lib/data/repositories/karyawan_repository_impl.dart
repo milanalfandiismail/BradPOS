@@ -19,26 +19,27 @@ class KaryawanRepositoryImpl implements KaryawanRepository {
   });
 
   @override
-  Future<Either<String, List<Karyawan>>> getKaryawans() async {
+  Future<Either<String, List<Karyawan>>> getKaryawans({bool? isActive}) async {
     try {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) return const Left("Anda harus login.");
 
-      // Offline-first: Ambil dari local SQLite
-      final localData = await localDataSource.getKaryawans(userId);
-      final list = localData.map((e) => KaryawanModel.fromMap(e)).toList();
+      // 1. Cek apakah ada data lokal (tanpa filter dulu untuk cek kekosongan DB)
+      final allLocalData = await localDataSource.getKaryawans(userId);
       
-      // Jika lokal kosong, coba tarik dari remote sekali (Initial PULL)
-      if (list.isEmpty) {
+      // 2. Jika lokal benar-benar kosong, coba tarik dari remote sekali (Initial PULL)
+      if (allLocalData.isEmpty) {
         try {
           final remoteData = await remoteDataSource.getKaryawans(userId);
           await localDataSource.saveKaryawans(remoteData);
-          final updatedList = remoteData.map((e) => KaryawanModel.fromMap(e)).toList();
-          return Right(updatedList);
         } catch (e) {
-          return Right(list); // Tetap kembalikan list kosong jika remote gagal
+          // Abaikan error remote, nanti ambil dari lokal yang masih kosong
         }
       }
+
+      // 3. Ambil data dari lokal dengan filter yang diinginkan
+      final localData = await localDataSource.getKaryawans(userId, isActive: isActive);
+      final list = localData.map((e) => KaryawanModel.fromMap(e)).toList();
 
       return Right(list);
     } catch (e) {

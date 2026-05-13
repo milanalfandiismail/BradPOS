@@ -1,39 +1,47 @@
 class ProfileModel {
   final String id;
-  final String shopName;
-  final String? fullName;
-  final String? remoteImage;
-  final String? localImage;
-  final String? updatedAt;
+  final String? email;
+  final String? shopName;
+  final String? shopAddress;
+  final String? shopPhone;
+  final String? shopDescription;
+  final String? logoUrl;
+  final DateTime? updatedAt;
 
-  const ProfileModel({
+  ProfileModel({
     required this.id,
-    required this.shopName,
-    this.fullName,
-    this.remoteImage,
-    this.localImage,
+    this.email,
+    this.shopName,
+    this.shopAddress,
+    this.shopPhone,
+    this.shopDescription,
+    this.logoUrl,
     this.updatedAt,
   });
 
   factory ProfileModel.fromMap(Map<String, dynamic> map) {
     return ProfileModel(
-      id: map['id'] as String,
-      shopName: map['shop_name'] as String? ?? '',
-      fullName: map['full_name'] as String?,
-      remoteImage: map['remote_image'] as String?,
-      localImage: map['local_image'] as String?,
-      updatedAt: map['updated_at'] as String?,
+      id: map['id'],
+      email: map['email'],
+      shopName: map['shop_name'],
+      shopAddress: map['shop_address'],
+      shopPhone: map['shop_phone'],
+      shopDescription: map['shop_description'],
+      logoUrl: map['logo_url'],
+      updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at']) : null,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'email': email,
       'shop_name': shopName,
-      if (fullName != null) 'full_name': fullName,
-      if (remoteImage != null) 'remote_image': remoteImage,
-      if (localImage != null) 'local_image': localImage,
-      if (updatedAt != null) 'updated_at': updatedAt,
+      'shop_address': shopAddress,
+      'shop_phone': shopPhone,
+      'shop_description': shopDescription,
+      'logo_url': logoUrl,
+      'updated_at': updatedAt?.toIso8601String(),
     };
   }
 }

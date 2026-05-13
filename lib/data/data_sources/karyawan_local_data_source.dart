@@ -2,7 +2,7 @@ import 'package:bradpos/core/database/database_helper.dart';
 import 'package:bradpos/core/database/db_utils.dart';
 
 abstract class KaryawanLocalDataSource {
-  Future<List<Map<String, dynamic>>> getKaryawans(String ownerId);
+  Future<List<Map<String, dynamic>>> getKaryawans(String ownerId, {bool? isActive});
   Future<void> saveKaryawans(List<Map<String, dynamic>> karyawans);
   Future<void> saveKaryawan(Map<String, dynamic> karyawan);
   Future<void> deleteKaryawan(String id);
@@ -14,12 +14,20 @@ class KaryawanLocalDataSourceImpl implements KaryawanLocalDataSource {
   KaryawanLocalDataSourceImpl({required this.dbHelper});
 
   @override
-  Future<List<Map<String, dynamic>>> getKaryawans(String ownerId) async {
+  Future<List<Map<String, dynamic>>> getKaryawans(String ownerId, {bool? isActive}) async {
     final db = await dbHelper.database;
+    String whereClause = 'owner_id = ?';
+    List<dynamic> whereArgs = [ownerId];
+
+    if (isActive != null) {
+      whereClause += ' AND is_active = ?';
+      whereArgs.add(isActive ? 1 : 0);
+    }
+
     return await db.query(
       'karyawan',
-      where: 'owner_id = ?',
-      whereArgs: [ownerId],
+      where: whereClause,
+      whereArgs: whereArgs,
       orderBy: 'created_at DESC',
     );
   }

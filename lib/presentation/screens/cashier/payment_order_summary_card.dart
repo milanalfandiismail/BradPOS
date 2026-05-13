@@ -52,7 +52,7 @@ class OrderSummaryListCard extends StatelessWidget {
                 Text(
                   '${cashierState.cartItems.length} Items',
                   style: TextStyle(
-                    color: const Color(0xFF4338CA),
+                    color: const Color(0xFF059669),
                     fontSize: isCompact ? 8 : 11,
                     fontWeight: FontWeight.w900,
                   ),
@@ -84,7 +84,7 @@ class OrderSummaryListCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: isCompact ? 9 : 10,
                                 fontWeight: FontWeight.w900,
-                                color: const Color(0xFF4338CA),
+                                color: const Color(0xFF059669),
                               ),
                             ),
                             SizedBox(width: isCompact ? 4 : 8),

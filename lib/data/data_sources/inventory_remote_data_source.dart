@@ -26,7 +26,9 @@ abstract class InventoryRemoteDataSource {
   Future<void> pushDeletedItem(String id, String userId);
 }
 
-class InventoryRemoteDataSourceImpl with InventoryImageUploader implements InventoryRemoteDataSource {
+class InventoryRemoteDataSourceImpl
+    with InventoryImageUploader
+    implements InventoryRemoteDataSource {
   @override
   final SupabaseClient supabase;
 
@@ -122,7 +124,9 @@ class InventoryRemoteDataSourceImpl with InventoryImageUploader implements Inven
     final String? imageUrl = payload['image_url'];
     final String id = payload['id'];
 
-    if (imageUrl != null && imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+    if (imageUrl != null &&
+        imageUrl.isNotEmpty &&
+        !imageUrl.startsWith('http')) {
       if (oldImageUrl != null) await deleteOldImageByUrl(oldImageUrl);
       remoteUrl = await uploadImage(
         imageUrl,
@@ -130,11 +134,11 @@ class InventoryRemoteDataSourceImpl with InventoryImageUploader implements Inven
         id,
         DateTime.parse(itemMap['updated_at']),
       );
-      payload['image_url'] = remoteUrl; // null if upload failed → server stores null
+      payload['image_url'] =
+          remoteUrl; // null if upload failed → server stores null
     }
 
     payload.remove('sync_status');
-    payload.remove('updated_at');
     payload.remove('price'); // Legacy SQLite column
     payload['is_active'] = payload['is_active'] == 1;
 
@@ -151,7 +155,9 @@ class InventoryRemoteDataSourceImpl with InventoryImageUploader implements Inven
   Future<String?> pushCreatedItem(Map<String, dynamic> itemMap) async {
     final (:payload, :remoteUrl) = await _preparePayload(itemMap);
     try {
-      debugPrint("RemoteDataSource: Upserting produk ${payload['id']} to Supabase...");
+      debugPrint(
+        "RemoteDataSource: Upserting produk ${payload['id']} to Supabase...",
+      );
       await supabase.from("produk").upsert(payload);
       debugPrint("RemoteDataSource: Upsert produk success!");
     } catch (e) {
@@ -167,7 +173,9 @@ class InventoryRemoteDataSourceImpl with InventoryImageUploader implements Inven
     final id = itemMap['id'] as String;
     String? oldImageUrl;
     final imageUrl = itemMap['image_url'] as String?;
-    if (imageUrl != null && imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+    if (imageUrl != null &&
+        imageUrl.isNotEmpty &&
+        !imageUrl.startsWith('http')) {
       final oldData = await supabase
           .from('produk')
           .select('image_url')
@@ -176,9 +184,14 @@ class InventoryRemoteDataSourceImpl with InventoryImageUploader implements Inven
       oldImageUrl = oldData?['image_url'] as String?;
     }
 
-    final (:payload, :remoteUrl) = await _preparePayload(itemMap, oldImageUrl: oldImageUrl);
+    final (:payload, :remoteUrl) = await _preparePayload(
+      itemMap,
+      oldImageUrl: oldImageUrl,
+    );
     try {
-      debugPrint("RemoteDataSource: Updating (upsert) produk $id to Supabase...");
+      debugPrint(
+        "RemoteDataSource: Updating (upsert) produk $id to Supabase...",
+      );
       await supabase.from("produk").upsert(payload);
       debugPrint("RemoteDataSource: Update produk success!");
     } catch (e) {
@@ -227,5 +240,4 @@ class InventoryRemoteDataSourceImpl with InventoryImageUploader implements Inven
       debugPrint("PushDeletedItem: Berhasil hapus ${result.length} baris");
     }
   }
-
 }

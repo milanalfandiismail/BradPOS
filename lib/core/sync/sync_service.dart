@@ -72,12 +72,23 @@ class SyncService {
       try { await transactionSync.push(effectiveUserId); } catch (e) { debugPrint("SyncService: TransactionPush failed: $e"); }
 
       // 3. PULL PHASE
-      debugPrint("SyncService: Memulai Pull Phase...");
-      try { await productSync.pull(effectiveUserId, limit: limit, offset: offset); } catch (e) { debugPrint("SyncService: ProductPull failed: $e"); }
-      try { await transactionSync.pull(effectiveUserId); } catch (e) { debugPrint("SyncService: TransactionPull failed: $e"); }
-      try { await categorySync.pull(effectiveUserId); } catch (e) { debugPrint("SyncService: CategoryPull failed: $e"); }
+      debugPrint("SyncService: >>> Memulai Pull Phase (Incremental)...");
+      try { 
+        debugPrint("SyncService: Pulling Products...");
+        await productSync.pull(effectiveUserId, limit: limit, offset: offset); 
+      } catch (e) { debugPrint("SyncService: ProductPull failed: $e"); }
+      
+      try { 
+        debugPrint("SyncService: Pulling Transactions...");
+        await transactionSync.pull(effectiveUserId); 
+      } catch (e) { debugPrint("SyncService: TransactionPull failed: $e"); }
+      
+      try { 
+        debugPrint("SyncService: Pulling Categories...");
+        await categorySync.pull(effectiveUserId); 
+      } catch (e) { debugPrint("SyncService: CategoryPull failed: $e"); }
 
-      debugPrint("SyncService: Sinkronisasi modular selesai");
+      debugPrint("SyncService: <<< Sinkronisasi modular SELESAI untuk user $effectiveUserId");
     } catch (e) {
       debugPrint("SyncService Error Fatal: $e");
     } finally {

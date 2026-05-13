@@ -190,7 +190,6 @@ class InventoryRepositoryImpl implements InventoryRepository {
       if (item.ownerId == SyncUtils.offlineGuest) return;
       final itemMap = InventoryItemModel.fromEntity(item).toMap();
       itemMap.remove('sync_status');
-      itemMap.remove('updated_at');
       await remoteDataSource.pushCreatedItem(itemMap);
     } catch (e) {
       debugPrint('Immediate sync failed: $e');

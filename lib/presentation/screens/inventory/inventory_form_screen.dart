@@ -427,66 +427,43 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
               ),
               const SizedBox(height: 8),
               buildFormSectionCard([
-                Row(
-                  children: [
-                    Expanded(
-                      child: FormTextField(
-                        controller: _sellingPriceController,
-                        label: 'Harga Jual',
-                        icon: Icons.upload_rounded,
-                        prefix: 'Rp',
-                        keyboardType: TextInputType.number,
-                        formatters: [CurrencyInputFormatter()],
-                      ),
-                    ),
-                    if (_showPurchasePrice) ...[
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FormTextField(
-                          controller: _purchasePriceController,
-                          label: 'Harga Beli (Opsional)',
-                          icon: Icons.download_rounded,
-                          prefix: 'Rp',
-                          keyboardType: TextInputType.number,
-                          formatters: [CurrencyInputFormatter()],
-                        ),
-                      ),
-                    ],
-                  ],
+                FormTextField(
+                  controller: _sellingPriceController,
+                  label: 'Harga Jual',
+                  icon: Icons.upload_rounded,
+                  prefix: 'Rp',
+                  keyboardType: TextInputType.number,
+                  formatters: [CurrencyInputFormatter()],
                 ),
                 if (_showPurchasePrice) ...[
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: FormTextField(
-                          controller: _stockController,
-                          label: 'Stok',
-                          icon: Icons.inventory_rounded,
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: FormPickerField(
-                          label: 'Satuan',
-                          icon: Icons.straighten_rounded,
-                          value: _unitController.text,
-                          onTap: _showUnitPicker,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 3,
-                        child: FormTextField(
-                          controller: _barcodeController,
-                          label: 'Barcode (Opsional)',
-                          icon: Icons.qr_code_scanner_rounded,
-                        ),
-                      ),
-                    ],
+                  FormTextField(
+                    controller: _purchasePriceController,
+                    label: 'Harga Beli (Opsional)',
+                    icon: Icons.download_rounded,
+                    prefix: 'Rp',
+                    keyboardType: TextInputType.number,
+                    formatters: [CurrencyInputFormatter()],
+                  ),
+                  const SizedBox(height: 16),
+                  FormTextField(
+                    controller: _stockController,
+                    label: 'Stok Saat Ini',
+                    icon: Icons.inventory_rounded,
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                  FormPickerField(
+                    label: 'Satuan',
+                    icon: Icons.straighten_rounded,
+                    value: _unitController.text,
+                    onTap: _showUnitPicker,
+                  ),
+                  const SizedBox(height: 16),
+                  FormTextField(
+                    controller: _barcodeController,
+                    label: 'Barcode (Opsional)',
+                    icon: Icons.qr_code_scanner_rounded,
                   ),
                 ],
                 const Divider(height: 24),
@@ -543,6 +520,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
   }
 
   void _showCategoryPicker() {
+    FocusScope.of(context).unfocus(); // TUTUP KEYBOARD DULU BIAR GK OVERFLOW
     sl<CategoryBloc>().add(LoadCategoriesEvent());
     final cats = _getCategories();
     final items =
@@ -603,6 +581,7 @@ class _InventoryFormScreenState extends State<InventoryFormScreen> {
   }
 
   void _showUnitPicker() {
+    FocusScope.of(context).unfocus(); // TUTUP KEYBOARD DULU BIAR GK OVERFLOW
     final items =
         (List<String>.from(_unitOptions)
             ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase())))

@@ -41,7 +41,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadData(); // Sync pas pertama kali masuk tab History
     context.read<KaryawanBloc>().add(LoadKaryawanList());
   }
 
@@ -53,31 +53,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
     super.dispose();
   }
 
-  void _loadData() {
+  void _loadData({bool skipSync = false}) {
     _currentPage = 0;
     if (_selectedDateRange != null) {
       final start = DateTime(
         _selectedDateRange!.start.year,
         _selectedDateRange!.start.month,
         _selectedDateRange!.start.day,
-        0,
-        0,
-        0,
+        0, 0, 0,
       );
       final end = DateTime(
         _selectedDateRange!.end.year,
         _selectedDateRange!.end.month,
         _selectedDateRange!.end.day,
-        23,
-        59,
-        59,
+        23, 59, 59,
       );
       context.read<HistoryBloc>().add(
-        LoadHistoryByRangeEvent(start, end, cashierId: _selectedCashierId),
+        LoadHistoryByRangeEvent(start, end, cashierId: _selectedCashierId, skipSync: skipSync),
       );
     } else {
       context.read<HistoryBloc>().add(
-        LoadHistoryEvent(cashierId: _selectedCashierId),
+        LoadHistoryEvent(cashierId: _selectedCashierId, skipSync: skipSync),
       );
     }
   }
@@ -215,11 +211,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: SizedBox(
-          width: 400, // Fixed width for dialog in landscape
+          width: 400,
           child: StatefulBuilder(
             builder: (context, setSheetState) {
               return HistoryFilterContent(
@@ -254,7 +248,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -297,6 +290,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         onClearSearch: () {
                           _searchController.clear();
                           setState(() => _searchQuery = '');
+                          _loadData();
                         },
                       ),
                     ),
@@ -351,9 +345,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             ),
                           );
                         }
-                        return const SliverToBoxAdapter(
-                          child: SizedBox.shrink(),
-                        );
+                        return const SliverToBoxAdapter(child: SizedBox.shrink());
                       },
                     ),
                   ];
@@ -361,9 +353,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 body: BlocBuilder<HistoryBloc, HistoryState>(
                   builder: (context, state) {
                     if (state is HistoryLoading) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
+                      return const Center(child: CircularProgressIndicator());
                     }
 
                     if (state is HistoryError) {
@@ -371,26 +361,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 60,
-                              color: Colors.red,
-                            ),
+                            const Icon(Icons.error_outline, size: 60, color: Colors.red),
                             const SizedBox(height: 16),
-                            Text(
-                              'Gagal muat data: ${state.message}',
-                              textAlign: TextAlign.center,
-                            ),
+                            Text('Gagal muat data: ${state.message}', textAlign: TextAlign.center),
                             const SizedBox(height: 24),
                             ElevatedButton(
                               onPressed: _loadData,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                              ),
-                              child: const Text(
-                                'Coba Lagi',
-                                style: TextStyle(color: Colors.white),
-                              ),
+                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
                             ),
                           ],
                         ),
@@ -401,76 +379,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       final filtered = _searchQuery.isEmpty
                           ? state.transactions
                           : state.transactions
-                              .where(
-                                (t) => t.transactionNumber
-                                    .toLowerCase()
-                                    .contains(_searchQuery.toLowerCase()),
-                              )
+                              .where((t) => t.transactionNumber.toLowerCase().contains(_searchQuery.toLowerCase()))
                               .toList();
                       final itemsPerPage = isLandscape ? 20 : 10;
-                      final totalPages = filtered.isEmpty
-                          ? 1
-                          : (filtered.length + itemsPerPage - 1) ~/
-                              itemsPerPage;
-                      final startIndex = (_currentPage * itemsPerPage)
-                          .clamp(0, filtered.length);
-                      final endIndex = (startIndex + itemsPerPage).clamp(
-                        0,
-                        filtered.length,
-                      );
-                      final displayed = filtered.sublist(
-                        startIndex,
-                        endIndex,
-                      );
+                      final totalPages = filtered.isEmpty ? 1 : (filtered.length + itemsPerPage - 1) ~/ itemsPerPage;
+                      final startIndex = (_currentPage * itemsPerPage).clamp(0, filtered.length);
+                      final endIndex = (startIndex + itemsPerPage).clamp(0, filtered.length);
+                      final displayed = filtered.sublist(startIndex, endIndex);
 
                       return Column(
                         children: [
                           Expanded(
                             child: filtered.isEmpty
                                 ? ListView(
-                                    physics:
-                                        const AlwaysScrollableScrollPhysics(),
+                                    physics: const AlwaysScrollableScrollPhysics(),
                                     children: [
-                                      SizedBox(
-                                        height: MediaQuery.of(context)
-                                                .size
-                                                .height *
-                                            0.2,
-                                      ),
+                                      SizedBox(height: MediaQuery.of(context).size.height * 0.2),
                                       Center(
                                         child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
+                                          mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            Icon(
-                                              Icons.receipt_long_outlined,
-                                              size: isLandscape ? 48 : 80,
-                                              color: Colors.grey,
-                                            ),
+                                            Icon(Icons.receipt_long_outlined, size: isLandscape ? 48 : 80, color: Colors.grey),
                                             const SizedBox(height: 16),
                                             Text(
                                               _searchQuery.isNotEmpty
                                                   ? 'Tidak ada hasil untuk "$_searchQuery"'
-                                                  : _selectedDateRange == null
-                                                      ? 'Belum ada transaksi'
-                                                      : 'Tidak ada transaksi di rentang tanggal ini',
-                                              style: TextStyle(
-                                                color: Colors.grey,
-                                                fontSize: isLandscape ? 12 : 16,
-                                              ),
+                                                  : _selectedDateRange == null ? 'Belum ada transaksi' : 'Tidak ada transaksi di rentang tanggal ini',
+                                              style: TextStyle(color: Colors.grey, fontSize: isLandscape ? 12 : 16),
                                             ),
                                             if (_selectedDateRange != null)
                                               TextButton(
                                                 onPressed: () {
-                                                  setState(
-                                                    () => _selectedDateRange =
-                                                        null,
-                                                  );
+                                                  setState(() => _selectedDateRange = null);
                                                   _loadData();
                                                 },
-                                                child: const Text(
-                                                  'Hapus Filter',
-                                                ),
+                                                child: const Text('Hapus Filter'),
                                               ),
                                           ],
                                         ),
@@ -479,48 +422,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   )
                                 : isLandscape
                                     ? CustomScrollView(
-                                        physics:
-                                            const AlwaysScrollableScrollPhysics(),
+                                        physics: const AlwaysScrollableScrollPhysics(),
                                         slivers: [
                                           SliverPadding(
                                             padding: const EdgeInsets.all(8),
                                             sliver: SliverGrid(
-                                              gridDelegate:
-                                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                                 crossAxisCount: 4,
                                                 mainAxisExtent: 130,
                                                 crossAxisSpacing: 4,
                                                 mainAxisSpacing: 4,
                                               ),
-                                              delegate:
-                                                  SliverChildBuilderDelegate(
-                                                (context, index) {
-                                                  final trx = displayed[index];
-                                                  return HistoryTransactionCard(
-                                                    transaction: trx,
-                                                    isLandscape: isLandscape,
-                                                    currencyFormatter:
-                                                        currencyFormatter,
-                                                    onTap: () => Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            TransactionDetailScreen(
-                                                          transaction: trx,
-                                                        ),
-                                                      ),
+                                              delegate: SliverChildBuilderDelegate((context, index) {
+                                                final trx = displayed[index];
+                                                return HistoryTransactionCard(
+                                                  transaction: trx,
+                                                  isLandscape: isLandscape,
+                                                  currencyFormatter: currencyFormatter,
+                                                  onTap: () => Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => TransactionDetailScreen(transaction: trx),
                                                     ),
-                                                    onDelete: (ctx) =>
-                                                        _confirmDelete(
-                                                            ctx, trx.id),
-                                                  );
-                                                },
-                                                childCount: displayed.length,
-                                              ),
+                                                  ),
+                                                  onDelete: (ctx) => _confirmDelete(ctx, trx.id),
+                                                );
+                                              }, childCount: displayed.length),
                                             ),
                                           ),
-                                          if (filtered.isNotEmpty &&
-                                              totalPages > 1)
+                                          if (filtered.isNotEmpty && totalPages > 1)
                                             SliverToBoxAdapter(
                                               child: HistoryPaginationBar(
                                                 currentPage: _currentPage,
@@ -528,109 +458,56 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                                 isLandscape: isLandscape,
                                                 onPrevious: _currentPage > 0
                                                     ? () {
-                                                        setState(() =>
-                                                            _currentPage--);
-                                                        _scrollController
-                                                            .animateTo(
-                                                          0,
-                                                          duration:
-                                                              const Duration(
-                                                                  milliseconds:
-                                                                      300),
-                                                          curve: Curves.easeOut,
-                                                        );
+                                                        setState(() => _currentPage--);
+                                                        _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
                                                       }
                                                     : null,
-                                                onNext: _currentPage <
-                                                        totalPages - 1
+                                                onNext: _currentPage < totalPages - 1
                                                     ? () {
-                                                        setState(() =>
-                                                            _currentPage++);
-                                                        _scrollController
-                                                            .animateTo(
-                                                          0,
-                                                          duration:
-                                                              const Duration(
-                                                                  milliseconds:
-                                                                      300),
-                                                          curve: Curves.easeOut,
-                                                        );
+                                                        setState(() => _currentPage++);
+                                                        _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
                                                       }
                                                     : null,
                                               ),
                                             ),
-                                          const SliverPadding(
-                                              padding:
-                                                  EdgeInsets.only(bottom: 20)),
+                                          const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
                                         ],
                                       )
                                     : ListView(
-                                        physics:
-                                            const AlwaysScrollableScrollPhysics(),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                        ),
+                                        physics: const AlwaysScrollableScrollPhysics(),
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
                                         children: [
-                                          ...displayed.map(
-                                            (trx) => HistoryTransactionCard(
-                                              transaction: trx,
-                                              isLandscape: isLandscape,
-                                              currencyFormatter:
-                                                  currencyFormatter,
-                                              onTap: () => Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      TransactionDetailScreen(
-                                                    transaction: trx,
-                                                  ),
-                                                ),
+                                          ...displayed.map((trx) => HistoryTransactionCard(
+                                            transaction: trx,
+                                            isLandscape: isLandscape,
+                                            currencyFormatter: currencyFormatter,
+                                            onTap: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => TransactionDetailScreen(transaction: trx),
                                               ),
-                                              onDelete: (ctx) =>
-                                                  _confirmDelete(ctx, trx.id),
                                             ),
-                                          ),
-                                          if (filtered.isNotEmpty &&
-                                              totalPages > 1)
+                                            onDelete: (ctx) => _confirmDelete(ctx, trx.id),
+                                          )),
+                                          if (filtered.isNotEmpty && totalPages > 1)
                                             HistoryPaginationBar(
                                               currentPage: _currentPage,
                                               totalPages: totalPages,
                                               isLandscape: isLandscape,
                                               onPrevious: _currentPage > 0
                                                   ? () {
-                                                      setState(() =>
-                                                          _currentPage--);
-                                                      _scrollController
-                                                          .animateTo(
-                                                        0,
-                                                        duration:
-                                                            const Duration(
-                                                                milliseconds:
-                                                                    300),
-                                                        curve: Curves.easeOut,
-                                                      );
+                                                      setState(() => _currentPage--);
+                                                      _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
                                                     }
                                                   : null,
-                                              onNext: _currentPage <
-                                                      totalPages - 1
+                                              onNext: _currentPage < totalPages - 1
                                                   ? () {
-                                                      setState(() =>
-                                                          _currentPage++);
-                                                      _scrollController
-                                                          .animateTo(
-                                                        0,
-                                                        duration:
-                                                            const Duration(
-                                                                milliseconds:
-                                                                    300),
-                                                        curve: Curves.easeOut,
-                                                      );
+                                                      setState(() => _currentPage++);
+                                                      _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
                                                     }
                                                   : null,
                                             ),
-                                          const Padding(
-                                              padding:
-                                                  EdgeInsets.only(bottom: 20)),
+                                          const Padding(padding: EdgeInsets.only(bottom: 20)),
                                         ],
                                       ),
                           ),
@@ -645,9 +522,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: isLandscape
-          ? null
-          : const MainBottomNavBar(activeLabel: 'HISTORY'),
+      bottomNavigationBar: isLandscape ? null : const MainBottomNavBar(activeLabel: 'HISTORY'),
     );
   }
 }

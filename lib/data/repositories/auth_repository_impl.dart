@@ -395,7 +395,7 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
       if (user.role == 'owner') {
         final Map<String, dynamic> updateData = {
           'id': user.id,
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': SyncUtils.formatWebDate(DateTime.now()),
         };
         if (fullName != null) updateData['full_name'] = fullName;
         if (shopName != null) updateData['shop_name'] = shopName;
@@ -462,7 +462,7 @@ class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
       'full_name': user.name,
       'remote_image': user.remoteImage,
       'local_image': user.localImage,
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': SyncUtils.formatWebDate(DateTime.now()),
     });
   }
 }

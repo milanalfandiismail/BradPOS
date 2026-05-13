@@ -58,7 +58,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (!_isInit) {
       _itemsPerPage = currentLimit;
       _lastItemsPerPage = currentLimit;
-      _loadPage();
+      _loadPage(); // Sync pas pertama kali masuk tab
       _isInit = true;
     } else if (_lastItemsPerPage != currentLimit) {
       _itemsPerPage = currentLimit;
@@ -75,7 +75,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (user != null && mounted) setState(() => _isKaryawan = user.isKaryawan);
   }
 
-  void _loadPage() {
+  void _loadPage({bool skipSync = false}) {
     context.read<InventoryBloc>().add(
       LoadInventory(
         page: _currentPage,
@@ -83,6 +83,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         searchQuery: _searchController.text.trim(),
         category: _selectedCategory,
         stockStatus: _stockFilter,
+        skipSync: skipSync,
       ),
     );
     if (_scrollController.hasClients) {
@@ -162,8 +163,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
               behavior: SnackBarBehavior.floating,
             ),
           );
+
+          // Jika ada produk baru, otomatis search produk tersebut
+          if (state.addedItemName != null) {
+            setState(() {
+              _searchController.text = state.addedItemName!;
+              _currentPage = 1;
+            });
+            _loadPage();
+          }
         }
-        if (state is InventoryLoaded) _lastItems = state.items;
+        if (state is InventoryLoaded) {
+          _lastItems = state.items;
+          setState(() {
+            _currentPage = state.currentPage;
+          });
+        }
         if (state is InventoryError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -215,65 +230,65 @@ class _InventoryScreenState extends State<InventoryScreen> {
       children: [
         BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) => BradHeader(
-            title: 'Produk | Inventory',
+            title: 'Inventory | Produk',
             subtitle: state.displayShopName,
-              leadingIcon: Icons.inventory_2_rounded,
-              showBottomBorder: true,
-              showSettings: !isLandscape,
-              onSettingsTap: () => SettingsModal.show(context),
-              onSyncTap: () {
-                context.read<InventoryBloc>().add(SyncAllEvent());
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Menyingkronkan data...'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              },
-              actions: [
-                IconButton(
-                  onPressed: () async {
-                    final inventoryBloc = context.read<InventoryBloc>();
-                    await AppNavigator.push(context, const CategoryScreen());
-                    inventoryBloc.add(const LoadInventoryCategoriesEvent());
-                  },
-                  icon: Icon(
-                    Icons.category_rounded,
-                    color: const Color(0xFF64748B),
-                    size: isLandscape ? 18 : 24,
-                  ),
-                  tooltip: 'Kategori',
-                  padding: isLandscape ? EdgeInsets.zero : null,
-                  constraints: isLandscape
-                      ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                      : null,
+            leadingIcon: Icons.inventory_2_rounded,
+            showBottomBorder: true,
+            showSettings: !isLandscape,
+            onSettingsTap: () => SettingsModal.show(context),
+            onSyncTap: () {
+              context.read<InventoryBloc>().add(SyncAllEvent());
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Menyingkronkan data...'),
+                  duration: Duration(seconds: 1),
                 ),
-                if (isLandscape)
-                  IconButton(
-                    onPressed: () {
-                      context.read<InventoryBloc>().add(SyncAllEvent());
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Menyingkronkan data...'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.sync_rounded,
-                      color: Color(0xFF64748B),
-                      size: 18,
-                    ),
-                    tooltip: 'Sync',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
+              );
+            },
+            actions: [
+              IconButton(
+                onPressed: () async {
+                  final inventoryBloc = context.read<InventoryBloc>();
+                  await AppNavigator.push(context, const CategoryScreen());
+                  inventoryBloc.add(const LoadInventoryCategoriesEvent());
+                },
+                icon: Icon(
+                  Icons.category_rounded,
+                  color: const Color(0xFF64748B),
+                  size: isLandscape ? 18 : 24,
+                ),
+                tooltip: 'Kategori',
+                padding: isLandscape ? EdgeInsets.zero : null,
+                constraints: isLandscape
+                    ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                    : null,
+              ),
+              if (isLandscape)
+                IconButton(
+                  onPressed: () {
+                    context.read<InventoryBloc>().add(SyncAllEvent());
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Menyingkronkan data...'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.sync_rounded,
+                    color: Color(0xFF64748B),
+                    size: 18,
                   ),
-              ],
-            ),
+                  tooltip: 'Sync',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                ),
+            ],
           ),
+        ),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -319,7 +334,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
                     hintText: 'Cari produk...',
-                    hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
                     prefixIcon: const Icon(
                       Icons.search_rounded,
                       color: Colors.grey,
@@ -343,6 +361,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
                     ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 20),
+                            onPressed: () {
+                              _searchController.clear();
+                              _onSearchChanged('');
+                              setState(() {});
+                            },
+                          )
+                        : null,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
@@ -375,10 +403,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () => _openForm(),
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text(
-                    'Tambah',
-                    style: TextStyle(fontSize: 13),
-                  ),
+                  label: const Text('Tambah', style: TextStyle(fontSize: 13)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF065F46),
                     foregroundColor: Colors.white,
@@ -427,6 +452,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
             ),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    onPressed: () {
+                      _searchController.clear();
+                      _onSearchChanged('');
+                      setState(() {});
+                    },
+                  )
+                : null,
             isDense: false,
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
           ),
@@ -516,21 +551,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
         if (totalPages > 1)
           SliverToBoxAdapter(
             child: InventoryPaginationBar(
-  currentPage: _currentPage,
-  totalPages: totalPages,
-  onPrevious: _currentPage > 1
-      ? () {
-          setState(() => _currentPage--);
-          _loadPage();
-        }
-      : null,
-  onNext: _currentPage < totalPages
-      ? () {
-          setState(() => _currentPage++);
-          _loadPage();
-        }
-      : null,
-),
+              currentPage: _currentPage,
+              totalPages: totalPages,
+              onPrevious: _currentPage > 1
+                  ? () {
+                      setState(() => _currentPage--);
+                      _loadPage(skipSync: true);
+                    }
+                  : null,
+              onNext: _currentPage < totalPages
+                  ? () {
+                      setState(() => _currentPage++);
+                      _loadPage(skipSync: true);
+                    }
+                  : null,
+            ),
           ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
       ],
@@ -551,25 +586,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
             mainAxisSpacing: 4,
             mainAxisExtent: 160,
           ),
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final item = items[index];
-              return InventoryItemCard(
-                item: item,
-                isKaryawan: _isKaryawan,
-                isCompact: true,
-                onEdit: () => _openForm(item: item),
-                onDelete: () => _showDeleteConfirmation(item),
-                onAddStock: item.stock == -1
-                    ? null
-                    : () => showAddStockDialog(context, item),
-                onReduceStock: item.stock == -1
-                    ? null
-                    : () => showReduceStockDialog(context, item),
-              );
-            },
-            childCount: items.length,
-          ),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final item = items[index];
+            return InventoryItemCard(
+              item: item,
+              isKaryawan: _isKaryawan,
+              isCompact: true,
+              onEdit: () => _openForm(item: item),
+              onDelete: () => _showDeleteConfirmation(item),
+              onAddStock: _isKaryawan || item.stock == -1
+                  ? null
+                  : () => showAddStockDialog(context, item),
+              onReduceStock: _isKaryawan || item.stock == -1
+                  ? null
+                  : () => showReduceStockDialog(context, item),
+            );
+          }, childCount: items.length),
         ),
       );
     }
@@ -577,31 +609,27 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final item = items[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: InventoryItemCard(
-                item: item,
-                isKaryawan: _isKaryawan,
-                onEdit: () => _openForm(item: item),
-                onDelete: () => _showDeleteConfirmation(item),
-                onAddStock: item.stock == -1
-                    ? null
-                    : () => showAddStockDialog(context, item),
-                onReduceStock: item.stock == -1
-                    ? null
-                    : () => showReduceStockDialog(context, item),
-              ),
-            );
-          },
-          childCount: items.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final item = items[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: InventoryItemCard(
+              item: item,
+              isKaryawan: _isKaryawan,
+              onEdit: () => _openForm(item: item),
+              onDelete: () => _showDeleteConfirmation(item),
+              onAddStock: _isKaryawan || item.stock == -1
+                  ? null
+                  : () => showAddStockDialog(context, item),
+              onReduceStock: _isKaryawan || item.stock == -1
+                  ? null
+                  : () => showReduceStockDialog(context, item),
+            ),
+          );
+        }, childCount: items.length),
       ),
     );
   }
-
 
   Widget _buildEmptyState() => ListView(
     physics: const AlwaysScrollableScrollPhysics(),
@@ -759,9 +787,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: StatefulBuilder(
           builder: (context, setSheetState) {
             return InventoryFilterContent(
@@ -793,7 +819,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-
   void _showDeleteConfirmation(InventoryItem item) {
     showDialog(
       context: context,
@@ -822,7 +847,4 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
     );
   }
-
-
 }
-

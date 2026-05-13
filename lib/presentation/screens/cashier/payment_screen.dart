@@ -244,6 +244,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
@@ -348,6 +350,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         contentPadding: const EdgeInsets.all(16),
         content: SingleChildScrollView(
@@ -361,7 +365,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Payment Successful',
+                'Pembayaran Berhasil',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
@@ -371,7 +375,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Transaction has been recorded.',
+                'Transaksi telah dicatat.',
                 style: TextStyle(
                   color: Colors.grey.shade600,
                   fontWeight: FontWeight.w500,
@@ -392,7 +396,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ),
                   ),
                   child: const Text(
-                    'DONE',
+                    'SELESAI',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -419,7 +423,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     size: 18,
                   ),
                   label: const Text(
-                    'PRINT RECEIPT',
+                    'CETAK STRUK',
                     style: TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.bold,

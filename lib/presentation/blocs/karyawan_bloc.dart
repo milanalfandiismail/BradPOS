@@ -7,16 +7,29 @@ import 'package:bradpos/presentation/blocs/karyawan_state.dart';
 /// Menangani alur data dari UI ke Repository langsung (Layered Architecture).
 class KaryawanBloc extends Bloc<KaryawanEvent, KaryawanState> {
   final KaryawanRepository repository;
+  int _currentFilterStatus = 0; // 0: Semua, 1: Aktif, 2: Nonaktif
 
   KaryawanBloc({required this.repository}) : super(KaryawanInitial()) {
     // Handler untuk memuat daftar seluruh karyawan
     on<LoadKaryawanList>((event, emit) async {
       emit(KaryawanLoading());
-      final result = await repository.getKaryawans();
-      result.fold(
-        (failure) => emit(KaryawanError(failure)),
-        (karyawanList) => emit(KaryawanListLoaded(karyawanList)),
-      );
+      _currentFilterStatus = event.filterStatus;
+
+      // Konversi status ke bool? untuk repository
+      bool? isActive;
+      if (_currentFilterStatus == 1) isActive = true;
+      if (_currentFilterStatus == 2) isActive = false;
+
+      final result = await repository.getKaryawans(isActive: isActive);
+      result.fold((failure) => emit(KaryawanError(failure)), (karyawanList) {
+        // Debug
+        // String statusLabel = 'Semua Status';
+        // if (_currentFilterStatus == 1) statusLabel = 'Aktif';
+        // if (_currentFilterStatus == 2) statusLabel = 'Nonaktif';
+
+        // print("DEBUG: Memuat ${karyawanList.length} karyawan. Filter: $statusLabel");
+        emit(KaryawanListLoaded(karyawanList, timestamp: DateTime.now()));
+      });
     });
 
     // Handler untuk menambah karyawan baru
@@ -25,7 +38,12 @@ class KaryawanBloc extends Bloc<KaryawanEvent, KaryawanState> {
       final result = await repository.addKaryawan(event.karyawan);
       result.fold((failure) => emit(KaryawanError(failure)), (karyawan) {
         emit(const KaryawanOperationSuccess("Karyawan berhasil ditambahkan"));
-        add(LoadKaryawanList());
+        add(
+          LoadKaryawanList(
+            filterStatus: _currentFilterStatus,
+            timestamp: DateTime.now(),
+          ),
+        );
       });
     });
 
@@ -35,7 +53,12 @@ class KaryawanBloc extends Bloc<KaryawanEvent, KaryawanState> {
       final result = await repository.updateKaryawan(event.karyawan);
       result.fold((failure) => emit(KaryawanError(failure)), (karyawan) {
         emit(const KaryawanOperationSuccess("Karyawan berhasil diperbarui"));
-        add(LoadKaryawanList());
+        add(
+          LoadKaryawanList(
+            filterStatus: _currentFilterStatus,
+            timestamp: DateTime.now(),
+          ),
+        );
       });
     });
 
@@ -45,7 +68,12 @@ class KaryawanBloc extends Bloc<KaryawanEvent, KaryawanState> {
       final result = await repository.deleteKaryawan(event.id);
       result.fold((failure) => emit(KaryawanError(failure)), (_) {
         emit(const KaryawanOperationSuccess("Karyawan berhasil dihapus"));
-        add(LoadKaryawanList());
+        add(
+          LoadKaryawanList(
+            filterStatus: _currentFilterStatus,
+            timestamp: DateTime.now(),
+          ),
+        );
       });
     });
   }

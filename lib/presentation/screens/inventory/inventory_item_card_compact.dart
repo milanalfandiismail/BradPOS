@@ -139,7 +139,7 @@ class InventoryItemCardCompact extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          if (!isUnlimited) ...[
+          if (!isUnlimited && !isKaryawan) ...[
             Row(
               children: [
                 Expanded(

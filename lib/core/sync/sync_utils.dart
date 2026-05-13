@@ -3,10 +3,18 @@ import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
 
+import 'package:flutter/foundation.dart';
+
 /// Shared helpers for sync managers and repositories.
 class SyncUtils {
   static const _uuid = Uuid();
   static const String offlineGuest = 'offline_guest';
+
+  /// Consistent ISO8601 for Web (fixed 3ms precision)
+  static String formatWebDate(DateTime dt) {
+    if (!kIsWeb) return dt.toIso8601String();
+    return '${dt.toIso8601String().split('.').first}.${dt.millisecond.toString().padLeft(3, '0')}';
+  }
 
   /// Returns true if [id] is NOT a valid UUID v4.
   static bool isInvalidUuid(String id) =>

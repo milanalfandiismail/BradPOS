@@ -2,6 +2,8 @@ import 'package:bradpos/core/database/database_helper.dart';
 import 'package:bradpos/data/models/inventory_item_model.dart';
 import 'package:bradpos/domain/entities/inventory_item.dart';
 import 'package:bradpos/core/database/db_utils.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
+
 
 abstract class InventoryLocalDataSource {
   Future<List<InventoryItemModel>> getInventory(
@@ -154,7 +156,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
 
     final map = itemModel.toMap();
     map['sync_status'] = 'created';
-    map['updated_at'] = DateTime.now().toIso8601String();
+    map['updated_at'] = SyncUtils.formatWebDate(DateTime.now());
 
     await db.insert(
       'produk',
@@ -184,7 +186,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     }
 
     map['sync_status'] = nextSyncStatus;
-    map['updated_at'] = DateTime.now().toIso8601String();
+    map['updated_at'] = SyncUtils.formatWebDate(DateTime.now());
 
     await db.update(
       'produk',

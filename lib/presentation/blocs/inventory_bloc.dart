@@ -19,7 +19,8 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     required this.syncService,
   }) : super(InventoryInitial()) {
     on<LoadInventory>((event, emit) async {
-      emit(InventoryLoading());
+      // 1. Tampilkan data lokal secepat mungkin
+      if (state is! InventoryLoaded) emit(InventoryLoading());
 
       final int page = event.page ?? 1;
       final int limit = event.limit ?? 5;
@@ -32,7 +33,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
           searchQuery: event.searchQuery,
           category: event.category,
           stockStatus: event.stockStatus,
-          skipSync: event.skipSync,
+          skipSync: true, // Selalu baca lokal di fase ini
         ),
         categoryRepository.getCategories(),
         repository.getInventoryCount(
@@ -60,6 +61,30 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
           ),
         );
       });
+
+      // 2. Jalankan sync di background jika diizinkan
+      if (!event.skipSync) {
+        // Set loading sync state
+        final currentState = state;
+        if (currentState is InventoryLoaded) {
+          emit(currentState.copyWith(isSyncing: true));
+        }
+
+        // Run sync without blocking UI
+        syncService.syncAll(limit: limit, offset: offset).then((_) {
+          // Setelah sync beres, refresh data lokal ke UI
+          if (!isClosed) {
+            add(LoadInventory(
+              page: page,
+              limit: limit,
+              searchQuery: event.searchQuery,
+              category: event.category,
+              stockStatus: event.stockStatus,
+              skipSync: true, // Jangan sync lagi (hindari loop)
+            ));
+          }
+        });
+      }
     });
 
     on<LoadInventoryCategoriesEvent>((event, emit) async {
@@ -94,7 +119,11 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       final result = await repository.addInventoryItem(event.item);
       await result.fold(
         (failure) async => emit(InventoryError(failure)),
-        (_) async {
+        (item) async {
+          emit(InventoryOperationSuccess(
+            "Berhasil menambah ${item.name}",
+            addedItemName: item.name,
+          ));
           await _reloadAndEmit(emit, resetPage: true);
           final s = state as InventoryLoaded;
           syncService.syncAll(limit: s.limit, offset: 0);
@@ -119,9 +148,9 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       await result.fold(
         (failure) async => emit(InventoryError(failure)),
         (_) async {
-          await _reloadAndEmit(emit, resetPage: true);
+          await _reloadAndEmit(emit, resetPage: false);
           final s = state as InventoryLoaded;
-          syncService.syncAll(limit: s.limit, offset: 0);
+          syncService.syncAll(limit: s.limit, offset: (s.currentPage - 1) * s.limit);
         },
       );
     });
@@ -157,7 +186,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
 
   Future<void> _reloadAndEmit(Emitter<InventoryState> emit, {required bool resetPage}) async {
     final currentState = state;
-    final page = (!resetPage && currentState is InventoryLoaded)
+    int page = (!resetPage && currentState is InventoryLoaded)
         ? currentState.currentPage
         : 1;
     int limit = 5;
@@ -172,6 +201,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       stockStatus = currentState.stockStatus;
     }
 
+    // First, get the items for the current page
     final results = await Future.wait([
       repository.getInventory(
         limit: limit,
@@ -188,10 +218,26 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       ),
     ]);
 
+    var items = (results[0] as Either<String, List<InventoryItem>>).getOrElse(() => []);
+    final totalItems = (results[2] as Either<String, int>).getOrElse(() => 0);
+
+    // FIX: If items are empty but there are still items in previous pages, move back one page
+    if (items.isEmpty && page > 1 && totalItems > 0) {
+      page--;
+      final retryItems = await repository.getInventory(
+        limit: limit,
+        offset: (page - 1) * limit,
+        searchQuery: searchQuery,
+        category: category,
+        stockStatus: stockStatus,
+      );
+      items = retryItems.getOrElse(() => []);
+    }
+
     emit(InventoryLoaded(
-      (results[0] as Either<String, List<InventoryItem>>).getOrElse(() => []),
+      items,
       categories: (results[1] as Either<String, List<Category>>).getOrElse(() => []),
-      totalItems: (results[2] as Either<String, int>).getOrElse(() => 0),
+      totalItems: totalItems,
       currentPage: page,
       limit: limit,
       searchQuery: searchQuery,

@@ -89,24 +89,25 @@ class KaryawanCard extends StatelessWidget {
                         color: const Color(0xFF0F172A),
                       ),
                     ),
-                    if (!isLandscape) ...[
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.badge_outlined,
-                            size: 14,
-                            color: Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Karyawan Aktif',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: const Color(0xFF64748B)),
-                          ),
-                        ],
-                      ),
-                    ],
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.badge_outlined,
+                          size: isLandscape ? 10 : 14,
+                          color: const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          karyawan.isActive ? 'Karyawan Aktif' : 'Karyawan Nonaktif',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: const Color(0xFF64748B),
+                                fontSize: isLandscape ? 8 : null,
+                              ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

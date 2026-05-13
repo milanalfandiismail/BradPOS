@@ -5,7 +5,7 @@ import '../entities/karyawan.dart';
 /// Menentukan operasi apa saja yang tersedia untuk mengelola entitas Karyawan.
 abstract class KaryawanRepository {
   /// Mengambil daftar semua karyawan yang berada di bawah Owner yang sedang login.
-  Future<Either<String, List<Karyawan>>> getKaryawans();
+  Future<Either<String, List<Karyawan>>> getKaryawans({bool? isActive});
 
   /// Menambahkan data karyawan baru ke database.
   Future<Either<String, Karyawan>> addKaryawan(Karyawan karyawan);

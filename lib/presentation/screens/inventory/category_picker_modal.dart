@@ -35,16 +35,22 @@ class _PickerModalState extends State<PickerModal> {
 
   Widget _buildList(List<String> items, bool isLandscape) {
     if (isLandscape) {
-      return GridView.builder(
-        shrinkWrap: true,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          childAspectRatio: 2.8,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
+      return Scrollbar(
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          child: GridView.builder(
+            shrinkWrap: true, // Masih butuh di dalam SingleChildScrollView tapi sekarang aman karena dibatasi parent
+            physics: const NeverScrollableScrollPhysics(), // Scroll diurus SingleChildScrollView
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3, // Kurangi jadi 3 biar lebih lebar itemnya di landscape dialog
+              childAspectRatio: 3.2,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: items.length,
+            itemBuilder: (context, index) => _buildPickerItem(items[index], true),
+          ),
         ),
-        itemCount: items.length,
-        itemBuilder: (context, index) => _buildPickerItem(items[index], true),
       );
     }
     return ListView.separated(
@@ -278,12 +284,6 @@ class _PickerModalState extends State<PickerModal> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (!isAdd)
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: isCompact ? 8 : 12,
-                color: AppColors.textMuted,
-              ),
           ],
         ),
       ),

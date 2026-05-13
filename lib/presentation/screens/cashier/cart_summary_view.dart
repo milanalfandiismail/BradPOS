@@ -115,7 +115,7 @@ class CartSummaryView extends StatelessWidget {
                       style: TextStyle(
                         fontSize: isSidebar ? 9 : 13,
                         fontWeight: FontWeight.w900,
-                        color: const Color(0xFF4338CA),
+                        color: const Color(0xFF059669),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -253,7 +253,7 @@ class CartSummaryView extends StatelessWidget {
                     );
                   },
             child: Text(
-              'CHECKOUT',
+              'BAYAR SEKARANG',
               style: TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: isSidebar ? 10 : 15,

@@ -40,7 +40,7 @@ class CombinedSummaryCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Order Summary',
+                  'Ringkasan Pesanan',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -48,9 +48,9 @@ class CombinedSummaryCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${cashierState.cartItems.length} Items',
+                  '${cashierState.cartItems.length} Item',
                   style: const TextStyle(
-                    color: Color(0xFF4338CA),
+                    color: Color(0xFF059669),
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
@@ -73,7 +73,7 @@ class CombinedSummaryCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF4338CA),
+                          color: Color(0xFF059669),
                         ),
                       ),
                       const SizedBox(width: 8),
