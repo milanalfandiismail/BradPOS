@@ -206,7 +206,7 @@ Future<void> init() async {
   // External
   await Supabase.initialize(
     url: dotenv.get('SUPABASE_URL'),
-    anonKey: dotenv.get('SUPABASE_ANON_KEY'),
+    publishableKey: dotenv.get('SUPABASE_ANON_KEY'),
   );
 
   // Initialize Google Sign In v7.x

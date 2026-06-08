@@ -109,7 +109,7 @@ class BradHeader extends StatelessWidget {
                 ],
               ),
             ),
-            if (actions != null) ...actions!,
+            ...?actions,
             if (onSyncTap != null && !isLandscape)
               IconButton(
                 onPressed: onSyncTap,

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -92,12 +93,7 @@ class MyApp extends StatelessWidget {
                 );
               }
             },
-            child: Stack(
-              children: [
-                child!,
-                const SyncStatusIndicator(),
-              ],
-            ),
+            child: Stack(children: [child!, const SyncStatusIndicator()]),
           );
         },
         home: const SplashPage(),
