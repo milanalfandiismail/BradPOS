@@ -141,7 +141,25 @@ Untuk Google Sign-In:
        keytool -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
        ```
      - Output: cari baris `SHA1:` → `SHA1: 5E:8F:16:...` — copy paste ke Google Cloud Console
-     - **Untuk production (rilis):** gunakan `keytool` dari keystore rilis kamu
+     - **Untuk production (rilis):**
+       1. Buat keystore dulu (jika belum punya):
+          ```bash
+          # CMD
+          keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+          
+          # PowerShell
+          keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+          ```
+       2. Dapatkan SHA-1 dari keystore yang sudah dibuat:
+          ```bash
+          # CMD
+          keytool -list -v -keystore android/app/upload-keystore.jks -alias upload -storepass <password> -keypass <password>
+          
+          # PowerShell
+          keytool -list -v -keystore android/app/upload-keystore.jks -alias upload -storepass <password> -keypass <password>
+          ```
+       3. Ganti `<password>` dengan password yang kamu buat saat generate keystore
+       4. Tambahkan SHA-1 hasilnya ke **Google Cloud Console** dan ke **Firebase Console** (jika pakai Firebase)
    - **iOS**: Bundle ID
    - **Web**: Authorized redirect URIs → `https://[project].supabase.co/auth/v1/callback`
 3. **Supabase Dashboard** → Authentication → Providers → Google:
