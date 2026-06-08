@@ -134,12 +134,13 @@ Untuk Google Sign-In:
    - **Android**: Isi package name (`com.bradpos.app`) + **SHA-1 signing certificate fingerprint**
      - Untuk mendapatkan SHA-1:
        ```bash
-       # Debug keystore (development):
-       keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android
+       # Debug keystore (development) — generate dulu di android/app/
+       keytool -genkey -v -keystore android/app/debug-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias androiddebugkey -storepass android -keypass android -dname "CN=Debug, OU=Development, O=BradPOS, L=Unknown, ST=Unknown, C=ID"
        
-       # Atau jika pakai PowerShell:
-       keytool -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
+       # Lalu lihat SHA-1-nya:
+       keytool -list -v -keystore android/app/debug-keystore.jks -alias androiddebugkey -storepass android -keypass android
        ```
+       > Hasil: file `debug-keystore.jks` tersimpan di `android/app/`. Sudah diabaikan `.gitignore`.
      - Output: cari baris `SHA1:` → `SHA1: 5E:8F:16:...` — copy paste ke Google Cloud Console
      - **Untuk production (rilis):**
        1. Buat keystore dulu (jika belum punya):
