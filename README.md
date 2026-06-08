@@ -32,9 +32,9 @@ Dibangun dengan **Clean Architecture** (3-layer), **BLoC** untuk state managemen
 - **Role-Based Access** — Owner punya akses penuh; Karyawan akses terbatas.
 - **Manajemen Inventaris** — CRUD produk, kategori, barcode, upload gambar, stok unlimited (-1).
 - **Kasir Cepat** — Keranjang, numpad, metode bayar (Tunai/QRIS), hitung kembalian otomatis.
-- **Riwayat Transaksi** — Filter tanggal, detail per transaksi, cetak struk thermal.
+- **Riwayat Transaksi** — Filter tanggal, detail per transaksi.
 - **Dashboard Statistik** — Total penjualan, grafik harian, notifikasi stok menipis.
-- **Cetak Struk Thermal** — Dukungan printer Bluetooth/USB via `flutter_pos_printer_platform_image_3`.
+- **Cetak Struk (Under Development)** — Printer thermal Bluetooth/USB.
 - **Cross-Platform** — Android, iOS, Web, Windows, macOS, Linux.
 
 ---
@@ -55,7 +55,7 @@ Dibangun dengan **Clean Architecture** (3-layer), **BLoC** untuk state managemen
 | **Functional Error** | dartz (Either) |
 | **Value Equality** | equatable |
 | **Gambar** | image_picker, cached_network_image |
-| **Cetak** | flutter_pos_printer_platform_image_3, esc_pos_utils_plus |
+| **Cetak (Under Development)** | flutter_pos_printer_platform_image_3, esc_pos_utils_plus |
 | **Animasi** | smooth_transition |
 | **Format Tanggal** | intl (locale `id_ID`) |
 | **UUID** | uuid |
@@ -308,7 +308,7 @@ User pilih produk → AddToCart (CashierBloc)
       → Simpan transaksi ke SQLite + potong stok
       → Generate nomor transaksi: BR-2026-6-8-A3F2
       → Emit sukses → SyncService push ke cloud
-      → Tampilkan ReceiptDialog (cetak struk)
+      → Tampilkan ReceiptDialog (cetak struk — on-screen)
 ```
 
 ---
@@ -489,14 +489,7 @@ Ini normal. Web menggunakan `sqflite_common_ffi_web` sebagai fallback. Pastikan 
 2. Pastikan package name sesuai (`com.bradpos.app`)
 3. Untuk debug: `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android`
 
-### Printer Thermal Tidak Terdeteksi
 
-**Error:** Printer Bluetooth/USB tidak muncul
-
-**Solusi:**
-1. Pastikan permission `BLUETOOTH` di Android manifest
-2. Cek driver printer (biasanya ESC/POS compatible)
-3. Gunakan `permission_handler` untuk request runtime permission
 
 ### Migrasi Data Guest Hilang
 
