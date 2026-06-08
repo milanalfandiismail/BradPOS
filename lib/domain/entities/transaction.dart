@@ -1,5 +1,5 @@
-import 'package:bradpos/domain/entities/transaction_item.dart';
 import 'package:equatable/equatable.dart';
+import 'transaction_item.dart';
 
 class Transaction extends Equatable {
   final String id;

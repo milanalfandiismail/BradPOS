@@ -1,5 +1,7 @@
 import 'dart:convert';
-import 'package:sqflite/sqflite.dart';
+import 'package:bradpos/core/database/db_utils.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
+
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
@@ -13,12 +15,13 @@ abstract class TransactionLocalDataSource {
     ent.Transaction transaction,
     List<TransactionItem> items,
   );
-  Future<List<TransactionModel>> getTransactions(String userId);
+  Future<List<TransactionModel>> getTransactions(String userId, {String? cashierId});
   Future<List<TransactionModel>> getTransactionsByRange(
     String userId,
     DateTime start,
-    DateTime end,
-  );
+    DateTime end, {
+    String? cashierId,
+  });
   Future<List<Map<String, dynamic>>> getUnsyncedTransactions();
   Future<List<Map<String, dynamic>>> getTransactionItems(String transactionId);
   Future<void> updateSyncStatus(String id, String status);
@@ -56,9 +59,9 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
               .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
               .toUpperCase();
 
-      final prefix = shopBase.length >= 3
-          ? shopBase.substring(0, 3)
-          : shopBase.padRight(3, 'X');
+      final prefix = shopBase.length >= 2
+          ? shopBase.substring(0, 2)
+          : shopBase.padRight(2, 'X');
 
       final randomStr = transactionId.substring(0, 4).toUpperCase();
       trxNumber = '$prefix-$yearStr-$monthStr-$dayStr-$randomStr';
@@ -86,8 +89,8 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
       // 1. Simpan Transaction (Header + Items dalam JSON)
       await db.insert(
         'transactions',
-        trxModel.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        {...trxModel.toMap(), 'updated_at': SyncUtils.formatWebDate(DateTime.now())},
+        conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
       );
 
       // 2. Potong Stok (Hanya jika transaksi baru)
@@ -126,38 +129,57 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
   }
 
   @override
-  Future<List<TransactionModel>> getTransactions(String userId) async {
+  Future<List<TransactionModel>> getTransactions(String userId, {String? cashierId}) async {
     final db = await dbHelper.database;
+    
+    String whereClause = 'owner_id = ? AND status != ?';
+    List<dynamic> whereArgs = [userId, 'deleted'];
+    
+    if (cashierId != null) {
+      whereClause += ' AND karyawan_id = ?';
+      whereArgs.add(cashierId);
+    }
+
     final List<Map<String, dynamic>> maps = await db.query(
       'transactions',
-      where: 'owner_id = ? AND status != ?',
-      whereArgs: [userId, 'deleted'],
+      where: whereClause,
+      whereArgs: whereArgs,
       orderBy: 'created_at DESC',
     );
 
-    return maps.map((map) => TransactionModel.fromMap(map)).toList();
+    return maps.map((map) => TransactionModel.fromMap(map)).toList().cast<TransactionModel>();
   }
 
   @override
   Future<List<TransactionModel>> getTransactionsByRange(
     String userId,
     DateTime start,
-    DateTime end,
-  ) async {
+    DateTime end, {
+    String? cashierId,
+  }) async {
     final db = await dbHelper.database;
+    
+    String whereClause = 'owner_id = ? AND status != ? AND created_at BETWEEN ? AND ?';
+    List<dynamic> whereArgs = [
+      userId,
+      'deleted',
+      start.toIso8601String(),
+      end.toIso8601String(),
+    ];
+
+    if (cashierId != null) {
+      whereClause += ' AND karyawan_id = ?';
+      whereArgs.add(cashierId);
+    }
+
     final List<Map<String, dynamic>> maps = await db.query(
       'transactions',
-      where: 'owner_id = ? AND status != ? AND created_at BETWEEN ? AND ?',
-      whereArgs: [
-        userId,
-        'deleted',
-        start.toIso8601String(),
-        end.toIso8601String(),
-      ],
+      where: whereClause,
+      whereArgs: whereArgs,
       orderBy: 'created_at DESC',
     );
 
-    return maps.map((map) => TransactionModel.fromMap(map)).toList();
+    return maps.map((map) => TransactionModel.fromMap(map)).toList().cast<TransactionModel>();
   }
 
   @override
@@ -186,7 +208,7 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
 
     final String itemsJson = maps.first['items'] as String;
     final List<dynamic> decoded = jsonDecode(itemsJson);
-    return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+    return decoded.map((e) => Map<String, dynamic>.from(e)).toList().cast<Map<String, dynamic>>();
   }
 
   @override
@@ -210,7 +232,7 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
       batch.insert(
         'transactions',
         map,
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
       );
     }
     await batch.commit(noResult: true);

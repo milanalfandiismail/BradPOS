@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:uuid/uuid.dart';
 import 'package:bradpos/data/data_sources/category_local_data_source.dart';
 import 'package:bradpos/data/data_sources/category_remote_data_source.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
 
 class CategorySyncManager {
   final CategoryLocalDataSource localDataSource;
@@ -13,85 +13,64 @@ class CategorySyncManager {
   });
 
   Future<void> push(String userId) async {
-    try {
-      final unsynced = await localDataSource.getUnsyncedCategories();
-      if (unsynced.isEmpty) return;
+    final unsynced = await localDataSource.getUnsyncedCategories();
+    if (unsynced.isEmpty) return;
 
-      debugPrint(
-        "CategorySync: Menemukan ${unsynced.length} kategori yang perlu push",
-      );
+    debugPrint(
+      "CategorySync: Menemukan ${unsynced.length} kategori yang perlu push",
+    );
 
-      for (var catMap in unsynced) {
-        try {
-          var current = Map<String, dynamic>.from(catMap);
-          String id = current['id'] as String;
-          final name = current['name'] as String? ?? 'Tanpa Nama';
-          final status = current['sync_status'] as String?;
-          final ownerId = current['owner_id'] as String?;
+    for (var catMap in unsynced) {
+      try {
+        var current = Map<String, dynamic>.from(catMap);
+        final id = current['id'] as String;
+        final name = current['name'] as String? ?? 'Tanpa Nama';
+        final status = current['sync_status'] as String?;
+        final ownerId = current['owner_id'] as String?;
 
-          // Hanya push data milik user ini (Filter Guest data)
-          if (ownerId != userId) {
-            debugPrint("CategorySync: Skip push '$name' (Data milik $ownerId, bukan $userId)");
-            continue;
-          }
-
-          if (status == null) continue;
-
-          // UUID Fix
-          if (id.isEmpty || id.length != 36 || !id.contains('-')) {
-            final oldId = id;
-            final newUuid = const Uuid().v4();
-            debugPrint(
-              "CategorySync: Fix ID non-UUID '$oldId' ($name) -> $newUuid",
-            );
-            await localDataSource.fixInvalidCategoryId(oldId, newUuid);
-            current['id'] = newUuid;
-            id = newUuid;
-          }
-
-          if (ownerId == 'offline_guest' ||
-              ownerId == null ||
-              ownerId.isEmpty) {
-            current['owner_id'] = userId;
-          }
-
-          if (status == 'created' ||
-              status == 'pending_update' ||
-              status == 'updated') {
-            debugPrint("CategorySync: Push ($status) kategori '$name' ($id)");
-            await remoteDataSource.pushCreatedCategory(current);
-            await localDataSource.updateSyncStatus(id, 'synced');
-          }
-        } catch (e) {
-          debugPrint("CategorySync Push Error (${catMap['id']}): $e");
+        if (ownerId == null || status == null) continue;
+        if (SyncUtils.belongsToOtherUser(ownerId, userId)) {
+          debugPrint("CategorySync: Skip push '$name' (milik $ownerId, bukan $userId)");
+          continue;
         }
+
+        if (SyncUtils.isInvalidUuid(id)) {
+          final (oldId, newId) = SyncUtils.fixUuid(id);
+          debugPrint("CategorySync: Fix ID non-UUID '$oldId' ($name) -> $newId");
+          await localDataSource.fixInvalidCategoryId(oldId, newId);
+          current['id'] = newId;
+        }
+
+        if (SyncUtils.isGuestOwner(ownerId)) {
+          current['owner_id'] = userId;
+        }
+
+        if (SyncUtils.shouldPush(status)) {
+          debugPrint("CategorySync: Push ($status) kategori '$name' (${current['id']})");
+          await remoteDataSource.pushCreatedCategory(current);
+          await localDataSource.updateSyncStatus(current['id'], 'synced');
+        }
+      } catch (e) {
+        debugPrint("CategorySync Push Error (${catMap['id']}): $e");
       }
-    } catch (e) {
-      debugPrint("CategorySync Push Failed: $e");
     }
   }
 
   Future<void> pull(String userId) async {
-    try {
-      final lastSync = await localDataSource.getLastSyncTime(userId);
-      debugPrint(
-        "CategorySync: Pulling categories from server (Last Sync: $lastSync)...",
-      );
+    final lastSync = await localDataSource.getLastSyncTime(userId);
+    debugPrint("CategorySync: Pulling categories from server (Last Sync: $lastSync)...");
 
-      final remote = await remoteDataSource.getCategories(
-        userId,
-        lastSync: lastSync,
-      );
+    final remote = await remoteDataSource.getCategories(
+      userId,
+      lastSync: lastSync,
+    );
 
-      if (remote.isEmpty) {
-        debugPrint("CategorySync: Tidak ada kategori baru di server.");
-        return;
-      }
-
-      debugPrint("CategorySync: Berhasil menarik ${remote.length} kategori");
-      await localDataSource.saveCategories(remote);
-    } catch (e) {
-      debugPrint("CategorySync Pull Failed: $e");
+    if (remote.isEmpty) {
+      debugPrint("CategorySync: Tidak ada kategori baru di server.");
+      return;
     }
+
+    debugPrint("CategorySync: Berhasil menarik ${remote.length} kategori");
+    await localDataSource.saveCategories(remote);
   }
 }

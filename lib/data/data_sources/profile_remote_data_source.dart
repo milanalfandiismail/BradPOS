@@ -7,9 +7,10 @@ abstract class ProfileRemoteDataSource {
   Future<Map<String, dynamic>?> getProfile(
     String effectiveUserId, {
     String? localUpdatedAt,
+    required bool isStaff,
   });
   Future<void> upsertProfile(Map<String, dynamic> data);
-  Future<String?> uploadProfileImage(String localPath, String userId);
+  Future<String?> uploadProfileImage(String localPath, String userId, {required bool isStaff});
   Future<void> deleteProfileImage(String imageUrl);
 }
 
@@ -22,10 +23,14 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   Future<Map<String, dynamic>?> getProfile(
     String effectiveUserId, {
     String? localUpdatedAt,
+    required bool isStaff,
   }) async {
+    final table = isStaff ? 'karyawan' : 'profiles';
     var query = supabase
-        .from('profiles')
-        .select('shop_name, shop_id, full_name, address, phone, remote_image, local_image, updated_at')
+        .from(table)
+        .select(isStaff 
+            ? 'full_name, remote_image, local_image, updated_at' 
+            : 'shop_name, shop_id, full_name, address, phone, remote_image, local_image, updated_at')
         .eq('id', effectiveUserId);
 
     if (localUpdatedAt != null) {
@@ -47,7 +52,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }
 
   @override
-  Future<String?> uploadProfileImage(String localPath, String userId) async {
+  Future<String?> uploadProfileImage(String localPath, String userId, {required bool isStaff}) async {
     try {
       final file = File(localPath);
       if (!await file.exists()) return null;
@@ -57,9 +62,10 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (extension == '.png') contentType = 'image/png';
       if (extension == '.webp') contentType = 'image/webp';
 
+      final prefix = isStaff ? 'staff' : 'profile';
       final fileName =
-          'profile_${userId}_${DateTime.now().millisecondsSinceEpoch}$extension';
-      final filePath = '$userId/$fileName';
+          '${prefix}_${userId}_${DateTime.now().millisecondsSinceEpoch}$extension';
+      final filePath = isStaff ? 'staff/$fileName' : '$userId/$fileName';
 
       await supabase.storage
           .from('profile_images')

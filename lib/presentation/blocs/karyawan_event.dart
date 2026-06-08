@@ -8,7 +8,14 @@ abstract class KaryawanEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadKaryawanList extends KaryawanEvent {}
+class LoadKaryawanList extends KaryawanEvent {
+  final int filterStatus; // 0: Semua, 1: Aktif, 2: Nonaktif
+  final DateTime? timestamp;
+  const LoadKaryawanList({this.filterStatus = 0, this.timestamp});
+
+  @override
+  List<Object?> get props => [filterStatus, timestamp, DateTime.now()];
+}
 
 class CreateKaryawan extends KaryawanEvent {
   final Karyawan karyawan;

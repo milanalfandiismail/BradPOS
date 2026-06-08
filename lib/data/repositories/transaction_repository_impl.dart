@@ -121,7 +121,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<Either<String, List<ent.Transaction>>> getTransactions() async {
+  Future<Either<String, List<ent.Transaction>>> getTransactions({String? cashierId}) async {
     try {
       final userResult = await authRepository.getCurrentUser();
       final user = userResult.fold((l) => null, (r) => r);
@@ -130,7 +130,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
           : 'offline_guest';
 
       // Ambil dari lokal untuk kecepatan
-      final localTransactions = await localDataSource.getTransactions(userId);
+      final localTransactions = await localDataSource.getTransactions(userId, cashierId: cashierId);
       return Right(localTransactions.map((m) => m.toEntity()).toList());
     } catch (e) {
       return Left('Gagal muat riwayat: $e');
@@ -140,8 +140,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
   @override
   Future<Either<String, List<ent.Transaction>>> getTransactionsByRange(
     DateTime startDate,
-    DateTime endDate,
-  ) async {
+    DateTime endDate, {
+    String? cashierId,
+  }) async {
     try {
       final userResult = await authRepository.getCurrentUser();
       final user = userResult.fold((l) => null, (r) => r);
@@ -153,6 +154,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         userId,
         startDate,
         endDate,
+        cashierId: cashierId,
       );
       return Right(transactionModels.map((m) => m.toEntity()).toList());
     } catch (e) {

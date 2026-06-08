@@ -82,6 +82,8 @@ CREATE TABLE IF NOT EXISTS karyawan (
   email TEXT UNIQUE, -- Optional since we use Shop ID + Name now
   password_hash TEXT NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT true,
+  remote_image TEXT,
+  local_image TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -110,6 +112,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   change_amount DOUBLE PRECISION NOT NULL DEFAULT 0,
   notes TEXT,
   status TEXT NOT NULL DEFAULT 'completed',
+  shop_name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -161,22 +164,37 @@ DROP POLICY IF EXISTS "Profiles select all" ON profiles;
 CREATE POLICY "Profiles select all" ON profiles FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Profiles update own" ON profiles;
 CREATE POLICY "Profiles update own" ON profiles FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Profiles insert own" ON profiles;
+CREATE POLICY "Profiles insert own" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- 0. SECURITY FUNCTIONS
+CREATE OR REPLACE FUNCTION public.is_employee_of(owner_uuid UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.karyawan 
+        WHERE id = auth.uid() 
+        AND owner_id = owner_uuid 
+        AND is_active = true
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Categories
-DROP POLICY IF EXISTS "Categories owner" ON categories;
-CREATE POLICY "Categories owner" ON categories FOR ALL USING (owner_id = auth.uid());
+DROP POLICY IF EXISTS "Categories access" ON categories;
+CREATE POLICY "Categories access" ON categories FOR ALL TO authenticated, anon USING (true) WITH CHECK (true);
 
 -- Produk
-DROP POLICY IF EXISTS "Produk owner" ON produk;
-CREATE POLICY "Produk owner" ON produk FOR ALL USING (owner_id = auth.uid());
+DROP POLICY IF EXISTS "Produk access" ON produk;
+CREATE POLICY "Produk access" ON produk FOR ALL TO authenticated, anon USING (true) WITH CHECK (true);
 
 -- Karyawan
-DROP POLICY IF EXISTS "Karyawan owner" ON karyawan;
-CREATE POLICY "Karyawan owner" ON karyawan FOR ALL USING (owner_id = auth.uid());
+DROP POLICY IF EXISTS "Karyawan access" ON karyawan;
+CREATE POLICY "Karyawan access" ON karyawan FOR ALL TO authenticated, anon USING (true) WITH CHECK (true);
 
 -- Transactions
-DROP POLICY IF EXISTS "Transactions owner" ON transactions;
-CREATE POLICY "Transactions owner" ON transactions FOR ALL USING (owner_id = auth.uid());
+DROP POLICY IF EXISTS "Transactions access" ON transactions;
+CREATE POLICY "Transactions access" ON transactions FOR ALL TO authenticated, anon USING (true) WITH CHECK (true);
 
 -- ============================================================
 -- STORAGE
@@ -221,6 +239,15 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='karyawan' AND column_name='email') THEN
         ALTER TABLE public.karyawan ALTER COLUMN email DROP NOT NULL;
     END IF;
+
+    -- Add columns to karyawan if they don't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='karyawan' AND column_name='remote_image') THEN
+        ALTER TABLE public.karyawan ADD COLUMN remote_image TEXT;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='karyawan' AND column_name='local_image') THEN
+        ALTER TABLE public.karyawan ADD COLUMN local_image TEXT;
+    END IF;
 END $$;
 
 -- Re-apply trigger function to ensure it's the latest version
@@ -245,13 +272,16 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP POLICY IF EXISTS "Owner Insert Access" ON storage.objects;
-CREATE POLICY "Owner Insert Access" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id IN ('produk_images', 'profile_images'));
+CREATE POLICY "Owner Insert Access" ON storage.objects FOR INSERT TO authenticated, anon WITH CHECK (bucket_id IN ('produk_images', 'profile_images'));
 
 DROP POLICY IF EXISTS "Owner Update Access" ON storage.objects;
-CREATE POLICY "Owner Update Access" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id IN ('produk_images', 'profile_images'));
+CREATE POLICY "Owner Update Access" ON storage.objects FOR UPDATE TO authenticated, anon USING (bucket_id IN ('produk_images', 'profile_images'));
 
 DROP POLICY IF EXISTS "Owner Delete Access" ON storage.objects;
-CREATE POLICY "Owner Delete Access" ON storage.objects FOR DELETE TO authenticated USING (bucket_id IN ('produk_images', 'profile_images'));
+CREATE POLICY "Owner Delete Access" ON storage.objects FOR DELETE TO authenticated, anon USING (bucket_id IN ('produk_images', 'profile_images'));
+
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+CREATE POLICY "Public Access" ON storage.objects FOR SELECT TO authenticated, anon USING (bucket_id IN ('produk_images', 'profile_images'));
 
 -- ============================================================
 -- 12. AUTH TRIGGER (Auto Create Profile)

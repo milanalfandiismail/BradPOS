@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,10 +9,12 @@ import 'package:bradpos/presentation/blocs/karyawan_bloc.dart';
 import 'package:bradpos/presentation/blocs/inventory_bloc.dart';
 import 'package:bradpos/presentation/blocs/cashier_bloc.dart';
 import 'package:bradpos/presentation/blocs/history/history_bloc.dart';
-import 'package:bradpos/presentation/screens/login_screen.dart';
+import 'package:bradpos/presentation/screens/login/login_screen.dart';
 import 'package:bradpos/core/widgets/splash_page.dart';
 import 'package:bradpos/core/utils/app_navigator.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
+import 'package:bradpos/presentation/widgets/sync_status_indicator.dart';
 
 /// Entry point aplikasi BradPOS.
 void main() async {
@@ -80,7 +83,8 @@ class MyApp extends StatelessWidget {
         builder: (context, child) {
           return BlocListener<AuthBloc, AuthState>(
             listenWhen: (previous, current) =>
-                previous is! AuthUnauthenticated && current is AuthUnauthenticated,
+                previous is! AuthUnauthenticated &&
+                current is AuthUnauthenticated,
             listener: (context, state) {
               if (state is AuthUnauthenticated) {
                 AppNavigator.navigatorKey.currentState?.pushAndRemoveUntil(
@@ -89,7 +93,7 @@ class MyApp extends StatelessWidget {
                 );
               }
             },
-            child: child!,
+            child: Stack(children: [child!, const SyncStatusIndicator()]),
           );
         },
         home: const SplashPage(),

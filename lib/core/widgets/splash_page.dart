@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bradpos/presentation/blocs/auth_bloc.dart';
-import 'package:bradpos/presentation/screens/login_screen.dart';
-import 'package:bradpos/presentation/screens/dashboard_screen.dart';
+import 'package:bradpos/presentation/screens/login/login_screen.dart';
+import 'package:bradpos/presentation/screens/dashboard/dashboard_screen.dart';
 import 'package:bradpos/core/sync/sync_service.dart';
 import '../../injection_container.dart';
 import '../app_colors.dart';
@@ -50,15 +50,12 @@ class _SplashPageState extends State<SplashPage> {
 
     try {
       await sl<SyncService>().syncAll().timeout(
-        const Duration(seconds: 8),
+        const Duration(seconds: 3),
         onTimeout: () => debugPrint("Splash: sync timeout, lanjut"),
       );
     } catch (e) {
       debugPrint("Splash: sync error: $e");
     }
-
-    // Fake loading biar estetik
-    await Future.delayed(const Duration(seconds: 8));
 
     _goToDashboard();
   }
@@ -77,8 +74,80 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    Widget logoSection = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TweenAnimationBuilder(
+          tween: Tween<double>(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 1000),
+          builder: (context, double value, child) {
+            return Opacity(
+              opacity: value,
+              child: Transform.scale(scale: 0.8 + (0.2 * value), child: child),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.storefront_rounded,
+              size: 80,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'BradPOS',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 40,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Smart Inventory System',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 16,
+            letterSpacing: 1.5,
+          ),
+        ),
+      ],
+    );
+
+    Widget loadingSection = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(
+          width: 32,
+          height: 32,
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            strokeWidth: 3,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          _statusMessage,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.8),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+
     return BlocListener<AuthBloc, AuthState>(
-      // Fallback: kalau state berubah SETELAH mount (jarang tapi aman)
       listener: (context, state) {
         if (state is AuthAuthenticated) {
           _syncAndGo();
@@ -93,94 +162,31 @@ class _SplashPageState extends State<SplashPage> {
           height: double.infinity,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
               colors: [
                 AppColors.primary,
-                AppColors.primary.withValues(alpha: 0.8),
+                AppColors.primary.withValues(alpha: 0.9),
               ],
             ),
           ),
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TweenAnimationBuilder(
-                      tween: Tween<double>(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 1000),
-                      builder: (context, double value, child) {
-                        return Opacity(
-                          opacity: value,
-                          child: Transform.scale(
-                            scale: 0.8 + (0.2 * value),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.storefront_rounded,
-                          size: 80,
-                          color: Colors.white,
-                        ),
+          child: Center(
+            child: isLandscape
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [logoSection, loadingSection],
+                  )
+                : Stack(
+                    children: [
+                      Center(child: logoSection),
+                      Positioned(
+                        bottom: 60,
+                        left: 0,
+                        right: 0,
+                        child: loadingSection,
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'BradPOS',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 4,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Smart Inventory System',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 16,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                bottom: 60,
-                left: 0,
-                right: 0,
-                child: Column(
-                  children: [
-                    const SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        strokeWidth: 3,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      _statusMessage,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                    ],
+                  ),
           ),
         ),
       ),

@@ -14,9 +14,10 @@ class KaryawanLoading extends KaryawanState {}
 
 class KaryawanListLoaded extends KaryawanState {
   final List<Karyawan> karyawanList;
-  const KaryawanListLoaded(this.karyawanList);
+  final DateTime? timestamp;
+  const KaryawanListLoaded(this.karyawanList, {this.timestamp});
   @override
-  List<Object?> get props => [karyawanList];
+  List<Object?> get props => [karyawanList, timestamp];
 }
 
 class KaryawanOperationSuccess extends KaryawanState {

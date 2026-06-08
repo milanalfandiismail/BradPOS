@@ -7,11 +7,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bradpos/domain/entities/user_entity.dart';
 import 'package:bradpos/domain/repositories/auth_repository.dart';
 import 'package:bradpos/data/data_sources/profile_local_data_source.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
 import 'package:bradpos/data/data_sources/profile_remote_data_source.dart';
+import 'package:bradpos/data/repositories/auth_karyawan_repository_impl.dart';
 
-class AuthRepositoryImpl implements AuthRepository {
+class AuthRepositoryImpl with KaryawanAuthMixin implements AuthRepository {
+  @override
   final SupabaseClient supabase;
+  @override
   final SharedPreferences prefs;
+  @override
   final ProfileLocalDataSource profileLocalDataSource;
   final ProfileRemoteDataSource profileRemoteDataSource;
 
@@ -41,20 +46,26 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = response.user;
       if (user != null) {
         // Fetch profile immediately
-        final profile = await profileRemoteDataSource.getProfile(user.id);
-        
+        final profile = await profileRemoteDataSource.getProfile(
+          user.id,
+          isStaff: false,
+        );
+
         final userEntity = UserEntity(
           id: user.id,
           email: user.email ?? '',
           name: profile?['full_name'] ?? user.userMetadata?['full_name'],
-          shopName: profile?['shop_name'] ?? user.userMetadata?['shop_name'] ?? 'BradPOS',
+          shopName:
+              profile?['shop_name'] ??
+              user.userMetadata?['shop_name'] ??
+              'BradPOS',
           shopId: profile?['shop_id'] ?? user.userMetadata?['shop_id'],
           role: 'owner',
           remoteImage: profile?['remote_image'],
           address: profile?['address'],
           phone: profile?['phone'],
         );
-        
+
         await _saveLocalProfile(userEntity);
         await prefs.setString(_ownerSessionKey, jsonEncode(userEntity.toMap()));
         return Right(userEntity);
@@ -77,15 +88,15 @@ class AuthRepositoryImpl implements AuthRepository {
       final response = await supabase.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'full_name': fullName,
-          'shop_name': 'BradPOS',
-        },
+        data: {'full_name': fullName, 'shop_name': 'BradPOS'},
       );
       final user = response.user;
       if (user != null) {
         // Fetch profile (might be empty but good for consistency)
-        final profile = await profileRemoteDataSource.getProfile(user.id);
+        final profile = await profileRemoteDataSource.getProfile(
+          user.id,
+          isStaff: false,
+        );
 
         final userEntity = UserEntity(
           id: user.id,
@@ -111,6 +122,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<String, UserEntity>> signInWithGoogle() async {
     try {
+      if (kIsWeb) {
+        await supabase.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: Uri.base.toString(),
+        );
+        return const Left('Mengalihkan ke halaman login Google...');
+      }
+
       final googleUser = await GoogleSignIn.instance.authenticate();
       final googleAuth = googleUser.authentication;
       final idToken = googleAuth.idToken;
@@ -126,14 +145,19 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final user = response.user;
       if (user != null) {
-        // Fetch profile immediately
-        final profile = await profileRemoteDataSource.getProfile(user.id);
+        final profile = await profileRemoteDataSource.getProfile(
+          user.id,
+          isStaff: false,
+        );
 
         final userEntity = UserEntity(
           id: user.id,
           email: user.email ?? '',
           name: profile?['full_name'] ?? user.userMetadata?['full_name'],
-          shopName: profile?['shop_name'] ?? user.userMetadata?['shop_name'] ?? 'BradPOS',
+          shopName:
+              profile?['shop_name'] ??
+              user.userMetadata?['shop_name'] ??
+              'BradPOS',
           shopId: profile?['shop_id'] ?? user.userMetadata?['shop_id'],
           role: 'owner',
           remoteImage: profile?['remote_image'],
@@ -160,7 +184,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await prefs.remove(_karyawanSessionKey);
       await prefs.remove(_ownerSessionKey);
       await prefs.remove(_guestSessionKey);
-      
+
       return const Right(null);
     } catch (e) {
       return Left(e.toString());
@@ -231,16 +255,35 @@ class AuthRepositoryImpl implements AuthRepository {
       final karyawanJson = prefs.getString(_karyawanSessionKey);
       if (karyawanJson != null) {
         final karyawanMap = jsonDecode(karyawanJson);
-        final profile = await profileLocalDataSource.getProfile(karyawanMap['owner_id'] ?? '');
-        final shopName = profile?['shop_name'] ?? 'BradPOS';
+        final ownerProfile = await profileLocalDataSource.getProfile(
+          karyawanMap['owner_id'] ?? '',
+        );
+        final personalProfile = await profileLocalDataSource.getProfile(
+          karyawanMap['id'] ?? '',
+        );
+
+        final shopName = ownerProfile?['shop_name'] ?? 'BradPOS';
+        final shopId = ownerProfile?['shop_id'];
+
         return Right(
-          UserEntity.fromMap({...karyawanMap, 'shop_name': shopName}),
+          UserEntity.fromMap({
+            ...karyawanMap,
+            'shop_name': shopName,
+            'shop_id': shopId,
+            'remote_image':
+                personalProfile?['remote_image'] ?? karyawanMap['remote_image'],
+            'local_image':
+                personalProfile?['local_image'] ?? karyawanMap['local_image'],
+            'name': personalProfile?['full_name'] ?? karyawanMap['name'],
+          }),
         );
       }
 
       // 4. Cek Mode Guest
       if (isGuestMode()) {
-        final profile = await profileLocalDataSource.getProfile('offline_guest');
+        final profile = await profileLocalDataSource.getProfile(
+          'offline_guest',
+        );
         final shopName = profile?['shop_name'] ?? 'BradPOS';
         return Right(
           UserEntity(
@@ -281,7 +324,11 @@ class AuthRepositoryImpl implements AuthRepository {
         if (user.remoteImage != null) {
           await profileRemoteDataSource.deleteProfileImage(user.remoteImage!);
         }
-        finalRemoteUrl = await profileRemoteDataSource.uploadProfileImage(localImage, user.id);
+        finalRemoteUrl = await profileRemoteDataSource.uploadProfileImage(
+          localImage,
+          user.id,
+          isStaff: user.role == 'karyawan',
+        );
       }
 
       final updatedUser = UserEntity(
@@ -301,34 +348,54 @@ class AuthRepositoryImpl implements AuthRepository {
       // Handle Password Change
       if (newPassword != null && newPassword.isNotEmpty) {
         if (user.role == 'karyawan') {
+          final hashedPassword = SyncUtils.hashPassword(newPassword);
           await supabase
               .from('karyawan')
-              .update({'password_hash': newPassword})
+              .update({'password_hash': hashedPassword})
               .eq('id', user.id);
         } else if (user.role == 'owner') {
           await supabase.auth.updateUser(UserAttributes(password: newPassword));
         }
       }
 
-      // Sync Karyawan Table if name changes
-      if (user.role == 'karyawan' && fullName != null) {
-        await supabase
-            .from('karyawan')
-            .update({'full_name': fullName})
-            .eq('id', user.id);
+      // Sync Karyawan Table if info changes
+      if (user.role == 'karyawan') {
+        final Map<String, dynamic> updateKaryawan = {};
+        if (fullName != null) {
+          updateKaryawan['full_name'] = fullName;
+        }
+        if (finalRemoteUrl != null) {
+          updateKaryawan['remote_image'] = finalRemoteUrl;
+        }
+        if (localImage != null) {
+          updateKaryawan['local_image'] = localImage;
+        }
+
+        if (updateKaryawan.isNotEmpty) {
+          await supabase
+              .from('karyawan')
+              .update(updateKaryawan)
+              .eq('id', user.id);
+        }
       }
 
       await _saveLocalProfile(updatedUser);
       if (user.role == 'karyawan') {
-        await prefs.setString(_karyawanSessionKey, jsonEncode(updatedUser.toMap()));
+        await prefs.setString(
+          _karyawanSessionKey,
+          jsonEncode(updatedUser.toMap()),
+        );
       } else {
-        await prefs.setString(_ownerSessionKey, jsonEncode(updatedUser.toMap()));
+        await prefs.setString(
+          _ownerSessionKey,
+          jsonEncode(updatedUser.toMap()),
+        );
       }
 
       if (user.role == 'owner') {
         final Map<String, dynamic> updateData = {
           'id': user.id,
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': SyncUtils.formatWebDate(DateTime.now()),
         };
         if (fullName != null) updateData['full_name'] = fullName;
         if (shopName != null) updateData['shop_name'] = shopName;
@@ -359,13 +426,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  @override
-  Future<void> syncProfile() async {
-    // Profile sync moved to ProfileSyncManager.
-    // Method kept for backward compatibility with AuthRepository interface.
-    // SyncService now uses ProfileSyncManager directly.
-  }
-
   // ==================== Guest AUTH (Offline Mode) ====================
 
   @override
@@ -394,92 +454,15 @@ class AuthRepositoryImpl implements AuthRepository {
     return prefs.getBool(_guestSessionKey) ?? false;
   }
 
-  // ==================== Karyawan AUTH (Custom Database) ====================
-
-  @override
-  Future<Either<String, UserEntity>> signInAsKaryawan(
-    String shopId,
-    String name,
-    String password,
-  ) async {
-    try {
-      final response = await supabase.rpc(
-        'verify_karyawan_login_v2',
-        params: {
-          'p_shop_id': shopId,
-          'p_full_name': name,
-          'p_password': password
-        },
-      );
-
-      if (response == null || (response as List).isEmpty) {
-        return const Left('Shop ID, Nama, atau password salah');
-      }
-
-      final karyawanData = response[0];
-
-      String shopName = 'BradPOS';
-      String? dbShopId;
-      try {
-        final ownerProfile = await supabase
-            .from('profiles')
-            .select('shop_name, shop_id')
-            .eq('id', karyawanData['owner_id'])
-            .single();
-        shopName = ownerProfile['shop_name'] ?? 'BradPOS';
-        dbShopId = ownerProfile['shop_id'];
-      } catch (_) {}
-
-      final user = UserEntity(
-        id: karyawanData['id'],
-        email: '', // No email for employee
-        name: karyawanData['full_name'],
-        shopName: shopName,
-        shopId: dbShopId ?? shopId,
-        role: 'karyawan',
-        ownerId: karyawanData['owner_id'],
-      );
-
-      await _saveLocalProfile(user);
-      await prefs.setString(_karyawanSessionKey, jsonEncode(user.toMap()));
-
-      return Right(user);
-    } catch (e) {
-      return Left('Gagal login: ${e.toString()}');
-    }
-  }
-
-  @override
-  Future<Either<String, String>> createKaryawan(
-    String fullName,
-    String password,
-  ) async {
-    try {
-      final response = await supabase.rpc(
-        'create_karyawan_v2',
-        params: {
-          'p_full_name': fullName,
-          'p_password': password,
-        },
-      );
-      return Right(response.toString());
-    } catch (e) {
-      if (e.toString().contains('duplicate')) {
-        return const Left('Email karyawan sudah terdaftar');
-      }
-      return Left('Gagal membuat akun karyawan: ${e.toString()}');
-    }
-  }
-
   Future<void> _saveLocalProfile(UserEntity user) async {
     await profileLocalDataSource.saveProfile({
-      'id': user.role == 'karyawan' ? user.ownerId : user.id,
+      'id': user.id,
       'shop_name': user.shopName,
       'shop_id': user.shopId,
       'full_name': user.name,
       'remote_image': user.remoteImage,
       'local_image': user.localImage,
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': SyncUtils.formatWebDate(DateTime.now()),
     });
   }
 }

@@ -14,9 +14,28 @@ class HistoryLoading extends HistoryState {}
 class HistoryLoaded extends HistoryState {
   final List<Transaction> transactions;
   final double totalOmzet;
-  const HistoryLoaded(this.transactions, this.totalOmzet);
+  final bool isSyncing;
+
+  const HistoryLoaded(
+    this.transactions, 
+    this.totalOmzet, {
+    this.isSyncing = false,
+  });
+
+  HistoryLoaded copyWith({
+    List<Transaction>? transactions,
+    double? totalOmzet,
+    bool? isSyncing,
+  }) {
+    return HistoryLoaded(
+      transactions ?? this.transactions,
+      totalOmzet ?? this.totalOmzet,
+      isSyncing: isSyncing ?? this.isSyncing,
+    );
+  }
+
   @override
-  List<Object?> get props => [transactions, totalOmzet];
+  List<Object?> get props => [transactions, totalOmzet, isSyncing];
 }
 
 class HistoryError extends HistoryState {

@@ -10,42 +10,17 @@ class CategoryModel extends Category {
     required super.updatedAt,
   });
 
-  factory CategoryModel.fromJson(Map<String, dynamic> json) {
-    return CategoryModel(
-      id: json['id'] ?? '',
-      ownerId: json['owner_id'] ?? '',
-      name: json['name'] ?? '',
-      description: json['description'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : DateTime.parse(json['created_at']),
-    );
-  }
-
   factory CategoryModel.fromMap(Map<String, dynamic> map) {
-    final createdAtStr = map['created_at'] as String?;
-    final updatedAtStr = map['updated_at'] as String?;
-
     return CategoryModel(
-      id: map['id'] as String? ?? '',
-      ownerId: map['owner_id'] as String? ?? '',
-      name: map['name'] as String? ?? '',
-      description: map['description'] as String?,
-      createdAt: createdAtStr != null ? DateTime.parse(createdAtStr) : DateTime.now(),
-      updatedAt: updatedAtStr != null ? DateTime.parse(updatedAtStr) : (createdAtStr != null ? DateTime.parse(createdAtStr) : DateTime.now()),
+      id: map['id'] ?? '',
+      ownerId: map['owner_id'] ?? '',
+      name: map['name'] ?? '',
+      description: map['description'],
+      createdAt: DateTime.parse(map['created_at']),
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'])
+          : DateTime.parse(map['created_at']),
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'owner_id': ownerId,
-      'name': name,
-      'description': description,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-    };
   }
 
   @override
@@ -60,14 +35,18 @@ class CategoryModel extends Category {
     };
   }
 
-  factory CategoryModel.fromEntity(Category category) {
+  Map<String, dynamic> toJson() {
+    return toMap();
+  }
+
+  factory CategoryModel.fromEntity(Category entity) {
     return CategoryModel(
-      id: category.id,
-      ownerId: category.ownerId,
-      name: category.name,
-      description: category.description,
-      createdAt: category.createdAt,
-      updatedAt: category.updatedAt,
+      id: entity.id,
+      ownerId: entity.ownerId,
+      name: entity.name,
+      description: entity.description,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
     );
   }
 }

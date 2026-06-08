@@ -86,13 +86,13 @@ class UpdateProfileEvent extends AuthEvent {
 
   @override
   List<Object> get props => [
-        fullName ?? '',
-        shopName ?? '',
-        shopId ?? '',
-        remoteImage ?? '',
-        localImage ?? '',
-        address ?? '',
-        phone ?? '',
-        newPassword ?? '',
-      ];
+    fullName ?? '',
+    shopName ?? '',
+    shopId ?? '',
+    remoteImage ?? '',
+    localImage ?? '',
+    address ?? '',
+    phone ?? '',
+    newPassword ?? '',
+  ];
 }

@@ -1,7 +1,9 @@
 import 'package:bradpos/core/database/database_helper.dart';
 import 'package:bradpos/data/models/inventory_item_model.dart';
 import 'package:bradpos/domain/entities/inventory_item.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:bradpos/core/database/db_utils.dart';
+import 'package:bradpos/core/sync/sync_utils.dart';
+
 
 abstract class InventoryLocalDataSource {
   Future<List<InventoryItemModel>> getInventory(
@@ -112,7 +114,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       'produk',
       where: clause,
       whereArgs: args,
-      orderBy: 'category ASC, name ASC',
+      orderBy: 'name ASC',
       limit: limit,
       offset: offset,
     );
@@ -121,7 +123,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       final modMap = Map<String, dynamic>.from(map);
       modMap['is_active'] = modMap['is_active'] == 1;
       return InventoryItemModel.fromMap(modMap);
-    }).toList();
+    }).toList().cast<InventoryItemModel>();
   }
 
   @override
@@ -144,7 +146,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       'SELECT COUNT(*) as count FROM produk WHERE $clause',
       args,
     );
-    return Sqflite.firstIntValue(result) ?? 0;
+    return DbUtils.firstIntValue(result) ?? 0;
   }
 
   @override
@@ -154,12 +156,12 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
 
     final map = itemModel.toMap();
     map['sync_status'] = 'created';
-    map['updated_at'] = DateTime.now().toIso8601String();
+    map['updated_at'] = SyncUtils.formatWebDate(DateTime.now());
 
     await db.insert(
       'produk',
       map,
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
     );
     return itemModel;
   }
@@ -184,7 +186,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     }
 
     map['sync_status'] = nextSyncStatus;
-    map['updated_at'] = DateTime.now().toIso8601String();
+    map['updated_at'] = SyncUtils.formatWebDate(DateTime.now());
 
     await db.update(
       'produk',
@@ -210,9 +212,10 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
     String? excludeId,
   }) async {
     final db = await dbHelper.database;
+    // Gunakan LOWER untuk pengecekan case-insensitive
     String whereClause =
-        'name = ? AND owner_id = ? AND is_active = 1 AND sync_status != ?';
-    List<dynamic> whereArgs = [name, userId, 'deleted'];
+        'LOWER(name) = LOWER(?) AND owner_id = ? AND sync_status NOT LIKE ?';
+    List<dynamic> whereArgs = [name, userId, 'deleted%'];
 
     if (excludeId != null) {
       whereClause += ' AND id != ?';
@@ -257,7 +260,7 @@ class InventoryLocalDataSourceImpl implements InventoryLocalDataSource {
       await db.insert(
         'produk',
         map,
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        conflictAlgorithm: DbUtils.getConflictAlgorithmReplace(),
       );
     }
   }
