@@ -150,6 +150,7 @@ Untuk Google Sign-In:
           # PowerShell
           keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
           ```
+          > Hasilnya: file `upload-keystore.jks` akan tersimpan di `android/app/`. File ini **sudah otomatis diabaikan** oleh `.gitignore` (aturan `*.jks` dan `android/`), jadi aman tidak akan tercommit ke repo.
        2. Dapatkan SHA-1 dari keystore yang sudah dibuat:
           ```bash
           # CMD
