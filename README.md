@@ -70,8 +70,10 @@ Sebelum mulai, pastikan sudah terinstall:
 |------|---------------|---------|
 | **Flutter** | 3.27+ | `flutter --version` untuk cek |
 | **Dart** | 3.11+ | Ikut Flutter SDK |
-| **Git** | - | Untuk clone repo |
+| **Java JDK** | 17+ | **Wajib** untuk build Android. `java -version` untuk cek. [Download](https://adoptium.net/) atau `winget install EclipseAdoptium.Temurin.17.JDK` |
+| **Git** | - | `git --version` untuk cek |
 | **IDE** | - | VS Code / Android Studio / IntelliJ |
+| **Android SDK** | - | Untuk build Android. Bisa via [Android Studio](https://developer.android.com/studio) atau `flutter config --android-sdk` |
 | **Akun Supabase** | - | Gratis di [supabase.com](https://supabase.com) |
 | **Opsional: Docker** | - | Jika ingin jalankan PostgreSQL lokal |
 
