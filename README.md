@@ -134,31 +134,37 @@ Untuk Google Sign-In:
    - **Android**: Isi package name (`com.bradpos.app`) + **SHA-1 signing certificate fingerprint**
      - Untuk mendapatkan SHA-1:
        ```bash
-       # Debug keystore (development) — generate dulu di android/app/
-       keytool -genkey -v -keystore android/app/debug-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias androiddebugkey -storepass android -keypass android -dname "CN=Debug, OU=Development, O=BradPOS, L=Unknown, ST=Unknown, C=ID"
+       # Pastikan sudah di root proyek BradPOS
+       cd BradPOS
+       
+       # Debug keystore (development) — generate dulu:
+       keytool -genkey -v -keystore android/app/debug.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias androiddebugkey -storepass android -keypass android -dname "CN=Debug, OU=Development, O=BradPOS, L=Unknown, ST=Unknown, C=ID"
        
        # Lalu lihat SHA-1-nya:
-       keytool -list -v -keystore android/app/debug-keystore.jks -alias androiddebugkey -storepass android -keypass android
+       keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android
        ```
-       > Hasil: file `debug-keystore.jks` tersimpan di `android/app/`. Sudah diabaikan `.gitignore`.
+       > Hasil: file `debug.keystore` tersimpan di `android/app/`. Sudah diabaikan `.gitignore`.
      - Output: cari baris `SHA1:` → `SHA1: 5E:8F:16:...` — copy paste ke Google Cloud Console
      - **Untuk production (rilis):**
        1. Buat keystore dulu (jika belum punya):
           ```bash
+          # Pastikan sudah di root proyek BradPOS
+          cd BradPOS
+          
           # CMD
-          keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+          keytool -genkey -v -keystore android/app/production.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias upload
           
           # PowerShell
-          keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+          keytool -genkey -v -keystore android/app/production.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias upload
           ```
-          > Hasilnya: file `upload-keystore.jks` akan tersimpan di `android/app/`. File ini **sudah otomatis diabaikan** oleh `.gitignore` (aturan `*.jks` dan `android/`), jadi aman tidak akan tercommit ke repo.
+          > Hasilnya: file `production.keystore` akan tersimpan di `android/app/`. File ini **sudah otomatis diabaikan** oleh `.gitignore` (aturan `*.keystore`, `*.jks`, dan `android/`), jadi aman tidak akan tercommit ke repo.
        2. Dapatkan SHA-1 dari keystore yang sudah dibuat:
           ```bash
           # CMD
-          keytool -list -v -keystore android/app/upload-keystore.jks -alias upload -storepass <password> -keypass <password>
+          keytool -list -v -keystore android/app/production.keystore -alias upload -storepass <password> -keypass <password>
           
           # PowerShell
-          keytool -list -v -keystore android/app/upload-keystore.jks -alias upload -storepass <password> -keypass <password>
+          keytool -list -v -keystore android/app/production.keystore -alias upload -storepass <password> -keypass <password>
           ```
        3. Ganti `<password>` dengan password yang kamu buat saat generate keystore
        4. Tambahkan SHA-1 hasilnya ke **Google Cloud Console** dan ke **Firebase Console** (jika pakai Firebase)

@@ -12,7 +12,9 @@
 setup_env.bat
 skills/
 
-
+# Keystore
+*.keystore
+*.jks
 
 # Flutter repo-specific
 /bin/cache/
@@ -60,7 +62,6 @@ unlinked_spec.ds
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
-*.jks
 android/
 
 # iOS/XCode related
