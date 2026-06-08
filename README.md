@@ -131,7 +131,17 @@ Untuk Google Sign-In:
 
 1. **Google Cloud Console** → Buat project → **OAuth consent screen** (External)
 2. **Credentials** → Buat **OAuth 2.0 Client IDs**:
-   - **Android**: Isi package name (`com.bradpos.app`) + SHA-1 signing cert
+   - **Android**: Isi package name (`com.bradpos.app`) + **SHA-1 signing certificate fingerprint**
+     - Untuk mendapatkan SHA-1:
+       ```bash
+       # Debug keystore (development):
+       keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android
+       
+       # Atau jika pakai PowerShell:
+       keytool -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
+       ```
+     - Output: cari baris `SHA1:` → `SHA1: 5E:8F:16:...` — copy paste ke Google Cloud Console
+     - **Untuk production (rilis):** gunakan `keytool` dari keystore rilis kamu
    - **iOS**: Bundle ID
    - **Web**: Authorized redirect URIs → `https://[project].supabase.co/auth/v1/callback`
 3. **Supabase Dashboard** → Authentication → Providers → Google:
